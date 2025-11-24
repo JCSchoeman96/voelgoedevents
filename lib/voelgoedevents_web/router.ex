@@ -18,6 +18,9 @@ defmodule VoelgoedeventsWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+
+    # Checkout will be a LiveView
+    live "/checkout", CheckoutLive, :show
   end
 
   # Other scopes may use custom stacks.

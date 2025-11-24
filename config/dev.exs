@@ -2,8 +2,8 @@ import Config
 
 # Configure your database
 config :voelgoedevents, Voelgoedevents.Repo,
-  username: "postgres",
-  password: "#@PostgreSQL",
+  username: "voelgoed",
+  password: "voelgoed_dev",
   hostname: "localhost",
   database: "voelgoedevents_dev",
   stacktrace: true,

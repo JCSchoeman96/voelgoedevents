@@ -1,5 +1,6 @@
 # scaffold.ps1
 # Run from the project root (where mix.exs is)
+$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
 
 $ErrorActionPreference = "Stop"
 

@@ -9,6 +9,17 @@ import Config
 
 config :voelgoedevents,
   ecto_repos: [Voelgoedevents.Repo],
+    ash_domains: [
+    Voelgoedevents.Ash.Domains.CoreDomain,
+    Voelgoedevents.Ash.Domains.AccountsDomain,
+    Voelgoedevents.Ash.Domains.VenuesDomain,
+    Voelgoedevents.Ash.Domains.EventsDomain,
+    Voelgoedevents.Ash.Domains.SeatingDomain,
+    Voelgoedevents.Ash.Domains.TicketingDomain,
+    Voelgoedevents.Ash.Domains.PaymentsDomain,
+    Voelgoedevents.Ash.Domains.ScanningDomain,
+    Voelgoedevents.Ash.Domains.AnalyticsDomain
+  ],
   generators: [timestamp_type: :utc_datetime]
 
 # Configures the endpoint

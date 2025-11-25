@@ -100,7 +100,7 @@ The goal is to be the **top-tier, enterprise-grade event platform** in South Afr
 ### 3.2 Major Components
 
 - **Core Phoenix/Ash application (`voelgoedevents`)**
-- **Domain slices:**
+- **Domain slices (Logical):**
   - Tenants & orgs
   - Authentication & permissions
   - Events & venues
@@ -515,7 +515,7 @@ Defines:
 - File-size limits and refactor rules.
 - TOON prompt structure.
 - No hallucinated file paths.
-- Architecture constraints.
+- **Standard Ash Folder Structure constraints.**
 
 ### 13.2 GEMINI.md – Gemini-Specific Behaviour
 
@@ -524,7 +524,7 @@ Defines:
 - Mandatory doc loading sequence:
   - AGENTS.md, INDEX.md, architecture, domain, workflows.
 - Ash + Phoenix + PETAL expectations.
-- Vertical slice architecture rules.
+- **Logical Vertical Slice rules (mapped to standard Ash folders).**
 - Multi-tenancy and caching rules.
 - WSL execution boundaries.
 
@@ -535,13 +535,11 @@ Defines:
 
 ### 13.4 Role Separation
 
-- **ChatGPT (cloud):**  
-  - High-level planning  
+- **ChatGPT (cloud):** - High-level planning  
   - Domain modeling  
   - TOON prompt generation  
   - Architecture decisions  
-- **Antigravity / Gemini agent:**  
-  - Implements TOON prompts  
+- **Antigravity / Gemini agent:** - Implements TOON prompts  
   - Edits code  
   - Writes migrations and modules  
   - Suggests commands (user runs them)

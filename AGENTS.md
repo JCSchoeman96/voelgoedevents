@@ -16,7 +16,7 @@ This document defines:
 - What project files they must load before acting
 - How they must navigate the codebase
 - How to ensure all code follows Ash, Phoenix & Svelte best practices
-- How to enforce multi-tenancy, vertical slices, caching, performance
+- How to enforce multi-tenancy, logical vertical slices, caching, performance
 - And how to ensure all code output is correct, consistent, and maintainable
 
 **Agents will never generate TOON prompts.**
@@ -39,7 +39,7 @@ Provides:
 - Folder map
 - File locations
 - Where new files must go
-- Vertical slice boundaries
+- Domain/Slice mapping
 
 ### Step 3 — Load MASTER_BLUEPRINT.md
 
@@ -70,11 +70,11 @@ Load **ALL** that apply to the task:
 Located in: `/docs/domain/*.md`
 
 **Example:**
-- Editing events → load `domain/events.md`
+- Editing events → load `domain/events_venues.md`
 - Editing seating → load `domain/seating.md`
-- Editing scanning → load `domain/scanning.md`
-- Editing ticketing → load `domain/ticketing.md`
-- Editing payments → load `domain/payments.md`
+- Editing scanning → load `domain/scanning_devices.md`
+- Editing ticketing → load `domain/ticketing_pricing.md`
+- Editing payments → load `domain/payments_ledger.md`
 
 ### Step 6 — Load workflow docs for the feature
 
@@ -144,23 +144,16 @@ Agents must always enforce the following global principles.
 
 **Any attempt to bypass Ash is a violation.**
 
-### 3.2 Vertical Slice Architecture (Strict)
+### 3.2 Logical Vertical Slices (Standard Ash Structure)
 
-All code belongs to a feature slice, not a layer.
+We use **Logical Vertical Slices** mapped to **Standard Ash Folders**.
+Logical slices define conceptual boundaries only; agents must always place files in the standard Ash/Phoenix folder structure shown in Section 4, never in slice-named folders.
 
-Each slice contains:
+- **Mentally**, you work in a slice (e.g., "Ticketing").
+- **Physically**, you place files in the standard Ash/Phoenix locations defined in `INDEX.md`.
 
-- Resources
-- Domain actions
-- Workflows
-- Policies
-- Contracts
-- Controllers (thin I/O)
-- LiveViews (thin I/O)
-- Components
-- Tests
-
-**Agents MUST place files inside the correct slice.**
+Do **NOT** create custom folder structures like `lib/voelgoedevents/ticketing/ash/`.
+**ALWAYS** use `lib/voelgoedevents/ash/resources/ticketing/`.
 
 ### 3.3 Multi-Tenancy Enforcement (Never optional)
 
@@ -197,21 +190,22 @@ Additionally:
 
 ## 4. File Placement Rules
 
-Agents must always use the folder map in `INDEX.md`.
+Agents must always use the folder map below (Standard Ash Layout).
 
 **Key rules:**
 
-| Content          | Location                                      |
-|------------------|-----------------------------------------------|
-| Domain logic     | `lib/voelgoedevents/<slice>/ash/`             |
-| LiveViews        | `lib/voelgoedevents_web/live/<slice>/`        |
-| Controllers      | `lib/voelgoedevents_web/controllers/<slice>/` |
-| Components       | `lib/voelgoedevents_web/components/`          |
-| Svelte           | `scanner_pwa/src/lib/`                        |
-| Migrations       | `priv/repo/migrations`                        |
-| Domain contracts | `lib/voelgoedevents/<slice>/contracts/`       |
-| Workflows        | `docs/workflows/` or Ash workflow files       |
-
+| Content category | Specific Location                                      |
+|------------------|--------------------------------------------------------|
+| Ash Resources    | `lib/voelgoedevents/ash/resources/<slice>/`            |
+| Ash Domains      | `lib/voelgoedevents/ash/domains/`                      |
+| Ash Support      | `lib/voelgoedevents/ash/support/`                      |
+| Domain contracts | `lib/voelgoedevents/contracts/<slice>/`                |
+| Workflows        | `lib/voelgoedevents/workflows/<slice>/`                |
+| LiveViews        | `lib/voelgoedevents_web/live/<slice>/`                 |
+| Controllers      | `lib/voelgoedevents_web/controllers/<slice>/`          |
+| Components       | `lib/voelgoedevents_web/components/`                   |
+| Svelte           | `scanner_pwa/src/lib/`                                 |
+| Migrations       | `priv/repo/migrations`                                 |
 
 **Agents must NEVER create random or generic folders such as:**
 
@@ -220,7 +214,7 @@ Agents must always use the folder map in `INDEX.md`.
 - `"helpers2"`
 - `"misc"`
 
-**Everything belongs to a slice.**
+**Everything belongs to a logical slice, placed in the correct standard folder.**
 
 ---
 
@@ -234,11 +228,10 @@ Before finalizing **ANY** code, the agent must:
 4. Validate:
    - Syntax
    - Naming
-   - Folder placement
+   - Folder placement (Standard Ash)
    - Architectural alignment
    - Multi-tenancy safety
    - Performance model
-   - Vertical slice boundaries
    - Ash purity
 
 **Correct all violations before responding.**
@@ -280,11 +273,11 @@ Before completing any action, the agent must run this checklist:
 - ✔ Load domain docs
 - ✔ Load workflow docs
 - ✔ Load coding_style docs
-- ✔ Verify correct folder
+- ✔ Verify correct folder (matches Option A / Standard Ash)
 - ✔ Verify Ash purity
 - ✔ Verify multi-tenancy safety
 - ✔ Verify performance rules
-- ✔ Verify vertical slice alignment
+- ✔ Verify logical slice alignment
 - ✔ Verify UI/UX style adherence
 - ✔ Verify security constraints
 - ✔ Verify naming consistency
@@ -336,7 +329,7 @@ If any other file contradicts this one → **AGENTS.md wins.**
 This rulebook ensures:
 
 ✔ Consistent code quality across the entire codebase  
-✔ Strict architectural enforcement (Ash, vertical slices, multi-tenancy)  
+✔ Strict architectural enforcement (Ash, logical slices, multi-tenancy)  
 ✔ Performance by design (caching, indexing, event-driven patterns)  
 ✔ Security and isolation (organization scoping, policy enforcement)  
 ✔ Maintainability (clear folder structure, style consistency)  
@@ -346,6 +339,4 @@ This rulebook ensures:
 
 ---
 
-**Last updated: 2025-11-25**  
-**Status: Production-Ready**  
 **Override Level: Supreme – All other files defer to AGENTS.md**

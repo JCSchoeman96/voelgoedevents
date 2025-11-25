@@ -9,11 +9,9 @@
 
 If you are an **AI coding or planning agent**, you MUST:
 
-1. Read: `AGENTS.md`  
-2. Read: `INDEX.md` (this file)  
-3. Then follow the “AI Agent Navigation Path” section below.
-
-If you are a **human developer/architect**, start with the “Human Navigation Path”.
+1. Read: `AGENTS.md` (The Supreme Rulebook)
+2. Read: `INDEX.md` (This Map)
+3. Follow the **"Domain to File Path Mapping"** in Section 4.1 below.
 
 ---
 
@@ -21,14 +19,11 @@ If you are a **human developer/architect**, start with the “Human Navigation P
 
 The VoelgoedEvents documentation is designed as a **stack**:
 
-- **Top Layer – What is this platform?**  
-  Conceptual understanding, vision, and overall architecture.
+- **Top Layer – What is this platform?** Conceptual understanding, vision, and overall architecture.
 
-- **Middle Layer – How is it structured?**  
-  Domains, architecture, workflows, slices.
+- **Middle Layer – How is it structured?** Domains, architecture, workflows, logical slices.
 
-- **Bottom Layer – How do I work with it?**  
-  Project setup, coding rules, agent rules, tests, deployment.
+- **Bottom Layer – How do I work with it?** Project setup, coding rules, agent rules, tests, deployment.
 
 This file ties everything together.
 
@@ -38,23 +33,17 @@ This file ties everything together.
 
 These are the **four primary documents** every person or agent should know:
 
-1. **Agent Rules**  
-   - `AGENTS.md`  
-   - Defines how AI agents must behave, constraints, TOON format, vertical slice rules, file path conventions, and performance/scaling assumptions.
+1. **Agent Rules** - `AGENTS.md`  
+   - Defines how AI agents must behave, constraints, TOON format, **Standard Ash Folder** rules, and performance/scaling assumptions.
 
-2. **Platform Overview**  
-   - `platform_overview.md`  
-   - Explains what VoelgoedEvents *is* as a product & system, how PETAL + Ash + vertical slices + caching + eventing fit together.
+2. **Platform Overview** - `docs/MASTER_BLUEPRINT.md`  
+   - Explains what VoelgoedEvents *is*, the product vision, and the "Big Picture" architecture.
 
-3. **Project Overview**  
-   - `project_overview.md`  
-   - Explains how to work with the repository: structure, dev environment, commands, workflows, expectations.
+3. **Project Guide** - `docs/PROJECT_GUIDE.md`  
+   - Explains how to work with the repository: structure, dev environment, commands, workflows.
 
-4. **Domain Map (Authoritative)**  
-   - `DOMAIN_MAP.md`  
-   - High-level map of all domains in the system and how they relate: Tenancy, Events, Seating, Ticketing, Payments, Scanning, Analytics, Integrations, Notifications, Reporting, Audit, Public API, Ephemeral State.
-
-These four files form the **mental model** of the platform.
+4. **Domain Map (Authoritative)** - `docs/DOMAIN_MAP.md`  
+   - High-level map of all domains: Tenancy, Events, Seating, Ticketing, Payments, Scanning, Analytics.
 
 ---
 
@@ -62,20 +51,12 @@ These four files form the **mental model** of the platform.
 
 If you’re a **human developer/architect**, recommended reading order:
 
-1. `platform_overview.md`  
-2. `project_overview.md`  
-3. `DOMAIN_MAP.md`  
-4. `architecture/01_foundation.md`  
-5. `architecture/04_vertical_slices.md`  
-6. Then dip into:
-   - `architecture/02_multi_tenancy.md`  
-   - `architecture/03_caching_and_realtime.md`  
-   - `architecture/05_eventing_model.md`  
-7. Finally:
-   - `domain/README.md` and individual domain docs  
-   - `workflows/README.md` and specific workflows relevant to your task
-
-Use this file (`INDEX.md`) as your **table of contents**.
+1. `MASTER_BLUEPRINT.md`
+2. `PROJECT_GUIDE.md`
+3. `DOMAIN_MAP.md`
+4. `architecture/01_foundation.md`
+5. `architecture/04_vertical_slices.md`
+6. Then dip into specific domain docs in `docs/domain/*.md`.
 
 ---
 
@@ -87,24 +68,26 @@ If you are an **AI coding agent**, you must:
    - `AGENTS.md`
    - `architecture/01_foundation.md`
    - `architecture/02_multi_tenancy.md`
-   - `architecture/03_caching_and_realtime.md`
    - `architecture/04_vertical_slices.md`
 
-2. **Load context for the current task:**
-   - `DOMAIN_MAP.md`  
-   - Relevant `domain/*.md` files  
-   - Relevant `workflows/*.md` files
+2. **Identify your Logical Slice:**
+   - Determine which feature you are working on (e.g., "Ticketing").
+   - Use the **Mapping Table below** to find the correct docs and folders.
 
-3. **Respect file paths and naming** from:
-   - `project_overview.md`
-   - `architecture/README.md`
-   - `domain/README.md`
+### 4.1 Domain to File Path Mapping (Standard Ash Layout)
 
-4. **NEVER**:
-   - Put business logic in controllers or LiveViews.  
-   - Bypass the Ash domain model.  
-   - Ignore performance rules (ETS/Redis/Postgres).  
-   - Violate multi-tenancy boundaries.
+We work in **Logical Slices** but code in **Standard Ash Folders**. Use this map to locate files.
+
+| Logical Slice          | Domain Doc (Read This)             | Ash Resources (Write Here)                                                                  | Workflow Docs (Read Only)      |
+|------------------------|------------------------------------|---------------------------------------------------------------------------------------------|--------------------------------|
+| **Tenancy & Accounts** | `domain/tenancy_accounts.md`     | `lib/voelgoedevents/ash/resources/accounts/`<br>`lib/voelgoedevents/ash/resources/organizations/` | `docs/workflows/accounts_*.md` |
+| **Events & Venues**   | `domain/events_venues.md`         | `lib/voelgoedevents/ash/resources/events/`<br>`lib/voelgoedevents/ash/resources/venues/`       | `docs/workflows/events_*.md`   |
+| **Ticketing**         | `domain/ticketing_pricing.md`     | `lib/voelgoedevents/ash/resources/ticketing/`                                                | `docs/workflows/ticketing_*.md` |
+| **Seating**           | `domain/seating.md`               | `lib/voelgoedevents/ash/resources/seating/`                                                  | `docs/workflows/seating_*.md`   |
+| **Payments**          | `domain/payments_ledger.md`       | `lib/voelgoedevents/ash/resources/payments/`                                                 | `docs/workflows/checkout_*.md`  |
+| **Scanning**          | `domain/scanning_devices.md`      | `lib/voelgoedevents/ash/resources/scanning/`                                                 | `docs/workflows/scanning_*.md`  |
+| **Analytics**         | `domain/analytics_marketing.md`   | `lib/voelgoedevents/ash/resources/analytics/`                                                | `docs/workflows/analytics_*.md` |
+
 
 ---
 
@@ -115,172 +98,53 @@ Index: `/docs/architecture/README.md`
 
 Key files:
 
-- `01_foundation.md`  
-  Core architecture: PETAL, Ash, vertical slices, hot/warm/cold data.
-
-- `02_multi_tenancy.md`  
-  Multi-tenant rules, organization scoping, redis key naming, DB indexes.
-
-- `03_caching_and_realtime.md`  
-  Caching strategy (ETS/Redis/Postgres), real-time behavior, availability modeling.
-
-- `04_vertical_slices.md`  
-  How features are built end-to-end; mandatory slice structure and rules.
-
-- `05_eventing_model.md`  
-  Domain events, PubSub topics, Redis streams, workflow event flows.
-
-- `06_jobs_and_async.md`  
-  Oban jobs, queues, idempotency, retry policies, DLQ patterns.
-
-- `07_security_and_auth.md`  
-  Identity types, sessions, API keys, device auth, rate limiting, QR security, audit.
-
-- `08_cicd_and_deployment.md`  
-  CI pipeline, releases, migrations, blue/green & canary deploys.
-
-- `09_scaling_and_resilience.md`  
-  Horizontal scaling, flash-sale strategy, real-time scaling, resilience.
-
-Use the architecture docs whenever you are:
-
-- Designing or modifying core behavior  
-- Introducing new slices  
-- Dealing with performance, scaling, or security  
+- `01_foundation.md` – Core architecture: PETAL, Ash, logical slices.
+- `02_multi_tenancy.md` – Multi-tenant rules, org scoping.
+- `03_caching_and_realtime.md` – Caching strategy (ETS/Redis).
+- `04_vertical_slices.md` – How features are built end-to-end.
+- `05_eventing_model.md` – Domain events, PubSub.
+- `06_jobs_and_async.md` – Oban jobs.
+- `07_security_and_auth.md` – Identity, sessions, API keys.
 
 ---
 
 ## 6. Domain Documentation
 
 Folder: `/docs/domain/`  
-Index: `/docs/domain/README.md`  
-Map: `/docs/DOMAIN_MAP.md` (top-level overview)
+Index: `/docs/domain/README.md`
 
-Each domain file defines:
+Use the **Mapping Table in Section 4.1** to choose the right file.
 
-- Scope & responsibility  
-- Core resources & invariants  
-- Performance and caching strategy  
-- Redis/ETS structures  
-- PubSub topics  
-- Domain interactions  
-- Testing and observability notes
-
-Examples (by intention):
-
-- `tenancy_accounts.md` – Organizations, users, roles, membership  
-- `events_venues.md` – Events, venues, scheduling  
-- `seating.md` – Layouts, seats, availability structures  
-- `ticketing_pricing.md` – Ticket types, GA & reserved inventory, price rules  
-- `payments_ledger.md` – Payments, ledger, refunds, reconciliation  
-- `scanning_devices.md` – Scanner devices, online/offline flows  
-- `analytics_marketing.md` – Funnels, event metrics, targeting  
-- `integrations_webhooks.md` – Incoming/outgoing webhooks, PSP & API integration points  
-- `reporting.md` – Reports, exports, materialized views  
-- `notifications_delivery.md` – Email/SMS/WhatsApp, templates, rate limits  
-- `audit_logging.md` – Immutable audit trail  
-- `public_api_access_keys.md` – API keys, scopes, rate limiting  
-- `ephemeral_realtime_state.md` – Redis/ETS hot state for the entire platform
-
-When changing behavior in a domain, update its doc and ensure it remains consistent with:
-
-- `DOMAIN_MAP.md`  
-- `architecture/*.md`  
+**Note on Duplicate Files:**
+- Always prefer the **detailed** file (e.g., `events_venues.md`) over the simple file (`events.md`).
+- If a file is empty or just a stub, check for a combined file (e.g., `ticketing_pricing.md` covers both).
 
 ---
 
 ## 7. Workflow Documentation
 
-Folder: `/docs/workflows/`  
-Index: `/docs/workflows/README.md` (if present)
+Folder: `/docs/workflows/`
 
-Each workflow doc explains an **end-to-end flow** across multiple domains and slices, for example:
-
-- Checkout & payment flow  
-- Ticket lifecycle (create → reserve → pay → issue → scan → refund/cancel)  
-- Seating plan builder flow  
-- Scanning online/offline sync  
-- Webhook delivery and retry  
-- Notification delivery flow  
-- Event lifecycle (draft → published → ongoing → completed)  
-- Reporting & export lifecycle  
-
-Use workflow docs when you want to understand:
-
-- How domains work together  
-- Where vertical slices start and end  
-- What invariants must hold across the entire process  
+Each workflow doc explains an **end-to-end flow** across multiple domains and slices.
+Examples: `checkout.md`, `scanning_offline.md`, `refunds.md`.
 
 ---
 
-## 8. Agent-Specific Docs (AGENTS, GEMINI, etc.)
+## 8. Agent-Specific Docs
 
-### 8.1 `AGENTS.md` (Canonical)
-
-`AGENTS.md` is the **canonical** specification for all AI agents working on VoelgoedEvents:
-
-- Defines TOON format  
-- Defines vertical slice behavior  
-- Defines performance and caching defaults  
-- Defines safety & architectural constraints  
-
-All AI agents (ChatGPT, Gemini, etc.) should treat `AGENTS.md` as the **source of truth**.
-
-### 8.2 `GEMINI.md` (Optional but Recommended)
-
-If you are using Gemini (or another LLM vendor) and want to tune instructions for that ecosystem, you can add:
-
-- `GEMINI.md`
-
-Recommended content for `GEMINI.md`:
-
-- A short preface: “Gemini, always read AGENTS.md and INDEX.md first.”  
-- Any Gemini-specific prompt formatting or limitations.  
-- Links back to:
-  - `AGENTS.md`  
-  - `INDEX.md`  
-  - The core docs it should preload for coding.
-
-This avoids duplication while giving vendor-specific agents a clear entry point.
-
-**Important:**  
-- Don’t fork the entire ruleset into `GEMINI.md`.  
-- Point Gemini to `AGENTS.md` as the canonical rules, and only layer *differences* or *usage notes* in `GEMINI.md`.
+- **`AGENTS.md`**: The Source of Truth.
+- **`GEMINI.md`**: Specific instructions for Gemini agents (defer to AGENTS.md).
 
 ---
 
-## 9. Project & Contribution Docs
+## 9. Summary
 
-Additional helpful docs you might have:
+1. **Think in Slices** (Logical Boundaries).
+2. **Code in Layers** (Ash Standard Folders).
+3. **Check AGENTS.md** for every decision.
+4. **Use the Map (Section 4.1)** to find your files.
 
-- `project_overview.md`  
-  - How to set up dev environment, run tests, use tools.
-
-- `CONTRIBUTING.md` (if added)  
-  - How to open PRs, branch strategy, review rules.
-
-- `adr/` (if present)  
-  - Architecture Decision Records for tracking big decisions over time.
-
----
-
-## 10. Summary
-
-- **AGENTS.md** → Rules of the game (especially for AI).  
-- **INDEX.md** → This file: how to navigate the whole documentation universe.  
-- **platform_overview.md** → What VoelgoedEvents *is*.  
-- **project_overview.md** → How to work on VoelgoedEvents.  
-- **DOMAIN_MAP.md** → Overview of all domains.  
-- **architecture/** → Platform-wide technical rules & constraints.  
-- **domain/** → Deep domain-specific contracts.  
-- **workflows/** → End-to-end process flows across domains.
-
-If you’re unsure where something belongs:
-
-- Platform-wide concerns → `architecture/`  
-- Single business capability → `domain/`  
-- Multi-step flows → `workflows/`  
-- Agent or LLM-specific behavior → `AGENTS.md` (+ optional `GEMINI.md`, etc.)
-
-This document (`INDEX.md`) is the **home page** of the VoelgoedEvents documentation.
-
+If you are unsure where something belongs:
+- Platform-wide concerns → `architecture/`
+- Single business capability → `domain/` (Mapped to Ash Resources)
+- Multi-step flows → `workflows/`

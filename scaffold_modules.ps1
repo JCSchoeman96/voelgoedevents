@@ -93,7 +93,7 @@ defmodule $ModuleName do
   # This module will be wired as an Ash notifier to broadcast changes
   # to PubSub, caches, and possibly analytics.
   #
-  # See docs/workflows/* and docs/architecture/caching_and_performance.md
+  # See docs/workflows/* and docs/architecture/03_caching_and_realtime.md
   # before implementing.
 end
 "@
@@ -133,7 +133,7 @@ defmodule $ModuleName do
   @moduledoc "$Description"
 
   # TODO: Implement cache reads/writes using Redis/ETS/Cachex.
-  # See docs/architecture/caching_and_performance.md.
+  # See docs/architecture/03_caching_and_realtime.md.
 end
 "@
         }

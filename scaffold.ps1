@@ -161,14 +161,8 @@ $directories | ForEach-Object { Ensure-Dir $_ }
 
 $files = @(
     # --- Docs: architecture ---
-    @{ Path = "docs/architecture/overview.md";               Desc = "High-level overview of Voelgoedevents architecture."; },
-    @{ Path = "docs/architecture/backend.md";                Desc = "Backend architecture: Ash domains, workflows, queues, caching."; },
-    @{ Path = "docs/architecture/frontend.md";               Desc = "Frontend architecture: LiveView, PWA, shared TS types."; },
     @{ Path = "docs/architecture/data_flow_ticketing.md";    Desc = "Detailed data flow for ticket purchase and checkout."; },
     @{ Path = "docs/architecture/data_flow_scanning.md";     Desc = "Detailed data flow for scanning (online + offline)."; },
-    @{ Path = "docs/architecture/caching_and_performance.md";Desc = "Caching strategy, Redis/ETS usage, TTL, and performance notes."; },
-    @{ Path = "docs/architecture/security_and_policies.md";  Desc = "Security model: tenancy, roles, Ash policies."; },
-    @{ Path = "docs/architecture/type_safety.md";            Desc = "Global type safety strategy for backend, frontend, and contracts."; },
 
     # --- Docs: domain ---
     @{ Path = "docs/domain/domain_map.md";        Desc = "Canonical Voelgoedevents domain map."; },

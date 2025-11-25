@@ -34,14 +34,20 @@ Use **`{}`** for expressions inside tag attributes and lists. Use **`<%= %>`** f
 To output literal `{}` in content, use `phx-no-curly-interpolation` or escape:
 
 ```heex
-<!-- Good: Escape literal braces -->
+<!-- Good: Escape literal braces in code blocks -->
 <code>The syntax is &lt;%= x %&gt;</code>
 
-<!-- Good: phx-no-curly-interpolation for blocks -->
-<div phx-no-curly-interpolation>
-  { this is a literal brace }
-  { and this too }
-</div>
+<!-- Good: phx-no-curly-interpolation for blocks with literal braces -->
+<pre phx-no-curly-interpolation>
+let obj = {key: "val"}
+const arr = [1, 2, 3]
+</pre>
+
+<!-- Also good: You can still use <%= %> inside phx-no-curly-interpolation -->
+<code phx-no-curly-interpolation>
+User: <%= @user.name %>
+{ this is literal }
+</code>
 
 <!-- Avoid: Unescaped braces (interpreted as interpolation) -->
 <code>The syntax is <%= x %></code>
@@ -92,15 +98,19 @@ Use HEEx comments `<%!-- ... --%>` for template-level comments.
     <span class="badge-gray">Unknown</span>
 <% end %>
 
-<!-- Avoid: Excessive nested ifs -->
-<%= if a do %>
-  <% if b do %>
-    <% if c do %>
-      content
-    <% end %>
-  <% end %>
+<!-- Avoid: Using else if or elsif (INVALID) -->
+<%= if condition do %>
+  ...
+<% else if other_condition %>  <!-- ❌ SYNTAX ERROR -->
+  ...
 <% end %>
-<!-- Better: Precompute in LiveView, render one condition -->
+
+<!-- Always use cond instead -->
+<%= cond do %>
+  <% condition -> %> ...
+  <% condition2 -> %> ...
+  <% true -> %> ...
+<% end %>
 ```
 
 ## Loops and Iteration
@@ -129,10 +139,12 @@ Use HEEx comments `<%!-- ... --%>` for template-level comments.
   <% end %>
 </ol>
 
-<!-- Avoid: Enum.each (side effects in templates) -->
+<!-- Avoid: Enum.each (side effects in templates, doesn't render) -->
 <%= Enum.each(@events, fn event -> %>
   <!-- This doesn't render, and is a side effect -->
 <% end) %>
+
+<!-- Avoid: No Enum.each for rendering -->
 ```
 
 ### Using LiveView Streams
@@ -143,7 +155,7 @@ For large collections, use streams to avoid re-rendering the entire list:
 <!-- Template uses stream -->
 <div id="tickets" phx-update="stream">
   <%= for {_id, ticket} <- @streams.tickets do %>
-    <div id={"ticket-#{ticket.id}"}>
+    <div id={\"ticket-#{ticket.id}\"}>
       <p><%= ticket.section %> - <%= ticket.seat_number %></p>
     </div>
   <% end %>
@@ -161,14 +173,19 @@ def handle_info({:new_ticket, ticket}, socket) do
 end
 ```
 
-## Form Elements
+## Form Elements and Components
 
-### Form Bindings with Ash Changesets
+### Using Core Components
 
-Use `@form` binding for forms connected to Ash changesets:
+- **Always** use `<.form>` component from `core_components.ex` for forms.
+- **Always** use `<.input>` component for form fields.
+- **Never** use deprecated `Phoenix.HTML.form_for` or `Phoenix.HTML.inputs_for`.
+- **Always** use `<.icon>` component for icons (not Heroicons directly).
+- **Always** give forms unique DOM IDs for testing and styling: `id="event-form"`.
 
 ```heex
-<.simple_form :let={f} for={@changeset} as={:event} phx-submit="save">
+<!-- Good: Using correct form components -->
+<.simple_form :let={f} for={@changeset} as={:event} phx-submit="save" id="event-form">
   <.input field={f[:name]} type="text" label="Event Name" />
   <.input field={f[:description]} type="textarea" label="Description" />
   <.input field={f[:date]} type="datetime_local" label="Date & Time" />
@@ -177,25 +194,37 @@ Use `@form` binding for forms connected to Ash changesets:
     <.button>Create Event</.button>
   </:actions>
 </.simple_form>
+
+<!-- Good: Using icon component -->
+<.icon name="hero-star-solid" class="w-6 h-6" />
+<.icon name="hero-x-mark" class="w-5 h-5" />
+
+<!-- Avoid: Using Heroicons directly (use <.icon> instead) -->
+<!-- Don't use Heroicons modules -->
+
+<!-- Avoid: Old form_for (deprecated) -->
+<!-- Don't use Phoenix.HTML.form_for -->
 ```
 
-### Form Inputs: Accessing via Assigns
+### Form Input Overriding Classes
+
+If you override default input classes, they replace ALL defaults. Your custom classes must fully style the input:
 
 ```heex
-<!-- Good: Access form directly -->
-<input type="text" name="name" value={@form[:name].value} />
+<!-- Good: Custom classes fully style the input -->
+<.input field={f[:name]} type="text" class="myclass px-2 py-1 rounded-lg" />
 
-<!-- Good: Use input component -->
-<.input field={@form[:name]} type="text" />
-
-<!-- Avoid: Assuming changeset structure -->
-<input type="text" name="name" value={@changeset.changes.name} />
+<!-- Bad: Partial override loses default styling -->
+<.input field={f[:name]} type="text" class="custom-class" />
+<!-- Custom classes are the ONLY classes applied. Add all spacing/sizing manually -->
 ```
 
-### Validating and Displaying Errors
+### Form Bindings with Ash Changesets
+
+Use `to_form/2` to convert changesets to form structs:
 
 ```heex
-<.simple_form :let={f} for={@changeset} as={:ticket} phx-submit="reserve">
+<.simple_form :let={f} for={@form} as={:ticket} phx-submit="reserve">
   <.input field={f[:email]} type="email" label="Email" />
   
   <!-- Errors are shown automatically by .input component -->
@@ -206,9 +235,18 @@ Use `@form` binding for forms connected to Ash changesets:
 </.simple_form>
 ```
 
+```elixir
+def mount(_params, _session, socket) do
+  changeset = Ticket.change(...)
+  {:ok, assign(socket, form: to_form(changeset))}
+end
+```
+
 ## Class Lists and Styling
 
 ### Using `class={[ ... ]}` Lists
+
+Always use **list syntax `[...]`** for class lists with conditionals. Never use string concatenation.
 
 ```heex
 <!-- Good: Class list with conditionals -->
@@ -222,10 +260,26 @@ Use `@form` binding for forms connected to Ash changesets:
   <%= @status %>
 </span>
 
+<!-- Good: Complex conditionals with if expression wrapped in parens -->
+<div class={[
+  "px-2 text-white",
+  @expanded && "py-5",
+  if(@highlighted, do: "border-red-500", else: "border-blue-100")
+]}>
+  Content
+</div>
+
 <!-- Avoid: String concatenation for classes -->
 <div class={@selected? && "border-blue"}>  <!-- Works but avoid -->
   Content
 </div>
+
+<!-- Avoid: Missing [ ] brackets -->
+<a class={
+  "px-2 text-white",
+  @some_flag && "py-5"
+}> ...
+<!-- Raises compile error on invalid HEEx syntax -->
 ```
 
 For complex styling, compute the class in the LiveView:
@@ -336,7 +390,7 @@ Templates should focus on rendering, not computing. Use components and helpers f
   <% price = calculate_price(event.price, @discount) %>
   <article>...</article>
 <% end %>
-<!-- Better: Compute in LiveView -->
+<!-- Better: Compute in LiveView, assign results, render in template -->
 ```
 
 ## Safety and Accessibility

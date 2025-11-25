@@ -191,10 +191,10 @@ end
 
 ### Conditional Rebinding
 
-Use `if`, `case`, or `cond` to rebind based on conditions. Always assign the result.
+Use `if`, `case`, or `cond` to rebind based on conditions. **Always assign the result.**
 
 ```elixir
-# Good
+# Good: Assignment of block result
 def set_discount(price, user) do
   discount = if user.is_vip, do: 0.1, else: 0
   price * (1 - discount)
@@ -211,9 +211,18 @@ def status_label(status) do
   label
 end
 
-# Avoid: Not rebinding the result
-def bad_example(price, user) do
-  if user.is_vip, do: price * 0.9, else: price  # Value lost if not used
+# INVALID: Rebinding inside block doesn't persist outside
+# ❌ DO NOT DO THIS
+if connected?(socket) do
+  socket = assign(socket, :val, val)
+end
+# socket is unchanged here! The rebinding only happens in the if block.
+
+# VALID: Assign the result of the if
+socket = if connected?(socket) do
+  assign(socket, :val, val)
+else
+  socket
 end
 ```
 
@@ -257,8 +266,21 @@ end
 
 - Used for ordered, homogeneous collections.
 - Use list comprehensions and `Enum` for transformations.
+- **Do NOT use index-based access syntax on lists.**
 
 ```elixir
+# INVALID: Lists don't support bracket access
+i = 0
+mylist = ["blue", "green"]
+mylist[i]  # ❌ ERROR
+
+# VALID: Use Enum.at/2
+Enum.at(mylist, i)
+
+# VALID: Use pattern matching
+[first | rest] = mylist
+first  # "blue"
+
 # Good: List comprehension
 event_names = [for event <- events, do: event.name]
 
@@ -276,21 +298,32 @@ end
 
 - Used for key-value data, especially variable structure.
 - Prefer atom keys for known structures; string keys for external data.
+- **Never use map access syntax on structs.** Use dot notation instead.
 
 ```elixir
-# Good: Atom keys for known structure
-event = %{"name" => "Concert", "date" => "2025-12-01"}
-event = Map.put(event, "venue", "Downtown Hall")
+# INVALID: Never use [] on structs
+event = %Event{id: 1, name: "Concert"}
+event[:id]  # WRONG! Use event.id instead
 
-# Good: Access known structure
-case event do
+# VALID: Use dot notation for structs
+event.id
+event.name
+
+# VALID: Pattern match maps
+case event_data do
   %{"name" => name, "date" => date} -> "Event: #{name} on #{date}"
   _ -> "Unknown format"
 end
 
-# Avoid: Directly accessing external map without pattern matching
-event = external_api_response  # Could be missing keys
-name = event["name"]  # May raise KeyError if not present
+# Avoid: Direct access without validation
+event = external_api_response
+name = event["name"]  # May raise KeyError
+
+# Better: Pattern match first
+case external_api_response do
+  %{"name" => name} -> {:ok, name}
+  _ -> {:error, "Missing name"}
+end
 ```
 
 ### Keyword Lists
@@ -425,7 +458,7 @@ Task.async_stream(
   items,
   fn item -> process_item(item) end,
   max_concurrency: 10,
-  timeout: 30_000
+  timeout: :infinity  # Use infinity for long operations, else specify milliseconds
 )
 ```
 
@@ -469,9 +502,9 @@ def payment_method_from_string(method_string) do
   end
 end
 
-# Avoid: NEVER do this with user input
+# DANGEROUS - NEVER DO THIS
 def payment_method_from_string(method_string) do
-  String.to_atom(method_string)  # DANGEROUS
+  String.to_atom(method_string)  # MEMORY LEAK RISK
 end
 ```
 
@@ -510,6 +543,59 @@ def handle_payment(data) do
     {:error, "Invalid payment data"}
   end
 end
+```
+
+## HTTP Client Library
+
+### Always Use `:req` (Req)
+
+- **Always** use the `:req` library for HTTP requests in Phoenix/Elixir projects.
+- Req is included by default in modern Phoenix apps.
+- **Avoid** `:httpoison`, `:tesla`, `:httpc` (outdated or not recommended).
+
+```elixir
+# Good: Using Req
+def fetch_external_data(url) do
+  case Req.get(url) do
+    {:ok, response} -> {:ok, response.body}
+    {:error, reason} -> {:error, reason}
+  end
+end
+
+# Avoid: Other HTTP libraries
+# ❌ httpoison
+# ❌ tesla
+# ❌ httpc
+```
+
+## Mix Guidelines
+
+### Help and Debugging
+
+- Read the docs and options before using tasks: `mix help task_name`
+- To debug test failures, run specific tests: `mix test test/my_test.exs`
+- To run previously failed tests: `mix test --failed`
+- **Avoid** `mix deps.clean --all`; it's almost never needed.
+
+```bash
+# Get help
+mix help test
+
+# Run specific test file
+mix test test/my_test.exs
+
+# Run only failed tests
+mix test --failed
+```
+
+### Using `mix precommit`
+
+- Use the `mix precommit` alias when done with all changes to verify code quality.
+- Fixes any pending linting or formatting issues automatically.
+
+```bash
+# Before pushing
+mix precommit
 ```
 
 ## Module Documentation
@@ -560,117 +646,6 @@ Side effects:
 """
 def confirm_reservation(hold_id, opts \\ []) do
   # Implementation
-end
-```
-
-## Code Examples: Complete Pattern
-
-Here's a complete, idiomatic Elixir module following these guidelines:
-
-```elixir
-defmodule VoelgoedEvents.Ticketing.SeatAvailability do
-  @moduledoc """
-  Checks and manages seat availability for events.
-  
-  Provides real-time views of seat inventory, capacity, and
-  allocates available seats for ticket purchases.
-  """
-
-  alias VoelgoedEvents.{Repo, Events.Event, Ticketing.Seat}
-  import Ecto.Query
-
-  @seats_per_page 50
-  @cache_ttl_seconds 60
-
-  @doc """
-  Fetches the count of available seats for an event, organized by section.
-
-  Returns a map:
-  ```
-  %{
-    "vip" => 45,
-    "general" => 120,
-    "balcony" => 78
-  }
-  ```
-
-  The result is cached for #{@cache_ttl_seconds} seconds.
-  """
-  def available_seats_by_section(event_id) do
-    case fetch_from_cache(event_id) do
-      {:ok, data} -> data
-      :miss -> compute_and_cache_availability(event_id)
-    end
-  end
-
-  @doc """
-  Allocates the first available seat of a given section for a user.
-
-  Returns `{:ok, seat}` if a seat is found and allocated, or
-  `{:error, :no_seats_available}` if the section is full.
-  """
-  def allocate_seat_in_section(event_id, section) do
-    with {:ok, event} <- fetch_event(event_id),
-         :ok <- verify_event_open_for_sales(event),
-         {:ok, seat} <- find_and_reserve_seat(event_id, section) do
-      {:ok, seat}
-    else
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  # Private functions
-
-  defp compute_and_cache_availability(event_id) do
-    availability = event_id
-      |> query_seat_counts_by_section()
-      |> Repo.all()
-      |> Enum.map(fn {section, count} -> {section, count} end)
-      |> Enum.into(%{})
-
-    cache_availability(event_id, availability)
-    availability
-  end
-
-  defp query_seat_counts_by_section(event_id) do
-    from s in Seat,
-      where: s.event_id == ^event_id and s.status == :available,
-      group_by: s.section,
-      select: {s.section, count(s.id)}
-  end
-
-  defp fetch_event(event_id) do
-    case Repo.get(Event, event_id) do
-      %Event{} = event -> {:ok, event}
-      nil -> {:error, :event_not_found}
-    end
-  end
-
-  defp verify_event_open_for_sales(%Event{status: :published}) do
-    :ok
-  end
-
-  defp verify_event_open_for_sales(_event) do
-    {:error, :event_not_open_for_sales}
-  end
-
-  defp find_and_reserve_seat(event_id, section) do
-    case Repo.get_by(Seat, event_id: event_id, section: section, status: :available) do
-      %Seat{} = seat -> {:ok, seat}
-      nil -> {:error, :no_seats_available}
-    end
-  end
-
-  defp fetch_from_cache(event_id) do
-    case ETS.lookup(:availability_cache, event_id) do
-      [{_key, data}] -> {:ok, data}
-      [] -> :miss
-    end
-  end
-
-  defp cache_availability(event_id, data) do
-    ETS.insert(:availability_cache, {event_id, data})
-  end
 end
 ```
 

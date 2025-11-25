@@ -49,7 +49,6 @@ assets/js/
 
 ```javascript
 // Good: Clear imports at the top
-import { createApp } from 'vue'; // if using Vue
 import { Socket } from 'phoenix';
 import { BarcodeScanner } from './hooks/BarcodeScanner';
 import { formatDate } from './utils/formatting';
@@ -177,8 +176,8 @@ export const BarcodeScanner = {
   <video id="preview"></video>
 </div>
 
+<!-- In your app.js -->
 <script>
-  // In your app.js
   import { BarcodeScanner } from './hooks/BarcodeScanner';
 
   let Hooks = { BarcodeScanner };
@@ -216,6 +215,58 @@ export const MyHook = {
   }
 };
 ```
+
+## Asset Bundling: No Inline Scripts
+
+### ❌ Never Write Inline `<script>` Tags in Templates
+
+```heex
+<!-- BAD: Inline JavaScript in template -->
+<script>
+  document.getElementById("btn").addEventListener("click", function() {
+    // ...
+  });
+</script>
+
+<!-- BAD: External vendor script in layout -->
+<script src="https://cdn.example.com/vendor.js"></script>
+<link href="https://cdn.example.com/vendor.css" rel="stylesheet">
+```
+
+### ✅ Always Import in `app.js` and `app.css`
+
+Vendor dependencies **must** be imported into your app entry points:
+
+```javascript
+// assets/js/app.js
+import { BarcodeScanner } from './hooks/BarcodeScanner';
+
+// Import third-party libraries
+import 'maplibre-gl'; // Maps library
+import '@stripe/stripe-js'; // Payments
+import 'instascan'; // QR scanner
+
+// Export for use in LiveSocket
+let Hooks = {
+  BarcodeScanner,
+  // ... other hooks
+};
+```
+
+```css
+/* assets/css/app.css */
+@import "tailwindcss" source(none);
+
+/* Import vendor CSS */
+@import "maplibre-gl/dist/maplibre-gl.css";
+@import "@stripe/stripe-elements/dist/stripe.css";
+
+/* Your custom CSS */
+@source "../js";
+@source "../../lib/my_app_web";
+```
+
+The **only** supported bundles out of the box are `app.js` and `app.css`.
 
 ## API Client Helpers
 
@@ -290,7 +341,7 @@ const reservation = await ApiClient.post('/api/reservations', {
 ```javascript
 // assets/js/utils/formatting.js
 export function formatDate(date, format = 'MMM DD, YYYY') {
-  // Use a library like date-fns or dayjs, or native Intl API
+  // Use Intl API or a library like date-fns
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'short',

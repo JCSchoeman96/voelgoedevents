@@ -16,8 +16,8 @@ foreach ($folder in $folders) {
 }
 
 # Add Domain Map placeholder if missing
-if (-not (Test-Path "docs/domain/domain_map.md")) {
-    Set-Content "docs/domain/domain_map.md" "# Domain Map`n`n_(To be filled)_"
+if (-not (Test-Path "docs/DOMAIN_MAP.md")) {
+    Set-Content "docs/DOMAIN_MAP.md" "# Domain Map`n`n_(To be filled)_"
 }
 
 Write-Host "✅ Docs scaffold complete. Files organized under /docs/"

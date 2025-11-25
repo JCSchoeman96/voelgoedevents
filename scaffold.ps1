@@ -165,7 +165,7 @@ $files = @(
     @{ Path = "docs/architecture/data_flow_scanning.md";     Desc = "Detailed data flow for scanning (online + offline)."; },
 
     # --- Docs: domain ---
-    @{ Path = "docs/domain/domain_map.md";        Desc = "Canonical Voelgoedevents domain map."; },
+    @{ Path = "docs/DOMAIN_MAP.md";               Desc = "Canonical Voelgoedevents domain map."; },
     @{ Path = "docs/domain/tenancy.md";           Desc = "Tenancy domain: Organization, Membership, Role."; },
     @{ Path = "docs/domain/accounts.md";          Desc = "Accounts domain: User, authentication, sessions."; },
     @{ Path = "docs/domain/venues.md";            Desc = "Venues domain: Venue, Gate."; },

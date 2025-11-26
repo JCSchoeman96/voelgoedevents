@@ -2,7 +2,21 @@
 
 ## Purpose
 
-This guide defines how Tailwind CSS is used for styling and layout in VoelgoedEvents. Tailwind is the project's utility-first CSS framework, providing a consistent, responsive design system.
+This guide defines how Tailwind CSS is used for styling and layout in VoelgoedEvents. Tailwind is the project's utility-first CSS framework, providing a consistent, responsive design system with world-class UI capabilities.
+
+## Design Principles
+
+### World-Class UI Design
+
+VoelgoedEvents aims for **premium, polished interfaces** with:
+
+- **Subtle micro-interactions** – smooth hover effects, transitions, and animations
+- **Clean typography and spacing** – refined, balanced layout
+- **Delightful details** – loading states, visual feedback, elegant error messaging
+- **Responsive excellence** – beautiful across all devices
+- **No generic components** – avoid daisyUI and similar pre-made component libraries; build hand-crafted Tailwind components
+
+Every button click, form field, and card should feel intentional and well-designed.
 
 ## Tailwind Philosophy
 
@@ -29,6 +43,61 @@ Compose styles by combining utility classes directly in HTML/HEEx templates. Do 
 2. **Consistency** – Colors, spacing, and typography are defined once in the Tailwind config.
 3. **Scalability** – Adding styles doesn't create unused CSS or naming conflicts.
 4. **Maintainability** – CSS is co-located with markup; styles are easy to find and update.
+
+## Tailwind v4 Configuration
+
+### CSS Import Syntax
+
+Tailwind v4 **no longer needs a tailwind.config.js** and uses a new import syntax in `app.css`:
+
+```css
+@import "tailwindcss" source(none);
+@source "../css";
+@source "../js";
+@source "../../lib/my_app_web";
+```
+
+**Always use and maintain this import syntax** in the `app.css` file for projects generated with `phx.new`.
+
+### Never Use `@apply`
+
+`@apply` defeats the purpose of utility-first CSS. Avoid it entirely.
+
+```css
+/* ❌ NEVER do this */
+@apply flex items-center justify-center p-4 bg-blue-500;
+
+/* ✅ Instead: Use utilities directly in HTML/HEEx */
+<div class="flex items-center justify-center p-4 bg-blue-500">
+  Content
+</div>
+```
+
+## Asset Bundling and JavaScript
+
+### No Inline Scripts in Layouts
+
+- **Never** write inline `<script>` tags within layout templates
+- **Never** reference external vendor `<script>` src or `<link>` href in layouts
+- **Must** import vendor dependencies into `app.js` and `app.css`
+
+```heex
+<!-- ❌ BAD: Inline script in layout -->
+<script>
+  console.log('This should not be here');
+</script>
+
+<!-- ❌ BAD: External vendor script in layout -->
+<script src="https://cdn.example.com/vendor.js"></script>
+
+<!-- ✅ GOOD: Import vendor in app.js -->
+<!-- In assets/js/app.js -->
+import { vendorFunction } from './vendor/something.js';
+
+<!-- Then use it through your hooks/components -->
+```
+
+Only `app.js` and `app.css` bundles are supported out of the box.
 
 ## Class Organization
 
@@ -397,17 +466,6 @@ Use Tailwind's spacing scale: `px-1`, `px-2`, `px-4`, `px-6`, `px-8`, etc.
 ```
 
 ## Performance and Best Practices
-
-### ❌ Avoid `@apply`
-
-`@apply` defeats the purpose of utility-first CSS. Use it sparingly and only when absolutely necessary.
-
-```css
-/* Avoid this */
-@apply flex items-center justify-center p-4 bg-blue-500;
-
-/* Instead: Use utilities directly in HTML/HEEx */
-```
 
 ### ✅ Use Purge/Content Configuration
 

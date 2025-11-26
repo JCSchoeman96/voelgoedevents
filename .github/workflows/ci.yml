@@ -1,88 +1,62 @@
 name: CI Quality Gate
-
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
-permissions:
-  contents: read
-
+  push: { branches: ["main"] }
+  pull_request: { branches: ["main"] }
+permissions: { contents: read }
 jobs:
   test:
     name: Build & Test
     runs-on: ubuntu-latest
-    
-    # 1. Setup Postgres Service for Ash Tests
     services:
       db:
         image: postgres:16
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: voelgoedevents_test
-        ports:
-          - 5432:5432
-        # Health check to ensure DB is ready before tests run
+          {
+            POSTGRES_USER: postgres,
+            POSTGRES_PASSWORD: postgres,
+            POSTGRES_DB: voelgoedevents_test,
+          }
+        ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     env:
       MIX_ENV: test
-      # Configure Ash/Ecto to talk to the service above
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/voelgoedevents_test
-      SECRET_KEY_BASE: "Hu4qL/sIe3Xn7Fk9Jp5Wt2Vn8Mz1A6QoP0RlK4YxC2BvN8mZ3XqW5E7rT9Yu1I0o" # Dummy value for CI
-
+      SECRET_KEY_BASE: "Hu4qL/sIe3Xn7Fk9Jp5Wt2Vn8Mz1A6QoP0RlK4YxC2BvN8mZ3XqW5E7rT9Yu1I0o"
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # 2. Setup Elixir & Erlang
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with: { elixir-version: "1.18.0-otp-27", otp-version: "27.1.2" }
+      - uses: actions/cache@v4
         with:
-          elixir-version: '1.18.0-otp-27' # Update to match your .tool-versions
-          otp-version: '27.1.2'      # Update to match your .tool-versions
-
-      # 3. Cache Dependencies (Speeds up runs)
-      - name: Restore dependencies cache
-        uses: actions/cache@v4
+          {
+            path: deps,
+            key: "${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}",
+            restore-keys: "${{ runner.os }}-mix-",
+          }
+      - uses: actions/cache@v4
         with:
-          path: deps
-          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ runner.os }}-mix-
-
-      # 4. Cache Compiled Build (Speeds up runs)
-      - name: Restore build cache
-        uses: actions/cache@v4
+          {
+            path: _build,
+            key: "${{ runner.os }}-build-${{ hashFiles('**/mix.lock') }}",
+            restore-keys: "${{ runner.os }}-build-",
+          }
+      - uses: actions/cache@v4
         with:
-          path: _build
-          key: ${{ runner.os }}-build-${{ hashFiles('**/mix.lock') }}
-          restore-keys: ${{ runner.os }}-build-
-
-      - name: Install dependencies
-        run: mix deps.get
-
-      # 5. THE QUALITY GATES (Fail Fast)
-
-      - name: Check Formatting
-        run: mix format --check-formatted
-
-      - name: Compile (Warnings as Errors)
-        # This ensures you don't merge code with unused variables or warnings
-        run: mix compile --warnings-as-errors
-
-      - name: Lint Code (Credo)
-        run: mix credo --strict
-
-      - name: Security Scan (Sobelow)
-        # Scans for XSS, SQL Injection, etc.
-        run: mix sobelow --config
-
-      - name: Run Tests
-        # Runs your ExUnit tests
-        run: mix test
+          {
+            path: priv/plts,
+            key: "${{ runner.os }}-dialyzer-${{ hashFiles('**/mix.lock') }}",
+            restore-keys: "${{ runner.os }}-dialyzer-",
+          }
+      - run: mix deps.get
+      - run: mix deps.unlock --check-unused
+      - run: mix format --check-formatted
+      - run: mix compile --warnings-as-errors
+      - run: mix ash.codegen --check
+      - run: mix credo --strict
+      - run: mix sobelow --config
+      - run: mix dialyzer
+      - run: mix test

@@ -46,7 +46,7 @@ defmodule Voelgoedevents.MixProject do
       {:ash_admin, "~> 0.13"},
       {:ash_state_machine, "~> 0.2"},
       {:ash_paper_trail, "~> 0.5"}, # Auditing
-      {:ash_archival, "~> 1.0"},    # Soft Deletes
+      {:ash_archival, "~> 2.0"},    # Soft Deletes
       {:ash_money, "~> 0.1"},       # Financial Types
       {:ash_cloak, "~> 0.1"},       # Encryption
       {:ash_oban, "~> 0.2"},        # Background Jobs Integration
@@ -58,7 +58,7 @@ defmodule Voelgoedevents.MixProject do
       {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
-      {:phoenix_live_view, "~> 1.0.0-rc", override: true}, # Ensure latest LiveView
+      {:phoenix_live_view, "~> 1.1.18", override: true}, # Ensure latest LiveView
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.2", runtime: Mix.env() == :dev},

@@ -17,8 +17,6 @@ defmodule Voelgoedevents.MixProject do
   end
 
   # Configuration for the OTP application.
-  #
-  # Type `mix help compile.app` for more information.
   def application do
     [
       mod: {Voelgoedevents.Application, []},
@@ -37,67 +35,69 @@ defmodule Voelgoedevents.MixProject do
   defp elixirc_paths(_), do: ["lib"]
 
   # Specifies your project dependencies.
-  #
-  # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:ash_cloak, "~> 0.1"},
-      {:cloak, "~> 1.0"},
-      {:ash_paper_trail, "~> 0.5"},
-      {:mishka_chelekom, "~> 0.0", only: [:dev]},
-      {:live_debugger, "~> 0.4", only: [:dev]},
-      {:ash_archival, "~> 2.0"},
-      {:ash_double_entry, "~> 1.0"},
-      {:ash_money, "~> 0.2"},
-      {:ash_events, "~> 0.5"},
-      {:ash_state_machine, "~> 0.2"},
-      {:oban_web, "~> 2.0"},
-      {:ash_oban, "~> 0.6"},
-      {:ash_admin, "~> 0.13"},
-      {:ash_authentication_phoenix, "~> 2.0"},
-      {:ash_authentication, "~> 4.0"},
+      # --- ASH ECOSYSTEM (The Core) ---
+      {:ash, "~> 3.0"},
       {:ash_postgres, "~> 2.0"},
       {:ash_phoenix, "~> 2.0"},
-      {:ash, "~> 3.0"},
-      {:igniter, "~> 0.6", only: [:dev, :test]},
-      {:phoenix, "~> 1.8.1"},
+      {:ash_authentication, "~> 4.0"},
+      {:ash_authentication_phoenix, "~> 2.0"},
+      {:ash_admin, "~> 0.13"},
+      {:ash_state_machine, "~> 0.2"},
+      {:ash_paper_trail, "~> 0.5"}, # Auditing
+      {:ash_archival, "~> 1.0"},    # Soft Deletes
+      {:ash_money, "~> 0.1"},       # Financial Types
+      {:ash_cloak, "~> 0.1"},       # Encryption
+      {:ash_oban, "~> 0.2"},        # Background Jobs Integration
+
+      # --- PHOENIX & WEB ---
+      {:phoenix, "~> 1.7"},
       {:phoenix_ecto, "~> 4.5"},
-      {:ecto_sql, "~> 3.13"},
+      {:ecto_sql, "~> 3.10"},
       {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
-      {:phoenix_live_view, "~> 1.1.0"},
-      {:lazy_html, ">= 0.1.0", only: :test},
+      {:phoenix_live_view, "~> 1.0.0-rc", override: true}, # Ensure latest LiveView
       {:phoenix_live_dashboard, "~> 0.8.3"},
-      {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
-      {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
-      {:heroicons,
-       github: "tailwindlabs/heroicons",
-       tag: "v2.2.0",
-       sparse: "optimized",
-       app: false,
-       compile: false,
-       depth: 1},
-      {:swoosh, "~> 1.16"},
-      {:req, "~> 0.5"},
+      {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
+      {:tailwind, "~> 0.2", runtime: Mix.env() == :dev},
+      {:swoosh, "~> 1.5"},
+      {:bandit, "~> 1.2"},
+      {:dns_cluster, "~> 0.1.1"},
+
+      # --- ENTERPRISE FEATURES (Added) ---
+      {:chromic_pdf, "~> 1.15"},    # PDF Ticket Generation
+      {:ex_aws, "~> 2.5"},          # S3/Wasabi Adapter
+      {:ex_aws_s3, "~> 2.5"},       # S3 Specifics
+      {:hackney, "~> 1.20"},        # HTTP Client for AWS
+      {:image, "~> 0.37"},          # High-performance Image Processing (Vix)
+      {:honeybadger, "~> 0.7"},     # Error Tracking
+      {:req, "~> 0.4.0"},           # Modern HTTP Client (for Webhooks)
+      {:geo_postgis, "~> 3.4"},     # Location Search
+
+      # --- SECURITY & UTILS ---
+      {:cloak, "~> 1.1"},           # Core Encryption (used by AshCloak)
+      {:jason, "~> 1.2"},           # JSON
+      {:gettext, "~> 0.26"},        # Translations
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
-      {:gettext, "~> 0.26"},
-      {:jason, "~> 1.2"},
-      {:dns_cluster, "~> 0.2.0"},
-      {:bandit, "~> 1.5"},
+
+      # --- DEV TOOLS ---
+      {:igniter, "~> 0.3", only: [:dev, :test]},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false}
+      {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
+      {:mishka_chelekom, "~> 0.0", only: [:dev]}, # Component Library
+      {:live_debugger, "~> 0.2", only: [:dev]},
+      {:lazy_html, ">= 0.1.0", only: :test},
+
+      # --- OPTIONAL / PAID ---
+      # {:oban_web, "~> 2.10"} # UNCOMMENT ONLY IF YOU HAVE A LICENSE
     ]
   end
 
-  # Aliases are shortcuts or tasks specific to the current project.
-  # For example, to install project dependencies and perform other setup tasks, run:
-  #
-  #     $ mix setup
-  #
-  # See the documentation for `Mix` for more info on aliases.
+  # Aliases for easier commands
   defp aliases do
     [
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],

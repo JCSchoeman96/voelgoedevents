@@ -73,7 +73,7 @@ defmodule Voelgoedevents.MixProject do
       {:hackney, "~> 1.20"},        # HTTP Client for AWS
       {:image, "~> 0.37"},          # High-performance Image Processing (Vix)
       {:honeybadger, "~> 0.7"},     # Error Tracking
-      {:req, "~> 0.4.0"},           # Modern HTTP Client (for Webhooks)
+      {:req, "~> 0.5"},           # Modern HTTP Client (for Webhooks)
       {:geo_postgis, "~> 3.4"},     # Location Search
 
       # --- SECURITY & UTILS ---

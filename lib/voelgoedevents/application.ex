@@ -12,7 +12,8 @@ defmodule Voelgoedevents.Application do
     VoelgoedeventsWeb.Endpoint.config_change(changed, removed)
     :ok
   end
-
+  
+@impl true
   def start(_type, _args) do
     children = [
       VoelgoedeventsWeb.Telemetry,

@@ -4,7 +4,6 @@ import Config
 config :voelgoedevents,
   ecto_repos: [Voelgoedevents.Repo],
   generators: [timestamp_type: :utc_datetime],
-  # ✅ ADD YOUR NEW DOMAINS HERE:
   ash_domains: [
     Voelgoedevents.Ash.Domains.AccountsDomain,
     Voelgoedevents.Ash.Domains.VenuesDomain,

@@ -1,5 +1,7 @@
 defmodule VoelgoedeventsWeb.Router do
   use VoelgoedeventsWeb, :router
+  use AshAuthentication.Phoenix.Router
+  use Honeybadger.Plug
 
   pipeline :browser do
     plug :accepts, ["html"]

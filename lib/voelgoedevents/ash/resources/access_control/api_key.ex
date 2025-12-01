@@ -29,7 +29,7 @@ defmodule Voelgoedevents.Ash.Resources.AccessControl.ApiKey do
     end
 
     # ✅ ADDED: Critical Link to Tenant
-    attribute :organization_id, :uuid, allow_nil? false
+    attribute :organization_id, :uuid, allow_nil?: false
 
     # ✅ ADDED: Scope permissions (e.g. ["read:events", "write:tickets"])
     attribute :permissions, {:array, :string} do

@@ -20,6 +20,11 @@ if System.get_env("PHX_SERVER") do
   config :voelgoedevents, VoelgoedeventsWeb.Endpoint, server: true
 end
 
+config :honeybadger,
+  api_key: System.get_env("HONEYBADGER_API_KEY"),
+  environment_name: System.get_env("PHX_HOST") || "development",
+  insights_enabled: true
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

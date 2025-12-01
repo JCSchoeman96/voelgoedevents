@@ -35,3 +35,7 @@ voelgoedevents-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# ENV Files
+.env
+.env.*
+

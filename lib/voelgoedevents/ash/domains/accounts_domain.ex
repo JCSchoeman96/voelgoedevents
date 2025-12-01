@@ -4,6 +4,7 @@ defmodule Voelgoedevents.Ash.Domains.AccountsDomain do
   use Ash.Domain
 
   resources do
+    resource Voelgoedevents.Ash.Resources.Accounts.Token
     resource Voelgoedevents.Ash.Resources.Accounts.User
     resource Voelgoedevents.Ash.Resources.Accounts.Role
     resource Voelgoedevents.Ash.Resources.Accounts.Membership

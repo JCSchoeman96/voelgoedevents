@@ -6,7 +6,7 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.Organization do
     data_layer: AshPostgres.DataLayer
 
   postgres do
-    table "organizations" 
+    table "organizations"
     repo Voelgoedevents.Repo
   end
 
@@ -31,16 +31,28 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.Organization do
 
     timestamps()
   end
-  
+
+  relationships do
+    has_many :memberships, Voelgoedevents.Ash.Resources.Accounts.Membership do
+      destination_attribute :organization_id
+    end
+
+    many_to_many :users, Voelgoedevents.Ash.Resources.Accounts.User do
+      through Voelgoedevents.Ash.Resources.Accounts.Membership
+      source_attribute_on_join_resource :organization_id
+      destination_attribute_on_join_resource :user_id
+    end
+  end
+
   # ✅ ADD: Basic Actions so we can seed data
   actions do
     defaults [:read, :destroy]
-    
+
     create :create do
       primary? true
       accept [:name, :slug]
     end
-    
+
     update :update do
       accept [:name, :active]
     end

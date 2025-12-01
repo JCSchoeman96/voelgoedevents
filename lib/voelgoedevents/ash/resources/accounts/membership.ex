@@ -6,11 +6,49 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     data_layer: AshPostgres.DataLayer
 
   postgres do
-    # TODO: configure correct table name and repo
-    table("CHANGE_ME")
-    repo(Voelgoedevents.Repo)
+    table "memberships"
+    repo Voelgoedevents.Repo
   end
 
-  # TODO: define attributes, relationships, actions, identities, calculations, and changes.
-  # See docs/domain/*.md for details.
+  attributes do
+    uuid_primary_key :id
+
+    attribute :role, :atom do
+      allow_nil? false
+      public? true
+      constraints one_of: [:owner, :admin, :staff, :scanner]
+      default :staff
+    end
+
+    timestamps()
+  end
+
+  relationships do
+    belongs_to :user, Voelgoedevents.Ash.Resources.Accounts.User do
+      allow_nil? false
+      attribute_writable? true
+    end
+
+    belongs_to :organization, Voelgoedevents.Ash.Resources.Organizations.Organization do
+      allow_nil? false
+      attribute_writable? true
+    end
+  end
+
+  identities do
+    identity :unique_user_organization, [:user_id, :organization_id]
+  end
+
+  actions do
+    defaults [:read, :destroy]
+
+    create :create do
+      primary? true
+      accept [:role, :user_id, :organization_id]
+    end
+
+    update :update do
+      accept [:role]
+    end
+  end
 end

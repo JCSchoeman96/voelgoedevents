@@ -16,10 +16,29 @@ defmodule VoelgoedeventsWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :tenant_context do
+    plug VoelgoedeventsWeb.Plugs.SetTenant
+  end
+
+  scope "/auth" do
+    pipe_through :browser
+
+    auth_routes_for Voelgoedevents.Ash.Domains.AccountsDomain, to: VoelgoedeventsWeb.AuthController
+  end
+
   scope "/", VoelgoedeventsWeb do
     pipe_through :browser
 
+    sign_in_route register_path: "/register", reset_path: "/reset"
+    sign_out_route auth_routes_prefix: "/auth"
+    auth_routes_for Voelgoedevents.Ash.Domains.AccountsDomain, to: VoelgoedeventsWeb.AuthController
+
     get "/", PageController, :home
+  end
+
+  # Tenant-scoped routes (multi-tenancy enforcement)
+  scope "/t/:tenant_slug", VoelgoedeventsWeb do
+    pipe_through [:browser, :tenant_context]
 
     # Checkout will be a LiveView
     live "/checkout", CheckoutLive, :show

@@ -53,9 +53,9 @@ defmodule Voelgoedevents.MixProject do
       {:ash_oban, "~> 0.2"},        # Background Jobs Integration
 
       # --- INFRASTRUCTURE (The "Tank" Armor) ---
-      {:redix, ">= 0.0.0"},          
-      {:castore, ">= 0.0.0"},        
-      {:elixir_uuid, "~> 1.2"},      
+      {:redix, "~> 1.0"},
+      {:castore, ">= 0.0.0"},
+      {:elixir_uuid, "~> 1.2"},
       {:oban, "~> 2.17"},
 
       # --- PHOENIX & WEB ---

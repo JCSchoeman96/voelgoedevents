@@ -20,6 +20,11 @@ if System.get_env("PHX_SERVER") do
   config :voelgoedevents, VoelgoedeventsWeb.Endpoint, server: true
 end
 
+# Redis Configuration (All Environments)
+# DLM and caching strategy require Redis to be available
+config :voelgoedevents,
+  redis_url: System.get_env("REDIS_URL") || "redis://localhost:6379"
+
 config :honeybadger,
   api_key: System.get_env("HONEYBADGER_API_KEY"),
   environment_name: System.get_env("PHX_HOST") || "development",

@@ -5,7 +5,7 @@ defmodule Voelgoedevents.MixProject do
     [
       app: :voelgoedevents,
       version: "0.1.0",
-      elixir: "~> 1.15",
+      elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
@@ -48,8 +48,15 @@ defmodule Voelgoedevents.MixProject do
       {:ash_paper_trail, "~> 0.5"}, # Auditing
       {:ash_archival, "~> 2.0"},    # Soft Deletes
       {:ash_money, "~> 0.1"},       # Financial Types
+      {:ex_money_sql, "~> 1.0"},
       {:ash_cloak, "~> 0.1"},       # Encryption
       {:ash_oban, "~> 0.2"},        # Background Jobs Integration
+
+      # --- INFRASTRUCTURE (The "Tank" Armor) ---
+      {:redix, ">= 0.0.0"},          
+      {:castore, ">= 0.0.0"},        
+      {:elixir_uuid, "~> 1.2"},      
+      {:oban, "~> 2.17"},
 
       # --- PHOENIX & WEB ---
       {:phoenix, "~> 1.7"},

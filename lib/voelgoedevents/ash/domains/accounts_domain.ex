@@ -7,6 +7,7 @@ defmodule Voelgoedevents.Ash.Domains.AccountsDomain do
     resource Voelgoedevents.Ash.Resources.Accounts.User
     resource Voelgoedevents.Ash.Resources.Accounts.Role
     resource Voelgoedevents.Ash.Resources.Accounts.Membership
+    resource Voelgoedevents.Ash.Resources.Organizations.Organization
   end
 
   # See docs/domain/*.md for the domain rules.

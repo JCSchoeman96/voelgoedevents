@@ -5,16 +5,34 @@ defmodule Voelgoedevents.Application do
 
   use Application
 
+  # Tell Phoenix to update the endpoint configuration
+  # whenever the application is updated.
   @impl true
+  def config_change(changed, _new, removed) do
+    VoelgoedeventsWeb.Endpoint.config_change(changed, removed)
+    :ok
+  end
+
   def start(_type, _args) do
     children = [
       VoelgoedeventsWeb.Telemetry,
+      
+      # 1. Database & Infra (Start these FIRST)
       Voelgoedevents.Repo,
       {DNSCluster, query: Application.get_env(:voelgoedevents, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Voelgoedevents.PubSub},
-      # Start a worker by calling: Voelgoedevents.Worker.start_link(arg)
-      # {Voelgoedevents.Worker, arg},
-      # Start to serve requests, typically the last entry
+      
+      # 2. Redis Connection (The "Tank" Engine)
+      Voelgoedevents.Infrastructure.Redis,
+
+      # 3. Process Registries (For GenServer Actors)
+      {Registry, keys: :unique, name: Voelgoedevents.Registry},         # For Actors
+      {Registry, keys: :duplicate, name: Voelgoedevents.BroadcastRegistry}, # For PubSub topics
+
+      # 4. Background Jobs
+      {Oban, Application.fetch_env!(:voelgoedevents, Oban)},
+
+      # 5. Web Endpoint (Start LAST)
       VoelgoedeventsWeb.Endpoint
     ]
 
@@ -22,13 +40,5 @@ defmodule Voelgoedevents.Application do
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Voelgoedevents.Supervisor]
     Supervisor.start_link(children, opts)
-  end
-
-  # Tell Phoenix to update the endpoint configuration
-  # whenever the application is updated.
-  @impl true
-  def config_change(changed, _new, removed) do
-    VoelgoedeventsWeb.Endpoint.config_change(changed, removed)
-    :ok
   end
 end

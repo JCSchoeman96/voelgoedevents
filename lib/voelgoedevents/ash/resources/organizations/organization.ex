@@ -2,15 +2,47 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.Organization do
   @moduledoc "Ash resource: Organization/tenant."
 
   use Ash.Resource,
-    domain: Voelgoedevents.Ash.Domains.CoreDomain,
+    domain: Voelgoedevents.Ash.Domains.AccountsDomain,
     data_layer: AshPostgres.DataLayer
 
   postgres do
-    # TODO: configure correct table name and repo
-    table("CHANGE_ME")
-    repo(Voelgoedevents.Repo)
+    table "organizations" 
+    repo Voelgoedevents.Repo
   end
 
-  # TODO: define attributes, relationships, actions, identities, calculations, and changes.
-  # See docs/domain/*.md for details.
+  attributes do
+    uuid_primary_key :id
+
+    attribute :name, :string do
+      allow_nil? false
+      public? true
+    end
+
+    attribute :slug, :string do
+      allow_nil? false
+      public? true
+    end
+
+    # Status flag for tenancy
+    attribute :active, :boolean do
+      allow_nil? false
+      default true
+    end
+
+    timestamps()
+  end
+  
+  # ✅ ADD: Basic Actions so we can seed data
+  actions do
+    defaults [:read, :destroy]
+    
+    create :create do
+      primary? true
+      accept [:name, :slug]
+    end
+    
+    update :update do
+      accept [:name, :active]
+    end
+  end
 end

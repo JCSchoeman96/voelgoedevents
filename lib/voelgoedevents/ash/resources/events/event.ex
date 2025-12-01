@@ -7,7 +7,7 @@ defmodule Voelgoedevents.Ash.Resources.Events.Event do
 
   postgres do
     # TODO: configure correct table name and repo
-    table("CHANGE_ME")
+    table("events")
     repo(Voelgoedevents.Repo)
   end
 

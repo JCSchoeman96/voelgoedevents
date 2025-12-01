@@ -1,13 +1,11 @@
 defmodule VoelgoedEvents.Ash.Extensions.Auditable do
   @moduledoc """
-  ASH EXTENSION: AUDITING
-
-  AGENTS:
-  This module will eventually define the DSL for tracking who changed what.
-  For now, it serves as the anchor for the `extensions/` directory.
-
-  Status: Implementation pending (Phase 1.3).
+  EXTENSION: Auditable
+  Automatically records who did what.
   """
-  use Ash.Resource.Extension
-  # TODO: Implement DSL sections for `audit_log`
+  use Spark.Dsl.Extension,
+    transformers: [],
+    sections: []
+
+  # TODO: Logic for hooking into changesets to record actor_id
 end

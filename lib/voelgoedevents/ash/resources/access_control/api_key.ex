@@ -42,7 +42,7 @@ defmodule Voelgoedevents.Ash.Resources.AccessControl.ApiKey do
 
   # ✅ ADDED: Relationship to Tenant
   relationships do
-    belongs_to :organization, Voelgoedevents.Ash.Resources.Organizations.Organization
+    belongs_to :organization, Voelgoedevents.Ash.Resources.Accounts.Organization
   end
 
   actions do

@@ -10,7 +10,7 @@ defmodule VoelgoedeventsWeb.Plugs.SetTenant do
   import Plug.Conn
   require Ash.Query
 
-  alias Voelgoedevents.Ash.Resources.Organizations.Organization
+  alias Voelgoedevents.Ash.Resources.Accounts.Organization
   alias Voelgoedevents.Ash.Domains.AccountsDomain
 
   def init(opts), do: opts
@@ -31,7 +31,7 @@ defmodule VoelgoedeventsWeb.Plugs.SetTenant do
 
   defp fetch_organization(slug) do
     Organization
-    |> Ash.Query.filter(slug == ^slug and active == true)
+    |> Ash.Query.filter(slug == ^slug and status == :active)
     |> Ash.read_one(domain: AccountsDomain)
     |> case do
       {:ok, nil} -> {:error, :not_found}

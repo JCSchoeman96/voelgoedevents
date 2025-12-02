@@ -29,7 +29,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
       attribute_writable? true
     end
 
-    belongs_to :organization, Voelgoedevents.Ash.Resources.Organizations.Organization do
+    belongs_to :organization, Voelgoedevents.Ash.Resources.Accounts.Organization do
       allow_nil? false
       attribute_writable? true
     end

@@ -25,7 +25,9 @@ config :voelgoedevents, Oban,
   queues: [default: 10, mailers: 20, pdf_generation: 5]
 
 # --- REDIS URL (Default for Dev) ---
-config :voelgoedevents, :redis_url, "redis://localhost:6379"
+config :voelgoedevents,
+  redis_url: "redis://localhost:6379",
+  redis_pool_size: 10
 
 # --- CIRCUIT BREAKER CONFIG ---
 config :voelgoedevents, Voelgoedevents.Infrastructure.CircuitBreaker,

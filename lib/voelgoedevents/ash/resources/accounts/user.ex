@@ -50,7 +50,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
       destination_attribute :user_id
     end
 
-    many_to_many :organizations, Voelgoedevents.Ash.Resources.Organizations.Organization do
+    many_to_many :organizations, Voelgoedevents.Ash.Resources.Accounts.Organization do
       through Voelgoedevents.Ash.Resources.Accounts.Membership
       source_attribute_on_join_resource :user_id
       destination_attribute_on_join_resource :organization_id

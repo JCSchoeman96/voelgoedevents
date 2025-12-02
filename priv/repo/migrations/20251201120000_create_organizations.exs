@@ -5,6 +5,11 @@ defmodule Voelgoedevents.Repo.Migrations.CreateOrganizations do
     alter table(:organizations) do
       add :status, :text, null: false, default: "active"
       add :settings, :map, null: false, default: %{}
+    end
+
+    execute("UPDATE organizations SET status = 'suspended' WHERE active = false")
+
+    alter table(:organizations) do
       remove :active
     end
 
@@ -19,5 +24,7 @@ defmodule Voelgoedevents.Repo.Migrations.CreateOrganizations do
       remove :settings
       remove :status
     end
+
+    execute("UPDATE organizations SET active = false WHERE status <> 'active'")
   end
 end

@@ -1,6 +1,18 @@
 # Infrastructure Layer
 
-## Purpose
+# Infrastructure Layer
+
+**Purpose:** This folder houses all plain Elixir modules that wrap external systems or provide cross-cutting, low-level services required by the domain logic (Ash).
+
+**Architectural Rule:**
+
+1.  **NO DOMAIN LOGIC:** Modules here must never contain business rules (e.g., "A user must have 2 tickets to get a discount").
+2.  **EXTERNAL BOUNDARY:** They provide generic interfaces to external resources.
+3.  **Key Residents:**
+    - `Redis`: Connection client.
+    - `DistributedLock`: High-concurrency safety (DLM).
+    - **`CircuitBreaker`:** **NEW** - Resilience wrapper for unreliable HTTP calls.
+    - **`RepoPoolConfig`:** **NEW** - Utility for managing dual Ecto connection pools (Web/Oban isolation).
 
 This directory serves as the **abstraction layer for all external, non-Ash systems and services**. It acts as the boundary between the VoelgoedEvents domain logic and the external world.
 

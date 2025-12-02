@@ -43,9 +43,13 @@ if config_env() == :prod do
   config :voelgoedevents, Voelgoedevents.Repo,
     # ssl: true,
     url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-    # For machines with several cores, consider starting multiple pools of `pool_size`
-    # pool_count: 4,
+    pool_size: Voelgoedevents.Infrastructure.RepoPoolConfig.get_pool_size("WEB_DB_POOL_SIZE", 10),
+    socket_options: maybe_ipv6
+
+  config :voelgoedevents, Voelgoedevents.ObanRepo,
+    # ssl: true,
+    url: database_url,
+    pool_size: Voelgoedevents.Infrastructure.RepoPoolConfig.get_pool_size("OBAN_DB_POOL_SIZE", 5),
     socket_options: maybe_ipv6
 
   # The secret key base is used to sign/encrypt cookies and other secrets.

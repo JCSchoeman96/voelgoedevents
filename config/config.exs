@@ -2,7 +2,7 @@ import Config
 
 # --- GENERAL APP CONFIG ---
 config :voelgoedevents,
-  ecto_repos: [Voelgoedevents.Repo],
+  ecto_repos: [Voelgoedevents.Repo, Voelgoedevents.ObanRepo],
   generators: [timestamp_type: :utc_datetime],
   ash_domains: [
     Voelgoedevents.Ash.Domains.AccountsDomain,
@@ -13,8 +13,9 @@ config :voelgoedevents,
     Voelgoedevents.Ash.Domains.PaymentsDomain,
     Voelgoedevents.Ash.Domains.ScanningDomain,
     Voelgoedevents.Ash.Domains.AnalyticsDomain,
-    Voelgoedevents.Ash.Domains.FinanceDomain,      
-    Voelgoedevents.Ash.Domains.AccessControlDomain  
+    Voelgoedevents.Ash.Domains.FinanceDomain,
+    Voelgoedevents.Ash.Domains.AccessControlDomain,
+    Voelgoedevents.Ash.Domains.MonetizationDomain
   ]
 
   # --- OBAN CONFIG ---
@@ -86,4 +87,3 @@ config :voelgoedevents, Voelgoedevents.Repo,
 
 # --- ENVIRONMENT OVERRIDES ---
 import_config "#{config_env()}.exs"
-

@@ -1,5 +1,11 @@
 defmodule Voelgoedevents.Queues.ObanConfig do
   @moduledoc "Central Oban configuration stub."
 
-  # TODO: Centralize Oban configuration and queue definitions here.
+  def config do
+    [
+      repo: Voelgoedevents.ObanRepo,
+      plugins: [Oban.Plugins.Pruner],
+      queues: [default: 10]
+    ]
+  end
 end

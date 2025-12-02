@@ -21,6 +21,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
     tokens do
       enabled? true
+      require_token_presence_for_authentication? true
       token_resource Voelgoedevents.Ash.Resources.Accounts.Token
       signing_secret fn _, _ ->
         {:ok, Application.fetch_env!(:voelgoedevents, :token_signing_secret)}

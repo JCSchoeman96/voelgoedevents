@@ -12,17 +12,18 @@ defmodule Voelgoedevents.Application do
     VoelgoedeventsWeb.Endpoint.config_change(changed, removed)
     :ok
   end
-  
+
 @impl true
   def start(_type, _args) do
     children = [
       VoelgoedeventsWeb.Telemetry,
-      
+
       # 1. Database & Infra (Start these FIRST)
       Voelgoedevents.Repo,
+      Voelgoedevents.ObanRepo,
       {DNSCluster, query: Application.get_env(:voelgoedevents, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Voelgoedevents.PubSub},
-      
+
       # 2. Redis Connection (The "Tank" Engine)
       Voelgoedevents.Infrastructure.Redis,
 

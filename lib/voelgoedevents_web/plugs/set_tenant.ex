@@ -8,7 +8,6 @@ defmodule VoelgoedeventsWeb.Plugs.SetTenant do
   """
 
   import Plug.Conn
-  import Phoenix.Controller, only: [put_view: 2, render: 3]
   require Ash.Query
 
   alias Voelgoedevents.Ash.Resources.Organizations.Organization
@@ -25,9 +24,7 @@ defmodule VoelgoedeventsWeb.Plugs.SetTenant do
 
       {:error, :not_found} ->
         conn
-        |> put_status(:not_found)
-        |> put_view(VoelgoedeventsWeb.ErrorHTML)
-        |> render(:"404")
+        |> send_resp(404, "Not Found")
         |> halt()
     end
   end

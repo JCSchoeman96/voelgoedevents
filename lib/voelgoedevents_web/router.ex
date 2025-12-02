@@ -23,15 +23,14 @@ defmodule VoelgoedeventsWeb.Router do
   scope "/auth" do
     pipe_through :browser
 
-    auth_routes_for Voelgoedevents.Ash.Domains.AccountsDomain, to: VoelgoedeventsWeb.AuthController
+    auth_routes Voelgoedevents.Ash.Domains.AccountsDomain, []
   end
 
   scope "/", VoelgoedeventsWeb do
     pipe_through :browser
 
-    sign_in_route register_path: "/register", reset_path: "/reset"
-    sign_out_route auth_routes_prefix: "/auth"
-    auth_routes_for Voelgoedevents.Ash.Domains.AccountsDomain, to: VoelgoedeventsWeb.AuthController
+
+    auth_routes Voelgoedevents.Ash.Domains.AccountsDomain, []
 
     get "/", PageController, :home
   end

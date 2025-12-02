@@ -37,6 +37,27 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
       public? true
     end
 
+    attribute :first_name, :string do
+      allow_nil? false
+      public? true
+    end
+
+    attribute :last_name, :string do
+      allow_nil? false
+      public? true
+    end
+
+    attribute :status, :atom do
+      allow_nil? false
+      public? true
+      constraints one_of: [:pending, :active, :disabled]
+      default :pending
+    end
+
+    attribute :confirmed_at, :utc_datetime do
+      public? true
+    end
+
     attribute :hashed_password, :string do
       allow_nil? false
       sensitive? true
@@ -59,6 +80,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
   identities do
     identity :unique_email, [:email]
+  end
+
+  validations do
+    validate present([:email, :first_name, :last_name, :status])
   end
 
   actions do

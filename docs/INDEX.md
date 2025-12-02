@@ -1,150 +1,114 @@
-# VoelgoedEvents Documentation Index  
-**File:** `/docs/INDEX.md`  
-**Audience:** Humans & AI Agents  
-**Purpose:** Single entry point into all VoelgoedEvents docs
+# VoelgoedEvents Documentation Index
+
+**File:** `/docs/INDEX.md`
+**Audience:** Humans & AI Agents
+**Purpose:** Canonical Entry Point and Navigational Hub for the VoelgoedEvents documentation ecosystem.
 
 ---
 
-## 0. Reading Order for AI Agents (MANDATORY)
+## 0. The Golden Rule for AI Agents
 
-If you are an **AI coding or planning agent**, you MUST:
-
-1. Read: `AGENTS.md` (The Supreme Rulebook)
-2. Read: `INDEX.md` (This Map)
-3. Follow the **"Domain to File Path Mapping"** in Section 4.1 below.
+If you are an **AI coding or planning agent**, you **MUST** consult this file first.
+This is your **Sitemap**. Do not guess file paths. Do not hallucinate documents.
+Use the links below to find the authoritative source for any topic.
 
 ---
 
-## 1. High-Level Orientation
+## 1. Vision & Planning
 
-The VoelgoedEvents documentation is designed as a **stack**:
+**Purpose:** Defines the "Why" and "When". Strategic direction and build sequence.
 
-- **Top Layer – What is this platform?** Conceptual understanding, vision, and overall architecture.
-
-- **Middle Layer – How is it structured?** Domains, architecture, workflows, logical slices.
-
-- **Bottom Layer – How do I work with it?** Project setup, coding rules, agent rules, tests, deployment.
-
-This file ties everything together.
+| Document                                                               | Description                                                                |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [**MASTER_BLUEPRINT.md**](MASTER_BLUEPRINT.md)                         | **The Vision.** High-level architecture, product goals, and system design. |
+| [**PROJECT_GUIDE.md**](PROJECT_GUIDE.md)                               | **The Handbook.** How to run, build, and contribute to the project.        |
+| [**VOELGOEDEVENTS_FINAL_ROADMAP.md**](VOELGOEDEVENTS_FINAL_ROADMAP.md) | **The Plan.** Detailed execution roadmap and phase tracking.               |
 
 ---
 
-## 2. Core Entry Documents
+## 2. Architectural Core
 
-These are the **four primary documents** every person or agent should know:
+**Purpose:** Defines the "How" for systems and high-level structure.
 
-1. **Agent Rules** - `AGENTS.md`  
-   - Defines how AI agents must behave, constraints, TOON format, **Standard Ash Folder** rules, and performance/scaling assumptions.
+| Document                                          | Description                                                                         |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| [**ARCHITECTURE.md**](ARCHITECTURE.md)            | **The System.** Core architectural decisions and patterns.                          |
+| [**Architecture README**](architecture/README.md) | **Deep Dive.** Index of specific architectural components (Tenancy, Caching, etc.). |
 
-2. **Platform Overview** - `docs/MASTER_BLUEPRINT.md`  
-   - Explains what VoelgoedEvents *is*, the product vision, and the "Big Picture" architecture.
+### Critical Architecture Specs
 
-3. **Project Guide** - `docs/PROJECT_GUIDE.md`  
-   - Explains how to work with the repository: structure, dev environment, commands, workflows.
-
-4. **Domain Map (Authoritative)** - `docs/DOMAIN_MAP.md`  
-   - High-level map of all domains: Tenancy, Events, Seating, Ticketing, Payments, Scanning, Analytics.
-
----
-
-## 3. Human Navigation Path
-
-If you’re a **human developer/architect**, recommended reading order:
-
-1. `MASTER_BLUEPRINT.md`
-2. `PROJECT_GUIDE.md`
-3. `DOMAIN_MAP.md`
-4. `architecture/01_foundation.md`
-5. `architecture/04_vertical_slices.md`
-6. Then dip into specific domain docs in `docs/domain/*.md`.
+- [**Foundation (PETAL Stack)**](architecture/01_foundation.md)
+- [**Multi-Tenancy**](architecture/02_multi_tenancy.md)
+- [**Caching & Realtime**](architecture/03_caching_and_realtime.md)
+- [**Vertical Slices**](architecture/04_vertical_slices.md)
+- [**Eventing Model**](architecture/05_eventing_model.md)
+- [**Jobs & Async (Oban)**](architecture/06_jobs_and_async.md)
+- [**Security & Auth**](architecture/07_security_and_auth.md)
 
 ---
 
-## 4. AI Agent Navigation Path
+## 3. Domain Modeling
 
-If you are an **AI coding agent**, you must:
+**Purpose:** Defines the "What". The single source for entities, relationships, and invariants.
 
-1. **Load hard constraints:**
-   - `AGENTS.md`
-   - `architecture/01_foundation.md`
-   - `architecture/02_multi_tenancy.md`
-   - `architecture/04_vertical_slices.md`
+| Document                              | Description                                                                 |
+| ------------------------------------- | --------------------------------------------------------------------------- |
+| [**DOMAIN_MAP.md**](DOMAIN_MAP.md)    | **The Map.** High-level visual guide to all domains and their interactions. |
+| [**Domain README**](domain/README.md) | **The Details.** Index of deep-dive domain specifications.                  |
 
-2. **Identify your Logical Slice:**
-   - Determine which feature you are working on (e.g., "Ticketing").
-   - Use the **Mapping Table below** to find the correct docs and folders.
+### Key Domains
 
-### 4.1 Domain to File Path Mapping (Standard Ash Layout)
-
-We work in **Logical Slices** but code in **Standard Ash Folders**. Use this map to locate files.
-
-| Logical Slice          | Domain Doc (Read This)             | Ash Resources (Write Here)                                                                  | Workflow Docs (Read Only)      |
-|------------------------|------------------------------------|---------------------------------------------------------------------------------------------|--------------------------------|
-| **Tenancy & Accounts** | `domain/tenancy_accounts.md`     | `lib/voelgoedevents/ash/resources/accounts/`<br>`lib/voelgoedevents/ash/resources/organizations/` | `docs/workflows/accounts_*.md` |
-| **Events & Venues**   | `domain/events_venues.md`         | `lib/voelgoedevents/ash/resources/events/`<br>`lib/voelgoedevents/ash/resources/venues/`       | `docs/workflows/events_*.md`   |
-| **Ticketing**         | `domain/ticketing_pricing.md`     | `lib/voelgoedevents/ash/resources/ticketing/`                                                | `docs/workflows/ticketing_*.md` |
-| **Seating**           | `domain/seating.md`               | `lib/voelgoedevents/ash/resources/seating/`                                                  | `docs/workflows/seating_*.md`   |
-| **Payments**          | `domain/payments_ledger.md`       | `lib/voelgoedevents/ash/resources/payments/`                                                 | `docs/workflows/checkout_*.md`  |
-| **Scanning**          | `domain/scanning_devices.md`      | `lib/voelgoedevents/ash/resources/scanning/`                                                 | `docs/workflows/scanning_*.md`  |
-| **Analytics**         | `domain/analytics_marketing.md`   | `lib/voelgoedevents/ash/resources/analytics/`                                                | `docs/workflows/analytics_*.md` |
-
+- [**Tenancy & Accounts**](domain/tenancy_accounts.md)
+- [**Events & Venues**](domain/events_venues.md)
+- [**Ticketing & Pricing**](domain/ticketing_pricing.md)
+- [**Seating**](domain/seating.md)
+- [**Payments & Ledger**](domain/payments_ledger.md)
+- [**Scanning & Devices**](domain/scanning_devices.md)
+- [**Analytics & Marketing**](domain/analytics_marketing.md)
 
 ---
 
-## 5. Architecture Documentation
+## 4. AI Agent Governance
 
-Folder: `/docs/architecture/`  
-Index: `/docs/architecture/README.md`
+**Purpose:** The most critical section for current execution flow. Defines the rules for TOON generation.
 
-Key files:
-
-- `01_foundation.md` – Core architecture: PETAL, Ash, logical slices.
-- `02_multi_tenancy.md` – Multi-tenant rules, org scoping.
-- `03_caching_and_realtime.md` – Caching strategy (ETS/Redis).
-- `04_vertical_slices.md` – How features are built end-to-end.
-- `05_eventing_model.md` – Domain events, PubSub.
-- `06_jobs_and_async.md` – Oban jobs.
-- `07_security_and_auth.md` – Identity, sessions, API keys.
+| Document                                   | Description                                                            |
+| ------------------------------------------ | ---------------------------------------------------------------------- |
+| [**AGENTS.md**](AGENTS.md)                 | **The Law.** Supreme rulebook for all AI agents. Overrides everything. |
+| [**AI Context Map**](ai/ai_context_map.md) | **The Brain.** Registry of all verified modules, paths, and atoms.     |
+| [**GEMINI.md**](GEMINI.md)                 | **The Persona.** Specific instructions for Gemini agents.              |
 
 ---
 
-## 6. Domain Documentation
+## 5. Technical & Style Guides
 
-Folder: `/docs/domain/`  
-Index: `/docs/domain/README.md`
+**Purpose:** Defines the quality standard for all code submissions.
 
-Use the **Mapping Table in Section 4.1** to choose the right file.
+| Document                                          | Description                                                    |
+| ------------------------------------------------- | -------------------------------------------------------------- |
+| [**Coding Style README**](coding_style/README.md) | **The Standard.** Index of all language-specific style guides. |
 
-**Note on Duplicate Files:**
-- Always prefer the **detailed** file (e.g., `events_venues.md`) over the simple file (`events.md`).
-- If a file is empty or just a stub, check for a combined file (e.g., `ticketing_pricing.md` covers both).
+### Specific Guides
 
----
-
-## 7. Workflow Documentation
-
-Folder: `/docs/workflows/`
-
-Each workflow doc explains an **end-to-end flow** across multiple domains and slices.
-Examples: `checkout.md`, `scanning_offline.md`, `refunds.md`.
+- [**Elixir General**](coding_style/elixir_general.md)
+- [**Ash Framework**](coding_style/ash.md)
+- [**Phoenix & LiveView**](coding_style/phoenix_liveview.md)
+- [**HEEx Templates**](coding_style/heex.md)
+- [**JavaScript/TypeScript**](coding_style/js_guidelines.md)
+- [**Svelte**](coding_style/svelte.md)
+- [**Tailwind CSS**](coding_style/tailwind.md)
 
 ---
 
-## 8. Agent-Specific Docs
+## 6. Workflows
 
-- **`AGENTS.md`**: The Source of Truth.
-- **`GEMINI.md`**: Specific instructions for Gemini agents (defer to AGENTS.md).
+**Purpose:** Orchestration of multi-step business processes.
+
+| Document                                   | Description                                                |
+| ------------------------------------------ | ---------------------------------------------------------- |
+| [**Workflow README**](workflows/README.md) | **The Flows.** Index of all documented business workflows. |
 
 ---
 
-## 9. Summary
-
-1. **Think in Slices** (Logical Boundaries).
-2. **Code in Layers** (Ash Standard Folders).
-3. **Check AGENTS.md** for every decision.
-4. **Use the Map (Section 4.1)** to find your files.
-
-If you are unsure where something belongs:
-- Platform-wide concerns → `architecture/`
-- Single business capability → `domain/` (Mapped to Ash Resources)
-- Multi-step flows → `workflows/`
+**Last Updated:** 2025-12-02
+**Status:** Canonical & Verified

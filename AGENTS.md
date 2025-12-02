@@ -36,6 +36,7 @@ This defines all behaviour. It supersedes everything else.
 ### Step 2 — Load INDEX.md
 
 Provides:
+
 - Folder map
 - File locations
 - Where new files must go
@@ -44,6 +45,7 @@ Provides:
 ### Step 3 — Load MASTER_BLUEPRINT.md
 
 Provides:
+
 - Full system vision & architecture
 - Domain map
 - Feature overview
@@ -70,6 +72,7 @@ Load **ALL** that apply to the task:
 Located in: `/docs/domain/*.md`
 
 **Example:**
+
 - Editing events → load `domain/events_venues.md`
 - Editing seating → load `domain/seating.md`
 - Editing scanning → load `domain/scanning_devices.md`
@@ -81,6 +84,7 @@ Located in: `/docs/domain/*.md`
 Located in: `/docs/workflows/*.md`
 
 **Example:**
+
 - "Reserve seat" → load `workflows/reserve_seat.md`
 - "Complete checkout" → load `workflows/complete_checkout.md`
 - "Offline sync" → load `workflows/offline_scan_sync.md`
@@ -92,7 +96,7 @@ Located in: `/docs/coding_style/*.md`
 The agent **MUST** load the correct style guide(s):
 
 | File Type                  | Must Load                      |
-|----------------------------|--------------------------------|
+| -------------------------- | ------------------------------ |
 | Elixir business logic      | `elixir_general.md` + `ash.md` |
 | Ash resources & validators | `ash.md`                       |
 | Phoenix controllers        | `phoenix_liveview.md`          |
@@ -109,13 +113,24 @@ If unsure which coding_style doc applies, load ALL of them.
 ### Step 8 — Load .agent rules if using Antigravity
 
 Located in:
+
 - `.agent/rules/`
 - `.agent/workflows/`
 
 **Examples:**
+
 - WSL integration
 - Mix compile workflow
 - Linux command boundaries
+
+### Step 9 — Load Folder-Specific READMEs (Mandatory)
+
+For any file creation or modification, the agent **MUST** check and adhere to the architectural rules defined in the corresponding folder's `README.md`.
+
+**Example:**
+
+- Before coding workers, check `lib/voelgoedevents/queues/README.md`.
+- Before touching infrastructure, check `lib/voelgoedevents/infrastructure/README.md`.
 
 ---
 
@@ -128,12 +143,14 @@ Agents must always enforce the following global principles.
 **All business logic belongs in Ash. Always. No exceptions.**
 
 ❌ **Do NOT:**
+
 - Put business logic in LiveViews
 - Put business logic in controllers
 - Put domain logic in components
 - Call Repo directly (except in seeds/Test helpers)
 
 ✔ **Do:**
+
 - Use Ash Resources
 - Use Ash Domains
 - Use Ash Actions
@@ -194,18 +211,18 @@ Agents must always use the folder map below (Standard Ash Layout).
 
 **Key rules:**
 
-| Content category | Specific Location                                      |
-|------------------|--------------------------------------------------------|
-| Ash Resources    | `lib/voelgoedevents/ash/resources/<slice>/`            |
-| Ash Domains      | `lib/voelgoedevents/ash/domains/`                      |
-| Ash Support      | `lib/voelgoedevents/ash/support/`                      |
-| Domain contracts | `lib/voelgoedevents/contracts/<slice>/`                |
-| Workflows        | `lib/voelgoedevents/workflows/<slice>/`                |
-| LiveViews        | `lib/voelgoedevents_web/live/<slice>/`                 |
-| Controllers      | `lib/voelgoedevents_web/controllers/<slice>/`          |
-| Components       | `lib/voelgoedevents_web/components/`                   |
-| Svelte           | `scanner_pwa/src/lib/`                                 |
-| Migrations       | `priv/repo/migrations`                                 |
+| Content category | Specific Location                             |
+| ---------------- | --------------------------------------------- |
+| Ash Resources    | `lib/voelgoedevents/ash/resources/<slice>/`   |
+| Ash Domains      | `lib/voelgoedevents/ash/domains/`             |
+| Ash Support      | `lib/voelgoedevents/ash/support/`             |
+| Domain contracts | `lib/voelgoedevents/contracts/<slice>/`       |
+| Workflows        | `lib/voelgoedevents/workflows/<slice>/`       |
+| LiveViews        | `lib/voelgoedevents_web/live/<slice>/`        |
+| Controllers      | `lib/voelgoedevents_web/controllers/<slice>/` |
+| Components       | `lib/voelgoedevents_web/components/`          |
+| Svelte           | `scanner_pwa/src/lib/`                        |
+| Migrations       | `priv/repo/migrations`                        |
 
 **Agents must NEVER create random or generic folders such as:**
 
@@ -333,7 +350,7 @@ This rulebook ensures:
 ✔ Performance by design (caching, indexing, event-driven patterns)  
 ✔ Security and isolation (organization scoping, policy enforcement)  
 ✔ Maintainability (clear folder structure, style consistency)  
-✔ Correctness (no orphaned features, no lost guidance)  
+✔ Correctness (no orphaned features, no lost guidance)
 
 **Agents must follow this rulebook exactly, in every task, without exception.**
 

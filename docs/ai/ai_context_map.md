@@ -33,18 +33,18 @@ Only use paths/modules listed in this document.
 
 ## 🏗️ 1. High-Level Application Architecture (Confirmed from Project Code)
 
-| Component | Module | File Path | Notes |
-|-----------|--------|-----------|-------|
-| OTP App | **Voelgoedevents.Application** | `lib/voelgoedevents/application.ex` | Supervision tree startup |
-| Repo | **Voelgoedevents.Repo** | `lib/voelgoedevents/repo.ex` | Postgres + Ash Postgres |
-| Mailer | **Voelgoedevents.Mailer** | `lib/voelgoedevents/mailer.ex` | Swoosh mailer plug-in |
-| Endpoint | **VoelgoedeventsWeb.Endpoint** | `lib/voelgoedevents_web/endpoint.ex` | Phoenix endpoint + socket |
-| Router | **VoelgoedeventsWeb.Router** | `lib/voelgoedevents_web/router.ex` | Web routing |
-| Gettext | **VoelgoedeventsWeb.Gettext** | `lib/voelgoedevents_web/gettext.ex` | Localization |
+| Component | Module                         | File Path                            | Notes                     |
+| --------- | ------------------------------ | ------------------------------------ | ------------------------- |
+| OTP App   | **Voelgoedevents.Application** | `lib/voelgoedevents/application.ex`  | Supervision tree startup  |
+| Repo      | **Voelgoedevents.Repo**        | `lib/voelgoedevents/repo.ex`         | Postgres + Ash Postgres   |
+| Mailer    | **Voelgoedevents.Mailer**      | `lib/voelgoedevents/mailer.ex`       | Swoosh mailer plug-in     |
+| Endpoint  | **VoelgoedeventsWeb.Endpoint** | `lib/voelgoedevents_web/endpoint.ex` | Phoenix endpoint + socket |
+| Router    | **VoelgoedeventsWeb.Router**   | `lib/voelgoedevents_web/router.ex`   | Web routing               |
+| Gettext   | **VoelgoedeventsWeb.Gettext**  | `lib/voelgoedevents_web/gettext.ex`  | Localization              |
 
 ### ❌ Not Present in Repo:
 
-- `VoelgoedeventsWeb.Presence` *(Do NOT reference this unless you create it.)*
+- `VoelgoedeventsWeb.Presence` _(Do NOT reference this unless you create it.)_
 
 ---
 
@@ -63,14 +63,15 @@ Below is the full authoritative list.
 
 ### 🔐 ACCOUNTS DOMAIN (`:accounts`)
 
-| Resource | Module | Atom | File |
-|----------|--------|------|------|
-| **User** | `Voelgoedevents.Ash.Resources.Accounts.User` | `:user` | `lib/voelgoedevents/ash/resources/accounts/user.ex` |
-| **Role** | `Voelgoedevents.Ash.Resources.Accounts.Role` | `:role` | `lib/voelgoedevents/ash/resources/accounts/role.ex` |
-| **Membership** | `Voelgoedevents.Ash.Resources.Accounts.Membership` | `:membership` | `lib/voelgoedevents/ash/resources/accounts/membership.ex` |
+| Resource         | Module                                                    | Atom            | File                                                             |
+| ---------------- | --------------------------------------------------------- | --------------- | ---------------------------------------------------------------- |
+| **User**         | `Voelgoedevents.Ash.Resources.Accounts.User`              | `:user`         | `lib/voelgoedevents/ash/resources/accounts/user.ex`              |
+| **Role**         | `Voelgoedevents.Ash.Resources.Accounts.Role`              | `:role`         | `lib/voelgoedevents/ash/resources/accounts/role.ex`              |
+| **Membership**   | `Voelgoedevents.Ash.Resources.Accounts.Membership`        | `:membership`   | `lib/voelgoedevents/ash/resources/accounts/membership.ex`        |
 | **Organization** | `Voelgoedevents.Ash.Resources.Organizations.Organization` | `:organization` | `lib/voelgoedevents/ash/resources/organizations/organization.ex` |
 
 **Domain File:**
+
 ```
 lib/voelgoedevents/ash/domains/accounts_domain.ex
 ```
@@ -79,13 +80,14 @@ lib/voelgoedevents/ash/domains/accounts_domain.ex
 
 ### 🎟️ TICKETING DOMAIN (`:ticketing`)
 
-| Resource | Module | Atom | File |
-|----------|--------|------|------|
-| **Ticket** | `Voelgoedevents.Ash.Resources.Ticketing.Ticket` | `:ticket` | `lib/voelgoedevents/ash/resources/ticketing/ticket.ex` |
+| Resource        | Module                                               | Atom            | File                                                         |
+| --------------- | ---------------------------------------------------- | --------------- | ------------------------------------------------------------ |
+| **Ticket**      | `Voelgoedevents.Ash.Resources.Ticketing.Ticket`      | `:ticket`       | `lib/voelgoedevents/ash/resources/ticketing/ticket.ex`       |
 | **PricingRule** | `Voelgoedevents.Ash.Resources.Ticketing.PricingRule` | `:pricing_rule` | `lib/voelgoedevents/ash/resources/ticketing/pricing_rule.ex` |
-| **Coupon** | `Voelgoedevents.Ash.Resources.Ticketing.Coupon` | `:coupon` | `lib/voelgoedevents/ash/resources/ticketing/coupon.ex` |
+| **Coupon**      | `Voelgoedevents.Ash.Resources.Ticketing.Coupon`      | `:coupon`       | `lib/voelgoedevents/ash/resources/ticketing/coupon.ex`       |
 
 **Domain File:**
+
 ```
 lib/voelgoedevents/ash/domains/ticketing_domain.ex
 ```
@@ -94,13 +96,14 @@ lib/voelgoedevents/ash/domains/ticketing_domain.ex
 
 ### 💺 SEATING DOMAIN (`:seating`)
 
-| Resource | Module | Atom | File |
-|----------|--------|------|------|
-| **Seat** | `Voelgoedevents.Ash.Resources.Seating.Seat` | `:seat` | `lib/voelgoedevents/ash/resources/seating/seat.ex` |
-| **Block** | `Voelgoedevents.Ash.Resources.Seating.Block` | `:block` | `lib/voelgoedevents/ash/resources/seating/block.ex` |
+| Resource   | Module                                        | Atom      | File                                                 |
+| ---------- | --------------------------------------------- | --------- | ---------------------------------------------------- |
+| **Seat**   | `Voelgoedevents.Ash.Resources.Seating.Seat`   | `:seat`   | `lib/voelgoedevents/ash/resources/seating/seat.ex`   |
+| **Block**  | `Voelgoedevents.Ash.Resources.Seating.Block`  | `:block`  | `lib/voelgoedevents/ash/resources/seating/block.ex`  |
 | **Layout** | `Voelgoedevents.Ash.Resources.Seating.Layout` | `:layout` | `lib/voelgoedevents/ash/resources/seating/layout.ex` |
 
 **Domain File:**
+
 ```
 lib/voelgoedevents/ash/domains/seating_domain.ex
 ```
@@ -109,12 +112,13 @@ lib/voelgoedevents/ash/domains/seating_domain.ex
 
 ### 📅 EVENTS DOMAIN (`:events`)
 
-| Resource | Module | Atom | File |
-|----------|--------|------|------|
-| **Event** | `Voelgoedevents.Ash.Resources.Events.Event` | `:event` | `lib/voelgoedevents/ash/resources/events/event.ex` |
+| Resource              | Module                                                  | Atom                  | File                                                            |
+| --------------------- | ------------------------------------------------------- | --------------------- | --------------------------------------------------------------- |
+| **Event**             | `Voelgoedevents.Ash.Resources.Events.Event`             | `:event`              | `lib/voelgoedevents/ash/resources/events/event.ex`              |
 | **OccupancySnapshot** | `Voelgoedevents.Ash.Resources.Events.OccupancySnapshot` | `:occupancy_snapshot` | `lib/voelgoedevents/ash/resources/events/occupancy_snapshot.ex` |
 
 **Domain File:**
+
 ```
 lib/voelgoedevents/ash/domains/events_domain.ex
 ```
@@ -123,14 +127,15 @@ lib/voelgoedevents/ash/domains/events_domain.ex
 
 ### 💳 PAYMENTS DOMAIN (`:payments`)
 
-| Resource | Module | Atom | File |
-|----------|--------|------|------|
-| **Transaction** | `Voelgoedevents.Ash.Resources.Payments.Transaction` | `:transaction` | `lib/voelgoedevents/ash/resources/payments/transaction.ex` |
-| **Refund** | `Voelgoedevents.Ash.Resources.Payments.Refund` | `:refund` | `lib/voelgoedevents/ash/resources/payments/refund.ex` |
+| Resource          | Module                                                | Atom              | File                                                          |
+| ----------------- | ----------------------------------------------------- | ----------------- | ------------------------------------------------------------- |
+| **Transaction**   | `Voelgoedevents.Ash.Resources.Payments.Transaction`   | `:transaction`    | `lib/voelgoedevents/ash/resources/payments/transaction.ex`    |
+| **Refund**        | `Voelgoedevents.Ash.Resources.Payments.Refund`        | `:refund`         | `lib/voelgoedevents/ash/resources/payments/refund.ex`         |
 | **LedgerAccount** | `Voelgoedevents.Ash.Resources.Payments.LedgerAccount` | `:ledger_account` | `lib/voelgoedevents/ash/resources/payments/ledger_account.ex` |
-| **JournalEntry** | `Voelgoedevents.Ash.Resources.Payments.JournalEntry` | `:journal_entry` | `lib/voelgoedevents/ash/resources/payments/journal_entry.ex` |
+| **JournalEntry**  | `Voelgoedevents.Ash.Resources.Payments.JournalEntry`  | `:journal_entry`  | `lib/voelgoedevents/ash/resources/payments/journal_entry.ex`  |
 
 **Domain File:**
+
 ```
 lib/voelgoedevents/ash/domains/payments_domain.ex
 ```
@@ -139,12 +144,13 @@ lib/voelgoedevents/ash/domains/payments_domain.ex
 
 ### 📱 SCANNING DOMAIN (`:scanning`)
 
-| Resource | Module | Atom | File |
-|----------|--------|------|------|
-| **Scan** | `Voelgoedevents.Ash.Resources.Scanning.Scan` | `:scan` | `lib/voelgoedevents/ash/resources/scanning/scan.ex` |
+| Resource        | Module                                              | Atom            | File                                                        |
+| --------------- | --------------------------------------------------- | --------------- | ----------------------------------------------------------- |
+| **Scan**        | `Voelgoedevents.Ash.Resources.Scanning.Scan`        | `:scan`         | `lib/voelgoedevents/ash/resources/scanning/scan.ex`         |
 | **ScanSession** | `Voelgoedevents.Ash.Resources.Scanning.ScanSession` | `:scan_session` | `lib/voelgoedevents/ash/resources/scanning/scan_session.ex` |
 
 **Domain File:**
+
 ```
 lib/voelgoedevents/ash/domains/scanning_domain.ex
 ```
@@ -153,12 +159,13 @@ lib/voelgoedevents/ash/domains/scanning_domain.ex
 
 ### 🏟️ VENUES DOMAIN (`:venues`)
 
-| Resource | Module | Atom | File |
-|----------|--------|------|------|
+| Resource  | Module                                      | Atom     | File                                               |
+| --------- | ------------------------------------------- | -------- | -------------------------------------------------- |
 | **Venue** | `Voelgoedevents.Ash.Resources.Venues.Venue` | `:venue` | `lib/voelgoedevents/ash/resources/venues/venue.ex` |
-| **Gate** | `Voelgoedevents.Ash.Resources.Venues.Gate` | `:gate` | `lib/voelgoedevents/ash/resources/venues/gate.ex` |
+| **Gate**  | `Voelgoedevents.Ash.Resources.Venues.Gate`  | `:gate`  | `lib/voelgoedevents/ash/resources/venues/gate.ex`  |
 
 **Domain File:**
+
 ```
 lib/voelgoedevents/ash/domains/venues_domain.ex
 ```
@@ -167,28 +174,47 @@ lib/voelgoedevents/ash/domains/venues_domain.ex
 
 ### 📊 ANALYTICS DOMAIN (`:analytics`)
 
-| Resource | Module | Atom | File |
-|----------|--------|------|------|
+| Resource           | Module                                                  | Atom               | File                                                            |
+| ------------------ | ------------------------------------------------------- | ------------------ | --------------------------------------------------------------- |
 | **AnalyticsEvent** | `Voelgoedevents.Ash.Resources.Analytics.AnalyticsEvent` | `:analytics_event` | `lib/voelgoedevents/ash/resources/analytics/analytics_event.ex` |
 | **FunnelSnapshot** | `Voelgoedevents.Ash.Resources.Analytics.FunnelSnapshot` | `:funnel_snapshot` | `lib/voelgoedevents/ash/resources/analytics/funnel_snapshot.ex` |
 
 **Domain File:**
+
 ```
 lib/voelgoedevents/ash/domains/analytics_domain.ex
 ```
 
 ---
 
+### 💰 MONETIZATION DOMAIN (`:monetization`)
+
+| Resource      | Module                                                | Atom          | File                                                          |
+| ------------- | ----------------------------------------------------- | ------------- | ------------------------------------------------------------- |
+| **Donation**  | `Voelgoedevents.Ash.Resources.Monetization.Donation`  | `:donation`   | `lib/voelgoedevents/ash/resources/monetization/donation.ex`   |
+| **FeeModel**  | `Voelgoedevents.Ash.Resources.Monetization.FeeModel`  | `:fee_model`  | `lib/voelgoedevents/ash/resources/monetization/fee_model.ex`  |
+| **FeePolicy** | `Voelgoedevents.Ash.Resources.Monetization.FeePolicy` | `:fee_policy` | `lib/voelgoedevents/ash/resources/monetization/fee_policy.ex` |
+
+**Domain File:**
+
+```
+lib/voelgoedevents/ash/domains/monetization_domain.ex
+```
+
+**Goal:** Fee Policy Caching (Tier 1/ETS) for sub-100ms checkout fee calculation.
+
+---
+
 ## ⚙️ 3. Workflow Modules (All Confirmed in Repo)
 
-| Workflow | Module | File Path |
-|----------|--------|-----------|
-| Start Checkout | `Voelgoedevents.Workflows.Checkout.StartCheckout` | `lib/voelgoedevents/workflows/checkout/start_checkout.ex` |
+| Workflow          | Module                                               | File Path                                                    |
+| ----------------- | ---------------------------------------------------- | ------------------------------------------------------------ |
+| Start Checkout    | `Voelgoedevents.Workflows.Checkout.StartCheckout`    | `lib/voelgoedevents/workflows/checkout/start_checkout.ex`    |
 | Complete Checkout | `Voelgoedevents.Workflows.Checkout.CompleteCheckout` | `lib/voelgoedevents/workflows/checkout/complete_checkout.ex` |
-| Reserve Seat | `Voelgoedevents.Workflows.Ticketing.ReserveSeat` | `lib/voelgoedevents/workflows/ticketing/reserve_seat.ex` |
-| Release Seat | `Voelgoedevents.Workflows.Ticketing.ReleaseSeat` | `lib/voelgoedevents/workflows/ticketing/release_seat.ex` |
-| Process Scan | `Voelgoedevents.Workflows.Scanning.ProcessScan` | `lib/voelgoedevents/workflows/scanning/process_scan.ex` |
-| Funnel Builder | `Voelgoedevents.Workflows.Analytics.FunnelBuilder` | `lib/voelgoedevents/workflows/analytics/funnel_builder.ex` |
+| Reserve Seat      | `Voelgoedevents.Workflows.Ticketing.ReserveSeat`     | `lib/voelgoedevents/workflows/ticketing/reserve_seat.ex`     |
+| Release Seat      | `Voelgoedevents.Workflows.Ticketing.ReleaseSeat`     | `lib/voelgoedevents/workflows/ticketing/release_seat.ex`     |
+| Process Scan      | `Voelgoedevents.Workflows.Scanning.ProcessScan`      | `lib/voelgoedevents/workflows/scanning/process_scan.ex`      |
+| Funnel Builder    | `Voelgoedevents.Workflows.Analytics.FunnelBuilder`   | `lib/voelgoedevents/workflows/analytics/funnel_builder.ex`   |
 
 All verified.
 
@@ -196,34 +222,34 @@ All verified.
 
 ## ⚡ 4. Caching Modules (Confirmed)
 
-| Cache | Module | Backend | File |
-|-------|--------|---------|------|
-| SeatCache | `Voelgoedevents.Caching.SeatCache` | ETS/Cachex | `lib/voelgoedevents/caching/seat_cache.ex` |
-| PricingCache | `Voelgoedevents.Caching.PricingCache` | Cachex | `lib/voelgoedevents/caching/pricing_cache.ex` |
-| OccupancyCache | `Voelgoedevents.Caching.OccupancyCache` | Redis | `lib/voelgoedevents/caching/occupancy_cache.ex` |
-| RateLimiter | `Voelgoedevents.Caching.RateLimiter` | Redis | `lib/voelgoedevents/caching/rate_limiter.ex` |
+| Cache          | Module                                  | Backend    | File                                            |
+| -------------- | --------------------------------------- | ---------- | ----------------------------------------------- |
+| SeatCache      | `Voelgoedevents.Caching.SeatCache`      | ETS/Cachex | `lib/voelgoedevents/caching/seat_cache.ex`      |
+| PricingCache   | `Voelgoedevents.Caching.PricingCache`   | Cachex     | `lib/voelgoedevents/caching/pricing_cache.ex`   |
+| OccupancyCache | `Voelgoedevents.Caching.OccupancyCache` | Redis      | `lib/voelgoedevents/caching/occupancy_cache.ex` |
+| RateLimiter    | `Voelgoedevents.Caching.RateLimiter`    | Redis      | `lib/voelgoedevents/caching/rate_limiter.ex`    |
 
 ---
 
 ## 🔌 5. Web Layer — Confirmed Modules
 
-| Component | Module | File |
-|-----------|--------|------|
-| CurrentOrgPlug | `VoelgoedeventsWeb.Plugs.CurrentOrgPlug` | `lib/voelgoedevents_web/plugs/current_org_plug.ex` |
-| CurrentUserPlug | `VoelgoedeventsWeb.Plugs.CurrentUserPlug` | `lib/voelgoedevents_web/plugs/current_user_plug.ex` |
-| AnalyticsPlug | `VoelgoedeventsWeb.Plugs.AnalyticsPlug` | `lib/voelgoedevents_web/plugs/analytics_plug.ex` |
-| Checkout LiveView | `VoelgoedeventsWeb.CheckoutLive` | `lib/voelgoedevents_web/live/checkout/checkout_live.ex` |
+| Component         | Module                                    | File                                                    |
+| ----------------- | ----------------------------------------- | ------------------------------------------------------- |
+| CurrentOrgPlug    | `VoelgoedeventsWeb.Plugs.CurrentOrgPlug`  | `lib/voelgoedevents_web/plugs/current_org_plug.ex`      |
+| CurrentUserPlug   | `VoelgoedeventsWeb.Plugs.CurrentUserPlug` | `lib/voelgoedevents_web/plugs/current_user_plug.ex`     |
+| AnalyticsPlug     | `VoelgoedeventsWeb.Plugs.AnalyticsPlug`   | `lib/voelgoedevents_web/plugs/analytics_plug.ex`        |
+| Checkout LiveView | `VoelgoedeventsWeb.CheckoutLive`          | `lib/voelgoedevents_web/live/checkout/checkout_live.ex` |
 
 ---
 
 ## 👷 6. Oban Workers (Verified)
 
-| Worker | Module | File |
-|--------|--------|------|
-| Send Email | `Voelgoedevents.Queues.WorkerSendEmail` | `lib/voelgoedevents/queues/worker_send_email.ex` |
-| Generate PDF | `Voelgoedevents.Queues.WorkerGeneratePdf` | `lib/voelgoedevents/queues/worker_generate_pdf.ex` |
-| Cleanup Seat Holds | `Voelgoedevents.Queues.WorkerCleanupHolds` | `lib/voelgoedevents/queues/worker_cleanup_holds.ex` |
-| Analytics Export | `Voelgoedevents.Queues.WorkerAnalyticsExport` | `lib/voelgoedevents/queues/worker_analytics_export.ex` |
+| Worker             | Module                                        | File                                                   |
+| ------------------ | --------------------------------------------- | ------------------------------------------------------ |
+| Send Email         | `Voelgoedevents.Queues.WorkerSendEmail`       | `lib/voelgoedevents/queues/worker_send_email.ex`       |
+| Generate PDF       | `Voelgoedevents.Queues.WorkerGeneratePdf`     | `lib/voelgoedevents/queues/worker_generate_pdf.ex`     |
+| Cleanup Seat Holds | `Voelgoedevents.Queues.WorkerCleanupHolds`    | `lib/voelgoedevents/queues/worker_cleanup_holds.ex`    |
+| Analytics Export   | `Voelgoedevents.Queues.WorkerAnalyticsExport` | `lib/voelgoedevents/queues/worker_analytics_export.ex` |
 
 ---
 
@@ -291,11 +317,11 @@ Stick to the above exactly.
 
 ## 🎯 9. Testing Modules
 
-| Type | Module |
-|------|--------|
-| Data case | `Voelgoedevents.DataCase` |
-| Web case | `VoelgoedeventsWeb.ConnCase` |
-| LiveView tests | `Phoenix.LiveViewTest` |
+| Type           | Module                       |
+| -------------- | ---------------------------- |
+| Data case      | `Voelgoedevents.DataCase`    |
+| Web case       | `VoelgoedeventsWeb.ConnCase` |
+| LiveView tests | `Phoenix.LiveViewTest`       |
 
 ---
 
@@ -303,36 +329,36 @@ Stick to the above exactly.
 
 ### Supervision Tree Modules
 
-| Component | Module | File |
-|-----------|--------|------|
-| Root Supervisor | `Voelgoedevents.Supervisor` | `lib/voelgoedevents/supervisor.ex` |
-| Event Supervisor | `Voelgoedevents.Supervisor.EventSupervisor` | `lib/voelgoedevents/supervisor/event_supervisor.ex` |
-| Checkout Supervisor | `Voelgoedevents.Supervisor.CheckoutSupervisor` | `lib/voelgoedevents/supervisor/checkout_supervisor.ex` |
-| Hold Supervisor | `Voelgoedevents.Supervisor.HoldSupervisor` | `lib/voelgoedevents/supervisor/hold_supervisor.ex` |
+| Component            | Module                                          | File                                                    |
+| -------------------- | ----------------------------------------------- | ------------------------------------------------------- |
+| Root Supervisor      | `Voelgoedevents.Supervisor`                     | `lib/voelgoedevents/supervisor.ex`                      |
+| Event Supervisor     | `Voelgoedevents.Supervisor.EventSupervisor`     | `lib/voelgoedevents/supervisor/event_supervisor.ex`     |
+| Checkout Supervisor  | `Voelgoedevents.Supervisor.CheckoutSupervisor`  | `lib/voelgoedevents/supervisor/checkout_supervisor.ex`  |
+| Hold Supervisor      | `Voelgoedevents.Supervisor.HoldSupervisor`      | `lib/voelgoedevents/supervisor/hold_supervisor.ex`      |
 | Analytics Supervisor | `Voelgoedevents.Supervisor.AnalyticsSupervisor` | `lib/voelgoedevents/supervisor/analytics_supervisor.ex` |
 
 ### Actor Modules
 
-| Actor | Module | File | Restart Strategy |
-|-------|--------|------|------------------|
-| EventServer | `Voelgoedevents.Actors.EventServer` | `lib/voelgoedevents/actors/event_server.ex` | `:permanent` |
-| CheckoutSession | `Voelgoedevents.Actors.CheckoutSession` | `lib/voelgoedevents/actors/checkout_session.ex` | `:transient` |
-| HoldMonitor | `Voelgoedevents.Actors.HoldMonitor` | `lib/voelgoedevents/actors/hold_monitor.ex` | `:permanent` |
-| EventMonitor | `Voelgoedevents.Actors.EventMonitor` | `lib/voelgoedevents/actors/event_monitor.ex` | `:permanent` |
+| Actor           | Module                                  | File                                            | Restart Strategy |
+| --------------- | --------------------------------------- | ----------------------------------------------- | ---------------- |
+| EventServer     | `Voelgoedevents.Actors.EventServer`     | `lib/voelgoedevents/actors/event_server.ex`     | `:permanent`     |
+| CheckoutSession | `Voelgoedevents.Actors.CheckoutSession` | `lib/voelgoedevents/actors/checkout_session.ex` | `:transient`     |
+| HoldMonitor     | `Voelgoedevents.Actors.HoldMonitor`     | `lib/voelgoedevents/actors/hold_monitor.ex`     | `:permanent`     |
+| EventMonitor    | `Voelgoedevents.Actors.EventMonitor`    | `lib/voelgoedevents/actors/event_monitor.ex`    | `:permanent`     |
 
 ### Cache Singletons
 
-| Cache | Module | File |
-|-------|--------|------|
-| Occupancy Cache | `Voelgoedevents.Cache.OccupancyCache` | `lib/voelgoedevents/cache/occupancy_cache.ex` |
+| Cache              | Module                                  | File                                             |
+| ------------------ | --------------------------------------- | ------------------------------------------------ |
+| Occupancy Cache    | `Voelgoedevents.Cache.OccupancyCache`   | `lib/voelgoedevents/cache/occupancy_cache.ex`    |
 | Recent Scans Cache | `Voelgoedevents.Cache.RecentScansCache` | `lib/voelgoedevents/cache/recent_scans_cache.ex` |
-| Pricing Cache | `Voelgoedevents.Cache.PricingCache` | `lib/voelgoedevents/cache/pricing_cache.ex` |
+| Pricing Cache      | `Voelgoedevents.Cache.PricingCache`     | `lib/voelgoedevents/cache/pricing_cache.ex`      |
 
 ### Registry Modules
 
-| Registry | Module | Type |
-|----------|--------|------|
-| Main Registry | `Voelgoedevents.Registry` | `:unique` |
+| Registry           | Module                             | Type         |
+| ------------------ | ---------------------------------- | ------------ |
+| Main Registry      | `Voelgoedevents.Registry`          | `:unique`    |
 | Broadcast Registry | `Voelgoedevents.BroadcastRegistry` | `:duplicate` |
 
 ---
@@ -347,13 +373,13 @@ Stick to the above exactly.
 # When state changes:
 1. Write to Redis (system of record)
    Redix.command(Voelgoedevents.Redis, ["SET", key, value])
-   
+
 2. Update ETS (L1 cache)
    :ets.insert(:occupancy_cache, {key, value})
-   
+
 3. Update process memory (L2 cache)
    state = %{state | occupancy: value}
-   
+
 4. Broadcast via PubSub
    Phoenix.PubSub.broadcast(Voelgoedevents.PubSub, topic, message)
 ```
@@ -368,7 +394,7 @@ def init({event_id, org_id}) do
   case load_state_from_redis(event_id, org_id) do
     {:ok, occupancy} ->
       {:ok, %{occupancy: occupancy}, {:continue, :schedule_refresh}}
-    
+
     # Fallback to DB (heavy)
     {:error, :redis_empty} ->
       occupancy = rebuild_from_db(event_id, org_id)
@@ -473,11 +499,52 @@ Voelgoedevents.Caching.OccupancyCache
 
 ---
 
-## 🚀 14. Deployment Checklist for AI Agents
+## 🚀 16. Deployment Checklist for AI Agents
 
 Before implementing ANY feature:
 
-- [ ] Verify module path exists in this document
+---
+
+## 🛠️ 15. Infrastructure & Support Modules (Verified)
+
+### 🏗️ Infrastructure Layer
+
+| Module              | File                                            | Purpose                                                 |
+| ------------------- | ----------------------------------------------- | ------------------------------------------------------- | -------------------- |
+| **Redis**           | `Voelgoedevents.Infrastructure.Redis`           | `lib/voelgoedevents/infrastructure/redis.ex`            | Redis client wrapper |
+| **CircuitBreaker**  | `Voelgoedevents.Infrastructure.CircuitBreaker`  | `lib/voelgoedevents/infrastructure/circuit_breaker.ex`  | Resilience wrapper   |
+| **DistributedLock** | `Voelgoedevents.Infrastructure.DistributedLock` | `lib/voelgoedevents/infrastructure/distributed_lock.ex` | DLM implementation   |
+| **RepoPoolConfig**  | `Voelgoedevents.Infrastructure.RepoPoolConfig`  | `lib/voelgoedevents/infrastructure/repo_pool_config.ex` | Dual-pool config     |
+
+### 🧪 Chaos & Observability
+
+| Module               | File                                            | Purpose                                                 |
+| -------------------- | ----------------------------------------------- | ------------------------------------------------------- | ---------------- |
+| **LatencyInjector**  | `Voelgoedevents.Chaos.LatencyInjector`          | `lib/voelgoedevents/chaos/latency_injector.ex`          | Chaos testing    |
+| **SloTracker**       | `Voelgoedevents.Observability.SloTracker`       | `lib/voelgoedevents/observability/slo_tracker.ex`       | SLO monitoring   |
+| **TelemetryHandler** | `Voelgoedevents.Observability.TelemetryHandler` | `lib/voelgoedevents/observability/telemetry_handler.ex` | Telemetry events |
+
+### 🔐 Auth Support
+
+| Module            | File                                |
+| ----------------- | ----------------------------------- | ------------------------------------------- |
+| **AshAuth**       | `Voelgoedevents.Auth.AshAuth`       | `lib/voelgoedevents/auth/ash_auth.ex`       |
+| **PipelinePlugs** | `Voelgoedevents.Auth.PipelinePlugs` | `lib/voelgoedevents/auth/pipeline_plugs.ex` |
+| **UserTokens**    | `Voelgoedevents.Auth.UserTokens`    | `lib/voelgoedevents/auth/user_tokens.ex`    |
+
+### 🧠 Domain Logic Support
+
+| Category          | Module                                        | File                                                  |
+| ----------------- | --------------------------------------------- | ----------------------------------------------------- |
+| **Finance**       | `Voelgoedevents.Finance.SettlementCalculator` | `lib/voelgoedevents/finance/settlement_calculator.ex` |
+| **Notifications** | `Voelgoedevents.Notifications.Dispatcher`     | `lib/voelgoedevents/notifications/dispatcher.ex`      |
+| **Pricing**       | `Voelgoedevents.Pricing.PriceCalculator`      | `lib/voelgoedevents/pricing/price_calculator.ex`      |
+| **Search**        | `Voelgoedevents.Search.SearchEngine`          | `lib/voelgoedevents/search/search_engine.ex`          |
+| **Uploads**       | `Voelgoedevents.Uploads.UploadConfig`         | `lib/voelgoedevents/uploads/upload_config.ex`         |
+| **I18n**          | `Voelgoedevents.I18n.Translator`              | `lib/voelgoedevents/i18n/translator.ex`               |
+
+---
+
 - [ ] Confirm file naming matches (snake_case)
 - [ ] Check Ash domain is correct (`:domain_name`)
 - [ ] Ensure multi-tenancy (`organization_id`)
@@ -490,11 +557,12 @@ Before implementing ANY feature:
 
 ---
 
-## ✅ Final Validation
+## ✅ 17. Final Validation
 
 **This document is the SINGLE SOURCE OF TRUTH.**
 
 If an AI agent or engineer:
+
 1. Uses a module name NOT in this document → ❌ REJECT
 2. Creates a folder structure NOT in this document → ❌ REJECT
 3. Invents helper/service modules → ❌ REJECT
@@ -506,5 +574,5 @@ If an AI agent or engineer:
 ---
 
 **Last Updated:** 2025-11-26  
-**Status:** AUTHORITATIVE - All paths verified against actual codebase  
+**Status:** AUTHORITATIVE - All paths verified against actual codebase. Phase 1 Foundation Complete. Structural scaffolding for Chaos/Observability is complete.  
 **Accuracy:** 100% - No hallucinated modules or paths

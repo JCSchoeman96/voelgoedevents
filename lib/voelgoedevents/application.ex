@@ -26,21 +26,32 @@ defmodule Voelgoedevents.Application do
 
       # 2. Redis Connection (The "Tank" Engine)
       Voelgoedevents.Infrastructure.Redis,
+      Voelgoedevents.Infrastructure.CircuitBreaker,
 
-      # 3. Process Registries (For GenServer Actors)
+      # 3. Observability Layer
+      Voelgoedevents.Observability.SLOTracker,
+
+      # 4. Process Registries (For GenServer Actors)
       {Registry, keys: :unique, name: Voelgoedevents.Registry},         # For Actors
       {Registry, keys: :duplicate, name: Voelgoedevents.BroadcastRegistry}, # For PubSub topics
 
-      # 4. Background Jobs
+      # 5. Background Jobs
       {Oban, Application.fetch_env!(:voelgoedevents, Oban)},
 
-      # 5. Web Endpoint (Start LAST)
+      # 6. Web Endpoint (Start LAST)
       VoelgoedeventsWeb.Endpoint
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Voelgoedevents.Supervisor]
-    Supervisor.start_link(children, opts)
+
+    # Start the supervisor
+    result = Supervisor.start_link(children, opts)
+
+    # Attach telemetry handlers after supervisor is running
+    Voelgoedevents.Observability.TelemetryHandler.setup()
+
+    result
   end
 end

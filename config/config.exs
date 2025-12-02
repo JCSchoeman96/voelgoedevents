@@ -20,12 +20,18 @@ config :voelgoedevents,
 
   # --- OBAN CONFIG ---
 config :voelgoedevents, Oban,
-  repo: Voelgoedevents.Repo,
+  repo: Voelgoedevents.ObanRepo,
   plugins: [Oban.Plugins.Pruner],
   queues: [default: 10, mailers: 20, pdf_generation: 5]
 
 # --- REDIS URL (Default for Dev) ---
 config :voelgoedevents, :redis_url, "redis://localhost:6379"
+
+# --- CIRCUIT BREAKER CONFIG ---
+config :voelgoedevents, Voelgoedevents.Infrastructure.CircuitBreaker,
+  open_failure_count: 5,
+  reset_timeout_ms: 60_000
+
 
 # --- WEB ENDPOINT ---
 config :voelgoedevents, VoelgoedeventsWeb.Endpoint,

@@ -17,6 +17,11 @@ defmodule Voelgoedevents.Ash.Resources.Finance.Ledger do
   attributes do
     uuid_primary_key :id
 
+    attribute :organization_id, :uuid do
+      allow_nil? false
+      public? true
+    end
+
     # ✅ CHANGED: Logic fix. A Ledger is a container.
     attribute :name, :string do
       allow_nil? false
@@ -33,6 +38,12 @@ defmodule Voelgoedevents.Ash.Resources.Finance.Ledger do
     attribute :active, :boolean, default: true
 
     timestamps()
+  end
+
+  relationships do
+    belongs_to :organization, Voelgoedevents.Ash.Resources.Accounts.Organization do
+      allow_nil? false
+    end
   end
 
   actions do

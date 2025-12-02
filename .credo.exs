@@ -19,7 +19,8 @@
         {Credo.Check.Design.TagTODO, []},
 
         {Credo.Check.Readability.AliasOrder, []},
-        {Credo.Check.Readability.FunctionDocs, [enabled: true, only: [:public_functions]]},
+        {Credo.Check.Readability.FunctionDocs,
+         [enabled: true, only: [:public_functions, :private_functions]]},
         {Credo.Check.Readability.LargeNumbers, []},
         {Credo.Check.Readability.MaxLineLength, [priority: :low, max_length: 120]},
         {Credo.Check.Readability.ModuleDoc, [enabled: true]},

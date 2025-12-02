@@ -26,7 +26,14 @@ defmodule Voelgoedevents.MixProject do
 
   def cli do
     [
-      preferred_envs: [precommit: :test]
+      preferred_envs: [
+        precommit: :test,
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test,
+        "coveralls.github": :test
+      ]
     ]
   end
 
@@ -91,6 +98,7 @@ defmodule Voelgoedevents.MixProject do
       {:telemetry_poller, "~> 1.0"},
 
       # --- DEV TOOLS ---
+      {:excoveralls, "~> 0.18", only: :test},
       {:igniter, "~> 0.3", only: [:dev, :test]},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},

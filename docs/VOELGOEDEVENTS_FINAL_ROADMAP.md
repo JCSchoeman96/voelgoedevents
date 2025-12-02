@@ -3,7 +3,8 @@
 **Document Version:** 7.1 FINAL CANONICAL (Refinement Update)  
 **Date:** December 2, 2025  
 **Author:** VoelgoedEvents Planning & Coding Agent  
-**Purpose:** TOON-consumable, DRY, fully reference-linked implementation roadmap  
+**Purpose:** TOON-consumable, DRY, fully reference-linked implementation roadmap
+**Companion Docs:** [PRODUCT_VISION.md](PRODUCT_VISION.md) for market fit and differentiators; [MVP_SCOPE.md](MVP_SCOPE.md) for what ships in Phases 0–7
 **Compliance:** `/docs/AGENTS.md`, `/docs/INDEX.md`, Standard Ash Layout, TOON micro-prompt standards
 
 ---

@@ -27,6 +27,7 @@ defmodule Voelgoedevents.Application do
       # 2. Redis Connection (The "Tank" Engine)
       Voelgoedevents.Infrastructure.Redis,
       Voelgoedevents.Infrastructure.CircuitBreaker,
+      Voelgoedevents.Infrastructure.EtsRegistry,
 
       # 3. Observability Layer
       Voelgoedevents.Observability.SLOTracker,

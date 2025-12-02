@@ -22,8 +22,16 @@ end
 
 # Redis Configuration (All Environments)
 # DLM and caching strategy require Redis to be available
+redis_pool_size =
+  System.get_env("REDIS_POOL_SIZE")
+  |> case do
+    nil -> 10
+    value -> String.to_integer(value)
+  end
+
 config :voelgoedevents,
-  redis_url: System.get_env("REDIS_URL") || "redis://localhost:6379"
+  redis_url: System.get_env("REDIS_URL") || "redis://localhost:6379",
+  redis_pool_size: redis_pool_size
 
 config :honeybadger,
   api_key: System.get_env("HONEYBADGER_API_KEY"),

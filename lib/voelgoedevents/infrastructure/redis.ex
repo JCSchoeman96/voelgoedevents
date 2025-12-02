@@ -1,6 +1,6 @@
 defmodule Voelgoedevents.Infrastructure.Redis do
   @moduledoc """
-  Central wrapper for Redis operations (Redix).
+  Central wrapper for Redis operations (Redix pool).
   Used for: Seat Maps, Rate Limiting, and Ephemeral State.
   """
 
@@ -10,10 +10,11 @@ defmodule Voelgoedevents.Infrastructure.Redis do
   def child_spec(_opts) do
     # Pulls REDIS_URL from runtime config
     url = Application.fetch_env!(:voelgoedevents, :redis_url)
-    
+    pool_size = Application.get_env(:voelgoedevents, :redis_pool_size, 10)
+
     %{
       id: Redix,
-      start: {Redix, :start_link, [url, [name: @name]]}
+      start: {Redix, :start_link, [url, [name: @name, pool_size: pool_size]]}
     }
   end
 

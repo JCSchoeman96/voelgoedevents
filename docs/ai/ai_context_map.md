@@ -63,12 +63,13 @@ Below is the full authoritative list.
 
 ### 🔐 ACCOUNTS DOMAIN (`:accounts`)
 
-| Resource         | Module                                                    | Atom            | File                                                             |
-| ---------------- | --------------------------------------------------------- | --------------- | ---------------------------------------------------------------- |
+| Resource         | Module                                                    | Atom            | File                                            |
+| ---------------- | --------------------------------------------------------- | --------------- | ------------------------------------------------------- |
+| **Token**        | `Voelgoedevents.Ash.Resources.Accounts.Token`             | `:token`        | `lib/voelgoedevents/ash/resources/accounts/token.ex`             |
 | **User**         | `Voelgoedevents.Ash.Resources.Accounts.User`              | `:user`         | `lib/voelgoedevents/ash/resources/accounts/user.ex`              |
 | **Role**         | `Voelgoedevents.Ash.Resources.Accounts.Role`              | `:role`         | `lib/voelgoedevents/ash/resources/accounts/role.ex`              |
 | **Membership**   | `Voelgoedevents.Ash.Resources.Accounts.Membership`        | `:membership`   | `lib/voelgoedevents/ash/resources/accounts/membership.ex`        |
-| **Organization** | `Voelgoedevents.Ash.Resources.Accounts.Organization` | `:organization` | `lib/voelgoedevents/ash/resources/accounts/organization.ex` |
+| **Organization** | `Voelgoedevents.Ash.Resources.Accounts.Organization`      | `:organization` | `lib/voelgoedevents/ash/resources/accounts/organization.ex`      |
 
 **Domain File:**
 
@@ -78,13 +79,28 @@ lib/voelgoedevents/ash/domains/accounts_domain.ex
 
 ---
 
+### 🔑 ACCESS CONTROL DOMAIN (`:access_control`)
+
+| Resource   | Module                                                       | Atom       | File                                                       |
+| ---------- | ------------------------------------------------------------ | ---------- | ---------------------------------------------------------- |
+| **ApiKey** | `Voelgoedevents.Ash.Resources.AccessControl.ApiKey`          | `:api_key` | `lib/voelgoedevents/ash/resources/access_control/api_key.ex` |
+
+**Domain File:**
+
+```
+lib/voelgoedevents/ash/domains/access_control_domain.ex
+```
+
+---
+
 ### 🎟️ TICKETING DOMAIN (`:ticketing`)
 
-| Resource        | Module                                               | Atom            | File                                                         |
-| --------------- | ---------------------------------------------------- | --------------- | ------------------------------------------------------------ |
-| **Ticket**      | `Voelgoedevents.Ash.Resources.Ticketing.Ticket`      | `:ticket`       | `lib/voelgoedevents/ash/resources/ticketing/ticket.ex`       |
-| **PricingRule** | `Voelgoedevents.Ash.Resources.Ticketing.PricingRule` | `:pricing_rule` | `lib/voelgoedevents/ash/resources/ticketing/pricing_rule.ex` |
-| **Coupon**      | `Voelgoedevents.Ash.Resources.Ticketing.Coupon`      | `:coupon`       | `lib/voelgoedevents/ash/resources/ticketing/coupon.ex`       |
+| Resource        | Module                                                 | Atom             | File                                                |
+| --------------- | ------------------------------------------------------ | ---------------- | --------------------------------------------------- |
+| **Ticket**      | `Voelgoedevents.Ash.Resources.Ticketing.Ticket`        | `:ticket`        | `lib/voelgoedevents/ash/resources/ticketing/ticket.ex`        |
+| **PricingRule** | `Voelgoedevents.Ash.Resources.Ticketing.PricingRule`   | `:pricing_rule`  | `lib/voelgoedevents/ash/resources/ticketing/pricing_rule.ex` |
+| **Coupon**      | `Voelgoedevents.Ash.Resources.Ticketing.Coupon`        | `:coupon`        | `lib/voelgoedevents/ash/resources/ticketing/coupon.ex`        |
+| **OrderState**  | `Voelgoedevents.Ash.Resources.Ticketing.OrderState`    | `:order_state`   | `lib/voelgoedevents/ash/resources/ticketing/order_state.ex`   |
 
 **Domain File:**
 
@@ -127,8 +143,8 @@ lib/voelgoedevents/ash/domains/events_domain.ex
 
 ### 💳 PAYMENTS DOMAIN (`:payments`)
 
-| Resource          | Module                                                | Atom              | File                                                          |
-| ----------------- | ----------------------------------------------------- | ----------------- | ------------------------------------------------------------- |
+| Resource          | Module                                                | Atom              | File                                |
+| ----------------- | ----------------------------------------------------- | ----------------- | ----------------------------------- |
 | **Transaction**   | `Voelgoedevents.Ash.Resources.Payments.Transaction`   | `:transaction`    | `lib/voelgoedevents/ash/resources/payments/transaction.ex`    |
 | **Refund**        | `Voelgoedevents.Ash.Resources.Payments.Refund`        | `:refund`         | `lib/voelgoedevents/ash/resources/payments/refund.ex`         |
 | **LedgerAccount** | `Voelgoedevents.Ash.Resources.Payments.LedgerAccount` | `:ledger_account` | `lib/voelgoedevents/ash/resources/payments/ledger_account.ex` |
@@ -138,6 +154,20 @@ lib/voelgoedevents/ash/domains/events_domain.ex
 
 ```
 lib/voelgoedevents/ash/domains/payments_domain.ex
+```
+
+---
+
+### 🧾 FINANCE DOMAIN (`:finance`)
+
+| Resource | Module                                            | Atom       | File                                               |
+| -------- | ------------------------------------------------- | ---------- | -------------------------------------------------- |
+| **Ledger** | `Voelgoedevents.Ash.Resources.Finance.Ledger`   | `:ledger`  | `lib/voelgoedevents/ash/resources/finance/ledger.ex` |
+
+**Domain File:**
+
+```
+lib/voelgoedevents/ash/domains/finance_domain.ex
 ```
 
 ---

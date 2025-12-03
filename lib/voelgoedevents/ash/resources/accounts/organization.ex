@@ -1,6 +1,7 @@
 defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
   @moduledoc "Ash resource: Organization/tenant."
 
+  alias Ash.Changeset
   alias Voelgoedevents.Ash.Policies.PlatformPolicy
 
   use Ash.Resource,
@@ -34,11 +35,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
       default :active
     end
 
-    attribute :settings, :map do
-      allow_nil? false
-      default %{}
-    end
-
     timestamps()
   end
 
@@ -56,6 +52,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
       source_attribute_on_join_resource :organization_id
       destination_attribute_on_join_resource :user_id
     end
+
+    has_one :settings, Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
+      destination_attribute :organization_id
+    end
   end
 
   actions do
@@ -63,11 +63,22 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
 
     create :create do
       primary? true
-      accept [:name, :slug, :status, :settings]
+      require_actor? true
+      accept [:name, :slug, :status]
+
+      argument :settings, :map, allow_nil?: true
+
+      change &__MODULE__.ensure_settings/1
     end
 
     update :update do
-      accept [:name, :slug, :status, :settings]
+      require_actor? true
+      accept [:name, :slug, :status]
+
+      argument :settings, :map, allow_nil?: true
+
+      change load(:settings)
+      change &__MODULE__.update_settings/1
     end
 
     update :archive do
@@ -89,6 +100,32 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
 
     policy action(:archive) do
       authorize_if always()
+    end
+  end
+
+  def ensure_settings(changeset) do
+    settings_attrs = Changeset.get_argument(changeset, :settings) || %{}
+
+    Changeset.manage_relationship(changeset, :settings, settings_attrs, type: :create)
+  end
+
+  def update_settings(changeset) do
+    case Changeset.fetch_argument(changeset, :settings) do
+      {:ok, attrs} ->
+        attrs_with_id =
+          case Changeset.get_data(changeset, :settings) do
+            %{id: id} -> Map.put(attrs, :id, id)
+            _ -> attrs
+          end
+
+        Changeset.manage_relationship(changeset, :settings, attrs_with_id,
+          type: :append_and_remove,
+          on_lookup: :update,
+          on_no_match: :create
+        )
+
+      :error ->
+        changeset
     end
   end
 end

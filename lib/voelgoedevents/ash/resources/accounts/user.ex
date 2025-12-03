@@ -110,6 +110,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
   validations do
     validate present([:email, :first_name, :last_name, :status])
 
+    validate {Voelgoedevents.Ash.Validations.PasswordPolicy, field: :password}
+
     validate fn changeset ->
       if changeset.action.type == :update and
            Changeset.changing_attribute?(changeset, :is_platform_admin) and

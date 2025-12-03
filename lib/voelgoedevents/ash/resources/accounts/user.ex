@@ -1,10 +1,11 @@
 defmodule Voelgoedevents.Ash.Resources.Accounts.User do
   @moduledoc "Ash resource: User accounts."
 
-  alias Ash.{Changeset, Query}
+  alias Ash.{Changeset, Context, Query}
   alias AshAuthentication.Info
   alias Voelgoedevents.Auth.ConfirmationSender
   alias Voelgoedevents.Ash.Policies.PlatformPolicy
+  alias Voelgoedevents.Caching.MembershipCache
 
   require PlatformPolicy
 
@@ -180,6 +181,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
       change &set_platform_admin_from_argument/2
       change &audit_platform_admin_change/2
+      change after_action(&__MODULE__.invalidate_membership_cache_on_deactivate/3)
     end
 
     action :resend_confirmation do
@@ -268,5 +270,33 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
       {:ok, user}
     end)
+  end
+
+  def invalidate_membership_cache_on_deactivate(changeset, user, context) do
+    if disabled?(changeset) do
+      context
+      |> Context.to_opts()
+      |> Keyword.put_new(:actor, context.actor)
+      |> invalidate_memberships(user)
+    end
+
+    {:ok, user}
+  end
+
+  defp invalidate_memberships(opts, user) do
+    case Ash.load(user, :memberships, opts) do
+      {:ok, %{memberships: memberships}} when is_list(memberships) ->
+        Enum.each(memberships, fn membership ->
+          MembershipCache.invalidate(membership.user_id, membership.organization_id)
+        end)
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp disabled?(changeset) do
+    Changeset.changing_attribute?(changeset, :status) and
+      Changeset.get_attribute(changeset, :status) == :disabled
   end
 end

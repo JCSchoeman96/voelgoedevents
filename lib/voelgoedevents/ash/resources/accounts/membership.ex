@@ -2,7 +2,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
   @moduledoc "Ash resource: Membership linking users to organizations."
 
   alias Ash.Changeset
-  alias Voelgoedevents.Auth.RbacCache
+  alias Voelgoedevents.Caching.MembershipCache
   alias Voelgoedevents.Ash.Policies.PlatformPolicy
 
   use Ash.Resource,
@@ -83,14 +83,14 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
 
       change &__MODULE__.maybe_set_invited_at/1
       change &__MODULE__.maybe_set_joined_at/1
-      change after_action(&__MODULE__.refresh_rbac_cache/3)
+      change after_action(&__MODULE__.invalidate_membership_cache/3)
     end
 
     update :update do
       accept [:role_id, :status, :invited_at, :joined_at]
 
       change &__MODULE__.maybe_set_joined_at/1
-      change after_action(&__MODULE__.refresh_rbac_cache/3)
+      change after_action(&__MODULE__.invalidate_membership_cache/3)
     end
 
     create :invite do
@@ -98,7 +98,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
 
       change set_attribute(:status, :inactive)
       change &__MODULE__.set_invited_at/1
-      change after_action(&__MODULE__.clear_rbac_cache/3)
+      change after_action(&__MODULE__.invalidate_membership_cache/3)
     end
 
     update :join do
@@ -106,11 +106,11 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
 
       change set_attribute(:status, :active)
       change &__MODULE__.set_joined_at/1
-      change after_action(&__MODULE__.refresh_rbac_cache/3)
+      change after_action(&__MODULE__.invalidate_membership_cache/3)
     end
 
     destroy :remove do
-      change after_action(&__MODULE__.clear_rbac_cache/3)
+      change after_action(&__MODULE__.invalidate_membership_cache/3)
     end
   end
 
@@ -166,13 +166,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     Changeset.set_attribute(changeset, :joined_at, DateTime.utc_now())
   end
 
-  def refresh_rbac_cache(_changeset, membership, _context) do
-    RbacCache.refresh(membership)
-    {:ok, membership}
-  end
-
-  def clear_rbac_cache(_changeset, membership, _context) do
-    RbacCache.delete(membership.user_id, membership.organization_id)
+  def invalidate_membership_cache(_changeset, membership, _context) do
+    MembershipCache.invalidate(membership.user_id, membership.organization_id)
     {:ok, membership}
   end
 end

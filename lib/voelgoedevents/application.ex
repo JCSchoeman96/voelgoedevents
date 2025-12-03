@@ -15,6 +15,8 @@ defmodule Voelgoedevents.Application do
 
   @impl true
   def start(_type, _args) do
+    :ok = Voelgoedevents.Caching.MembershipCache.ensure_table()
+
     children = [
       VoelgoedeventsWeb.Telemetry,
 

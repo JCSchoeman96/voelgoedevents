@@ -10,7 +10,7 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentOrgPlug do
   import Plug.Conn
 
   alias Voelgoedevents.Ash.Resources.Accounts.User
-  alias Voelgoedevents.Auth.RbacCache
+  alias Voelgoedevents.Caching.MembershipCache
 
   def init(opts), do: opts
 
@@ -54,8 +54,11 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentOrgPlug do
   defp active_member?(%User{id: user_id}, organization_id), do: check_membership_cache(user_id, organization_id)
 
   defp check_membership_cache(user_id, organization_id) do
-    case RbacCache.fetch_role(user_id, organization_id, actor: %{id: user_id, organization_id: organization_id}) do
-      {:ok, _role} -> true
+    case MembershipCache.fetch_role(user_id, organization_id,
+           actor: %{id: user_id, organization_id: organization_id}
+         ) do
+      {:ok, role} when not is_nil(role) -> true
+      {:ok, nil} -> false
       {:error, _reason} -> false
     end
   end

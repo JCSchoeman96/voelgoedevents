@@ -15,7 +15,8 @@ config :voelgoedevents,
     Voelgoedevents.Ash.Domains.AnalyticsDomain,
     Voelgoedevents.Ash.Domains.FinanceDomain,
     Voelgoedevents.Ash.Domains.AccessControlDomain,
-    Voelgoedevents.Ash.Domains.MonetizationDomain
+    Voelgoedevents.Ash.Domains.MonetizationDomain,
+    Voelgoedevents.Ash.Domains.AuditDomain
   ]
 
   # --- OBAN CONFIG ---

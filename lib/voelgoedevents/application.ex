@@ -13,10 +13,13 @@ defmodule Voelgoedevents.Application do
     :ok
   end
 
-@impl true
+  @impl true
   def start(_type, _args) do
     children = [
       VoelgoedeventsWeb.Telemetry,
+
+      # 0. Hot-layer ETS cache tables (must start before dependants)
+      Voelgoedevents.Infrastructure.EtsRegistry,
 
       # 1. Database & Infra (Start these FIRST)
       Voelgoedevents.Repo,
@@ -27,7 +30,6 @@ defmodule Voelgoedevents.Application do
       # 2. Redis Connection (The "Tank" Engine)
       Voelgoedevents.Infrastructure.Redis,
       Voelgoedevents.Infrastructure.CircuitBreaker,
-      Voelgoedevents.Infrastructure.EtsRegistry,
 
       # 3. Observability Layer
       Voelgoedevents.Observability.SLOTracker,

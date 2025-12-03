@@ -23,6 +23,8 @@ Use the links below to find the authoritative source for any topic.
 | [**MASTER_BLUEPRINT.md**](MASTER_BLUEPRINT.md)                         | **The Vision.** High-level architecture, product goals, and system design. |
 | [**PROJECT_GUIDE.md**](PROJECT_GUIDE.md)                               | **The Handbook.** How to run, build, and contribute to the project.        |
 | [**VOELGOEDEVENTS_FINAL_ROADMAP.md**](VOELGOEDEVENTS_FINAL_ROADMAP.md) | **The Plan.** Detailed execution roadmap and phase tracking.               |
+| [**PRODUCT_VISION.md**](PRODUCT_VISION.md)                             | **Product North Star.** Customer outcomes, positioning, and success metrics. |
+| [**MVP_SCOPE.md**](MVP_SCOPE.md)                                       | **Scope Guardrails.** MVP boundaries, assumptions, and exclusions.          |
 
 ---
 
@@ -44,6 +46,11 @@ Use the links below to find the authoritative source for any topic.
 - [**Eventing Model**](architecture/05_eventing_model.md)
 - [**Jobs & Async (Oban)**](architecture/06_jobs_and_async.md)
 - [**Security & Auth**](architecture/07_security_and_auth.md)
+- [**CI/CD & Deployment**](architecture/08_cicd_and_deployment.md)
+- [**Scaling & Resilience**](architecture/09_scaling_and_resilience.md)
+- [**OTP Architecture**](architecture/10_otp_architecture.md)
+- [**Ash-Native Metaprogramming**](architecture/11_ash-native_metaprogramming.md)
+- [**Type Safety & Contracts**](architecture/12_type_safety_contracts.md)
 
 ---
 
@@ -68,7 +75,23 @@ Use the links below to find the authoritative source for any topic.
 
 ---
 
-## 4. AI Agent Governance
+## 4. Platform Delivery & Project Ops
+
+**Purpose:** Execution playbooks for running the project and releases.
+
+| Document                                    | Description                                              |
+| ------------------------------------------- | -------------------------------------------------------- |
+| [**PROJECT_GUIDE.md**](PROJECT_GUIDE.md)    | **Playbook.** Delivery phases, TOON workflows, and KPIs. |
+| [**PROJECT README**](project/README.md)     | **Dev Start.** Quickstart for local development.         |
+| [**Environment Setup**](project/environment_setup.md) | **Setup.** Required tools and environment configuration. |
+| [**Release Process**](project/release_process.md)     | **Go-Live.** Steps for tagging and shipping releases.    |
+| [**Testing Strategy**](project/testing_strategy.md)   | **Quality.** Testing scope, coverage, and ownership.     |
+| [**Glossary**](project/glossary.md)                 | **Vocabulary.** Canonical terms and abbreviations.       |
+| [**Roadmap (Project)**](project/roadmap.md)          | **Timeline.** Ongoing milestones and deliverables.       |
+
+---
+
+## 5. AI Agent Governance
 
 **Purpose:** The most critical section for current execution flow. Defines the rules for TOON generation.
 
@@ -80,7 +103,35 @@ Use the links below to find the authoritative source for any topic.
 
 ---
 
-## 5. Technical & Style Guides
+## 6. APIs & Contracts
+
+**Purpose:** External and internal API specifications.
+
+| Document                                         | Description                                               |
+| ------------------------------------------------ | --------------------------------------------------------- |
+| [**Public API**](api/public_api.md)              | **External.** Public REST endpoints and usage.            |
+| [**Internal API**](api/internal_api.md)          | **Services.** Internal-facing contracts between slices.   |
+| [**Scanner API**](api/scanner_api.md)            | **Devices.** Endpoints and flows for scanner apps.        |
+| [**Webhook API**](api/webhook_api.md)            | **Events.** Outbound webhook formats and delivery rules.  |
+| [**Contracts Reference**](api/contracts_reference.md) | **Types.** Shared contract definitions and schemas.   |
+
+---
+
+## 7. Integrations
+
+**Purpose:** Guidance for connecting to external systems.
+
+| Document                                           | Description                                            |
+| -------------------------------------------------- | ------------------------------------------------------ |
+| [**Payment Providers**](integration/payment_providers.md) | **Payments.** Supported gateways and integration rules. |
+| [**CRM Integrations**](integration/crm_integrations.md)   | **CRM.** Data sync patterns and supported platforms.    |
+| [**Marketing & Analytics**](integration/marketing_analytics.md) | **Attribution.** Marketing data capture and flows. |
+| [**Exporting Data**](integration/exporting_data.md)       | **Data.** Export formats, schedules, and safeguards.    |
+| [**Webhook Delivery**](integration/webhook_delivery.md)   | **Delivery.** Retries, signatures, and failure modes.   |
+
+---
+
+## 8. Technical & Style Guides
 
 **Purpose:** Defines the quality standard for all code submissions.
 
@@ -100,7 +151,7 @@ Use the links below to find the authoritative source for any topic.
 
 ---
 
-## 6. Workflows
+## 9. Workflows
 
 **Purpose:** Orchestration of multi-step business processes.
 
@@ -110,5 +161,5 @@ Use the links below to find the authoritative source for any topic.
 
 ---
 
-**Last Updated:** 2025-12-02
+**Last Updated:** 2025-12-03
 **Status:** Canonical & Verified

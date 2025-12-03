@@ -16,8 +16,10 @@ defmodule VoelgoedeventsWeb.Router do
     plug :accepts, ["json"]
   end
 
-  pipeline :tenant_context do
-    plug VoelgoedeventsWeb.Plugs.SetTenant
+  pipeline :tenant_scope do
+    plug VoelgoedeventsWeb.Plugs.CurrentUserPlug
+    plug VoelgoedeventsWeb.Plugs.LoadTenant
+    plug VoelgoedeventsWeb.Plugs.CurrentOrgPlug
   end
 
   scope "/auth" do
@@ -36,8 +38,8 @@ defmodule VoelgoedeventsWeb.Router do
   end
 
   # Tenant-scoped routes (multi-tenancy enforcement)
-  scope "/t/:tenant_slug", VoelgoedeventsWeb do
-    pipe_through [:browser, :tenant_context]
+  scope "/t/:slug", VoelgoedeventsWeb do
+    pipe_through [:browser, :tenant_scope]
 
     # Checkout will be a LiveView
     live "/checkout", CheckoutLive, :show

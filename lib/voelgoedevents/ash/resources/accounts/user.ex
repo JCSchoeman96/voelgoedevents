@@ -2,6 +2,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
   @moduledoc "Ash resource: User accounts."
 
   alias Ash.{Changeset, Query}
+  alias AshAuthentication.Info
+  alias Voelgoedevents.Auth.ConfirmationSender
 
   use Ash.Resource,
     domain: Voelgoedevents.Ash.Domains.AccountsDomain,
@@ -15,6 +17,15 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
   end
 
   authentication do
+    add_ons do
+      confirmation :confirm do
+        monitor_fields [:email]
+        require_interaction? true
+        confirmed_at_field :confirmed_at
+        sender ConfirmationSender
+      end
+    end
+
     strategies do
       password :password do
         identity_field :email
@@ -135,6 +146,46 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
       require_actor? true
       accept [:first_name, :last_name, :status, :confirmed_at]
     end
+
+    action :resend_confirmation do
+      require_actor? false
+
+      argument :email, :string do
+        allow_nil? false
+        sensitive? true
+      end
+
+      run fn %{email: email}, context ->
+        opts = Ash.Context.to_opts(context)
+
+        with {:ok, [user]} <-
+               __MODULE__
+               |> Query.new()
+               |> Query.filter(email == ^email)
+               |> Ash.read(opts),
+             strategy <- Info.strategy!(__MODULE__, :confirm),
+             {:ok, token} <-
+               AshAuthentication.AddOn.Confirmation.confirmation_token(
+                 strategy,
+                 Changeset.new(user),
+                 user,
+                 opts
+               ) do
+          {sender, send_opts} = strategy.sender
+
+          send_opts
+          |> Keyword.put(:tenant, context.tenant)
+          |> Keyword.put(:changeset, Changeset.new(user))
+          |> then(&sender.send(user, token, &1))
+
+          {:ok, user}
+        else
+          {:ok, []} -> {:error, :not_found}
+          {:error, reason} -> {:error, reason}
+          :error -> {:error, :not_found}
+        end
+      end
+    end
   end
 
   policies do
@@ -144,6 +195,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
     policy action_type([:read, :update]) do
       authorize_if expr(exists(memberships, organization_id == actor(:organization_id)))
+    end
+
+    policy action([:confirm, :resend_confirmation]) do
+      authorize_if always()
     end
 
     default_policy :deny

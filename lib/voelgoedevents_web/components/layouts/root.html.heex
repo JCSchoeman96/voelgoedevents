@@ -31,6 +31,66 @@
     </script>
   </head>
   <body>
+    <%
+      conn_assigns =
+        case Map.get(assigns, :conn) do
+          %Plug.Conn{} = conn -> conn.assigns
+          _ -> %{}
+        end
+
+      impersonator_id = Map.get(conn_assigns, :impersonator_id)
+      impersonated_user = Map.get(conn_assigns, :current_user)
+
+      impersonator_name =
+        case Map.get(conn_assigns, :impersonator) do
+          %{name: name} when is_binary(name) and name != "" -> name
+          %{email: email} when is_binary(email) and email != "" -> email
+          _ when impersonator_id -> "User ##{impersonator_id}"
+          _ -> nil
+        end
+
+      impersonated_label =
+        case impersonated_user do
+          %{name: name} when is_binary(name) and name != "" -> name
+          %{email: email} when is_binary(email) and email != "" -> email
+          _ -> nil
+        end
+
+      impersonation_path =
+        case Map.get(conn_assigns, :current_organization) do
+          %{slug: slug} when is_binary(slug) -> ~p"/t/#{slug}/impersonation"
+          _ -> "/impersonation"
+        end
+    %>
+
+    <section
+      :if={impersonator_id && impersonated_user}
+      class="border-b border-warning/40 bg-warning text-warning-content"
+    >
+      <div
+        class="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8"
+      >
+        <div class="space-y-1">
+          <p class="text-xs font-semibold uppercase tracking-wide text-warning-content/90">
+            Impersonation active
+          </p>
+          <p class="text-sm leading-5">
+            Viewing the app as
+            <span class="font-semibold">{impersonated_label || "current user"}</span>
+            <span :if={impersonator_name} class="text-warning-content/80">
+              (started by {impersonator_name})
+            </span>
+          </p>
+          <p class="text-xs text-warning-content/80">
+            All actions will be performed as the impersonated user until you stop impersonating.
+          </p>
+        </div>
+        <.link href={impersonation_path} method="delete" class="btn btn-sm btn-error btn-outline">
+          Stop impersonating
+        </.link>
+      </div>
+    </section>
+
     {@inner_content}
   </body>
 </html>

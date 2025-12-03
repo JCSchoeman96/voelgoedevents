@@ -359,13 +359,7 @@ Stick to the above exactly.
 
 ### Supervision Tree Modules
 
-| Component            | Module                                          | File                                                    |
-| -------------------- | ----------------------------------------------- | ------------------------------------------------------- |
-| Root Supervisor      | `Voelgoedevents.Supervisor`                     | `lib/voelgoedevents/supervisor.ex`                      |
-| Event Supervisor     | `Voelgoedevents.Supervisor.EventSupervisor`     | `lib/voelgoedevents/supervisor/event_supervisor.ex`     |
-| Checkout Supervisor  | `Voelgoedevents.Supervisor.CheckoutSupervisor`  | `lib/voelgoedevents/supervisor/checkout_supervisor.ex`  |
-| Hold Supervisor      | `Voelgoedevents.Supervisor.HoldSupervisor`      | `lib/voelgoedevents/supervisor/hold_supervisor.ex`      |
-| Analytics Supervisor | `Voelgoedevents.Supervisor.AnalyticsSupervisor` | `lib/voelgoedevents/supervisor/analytics_supervisor.ex` |
+> **Current status:** No supervisor modules exist yet. The `lib/voelgoedevents/supervisors/` folder only contains a README placeholder.
 
 ### Actor Modules
 
@@ -378,11 +372,12 @@ Stick to the above exactly.
 
 ### Cache Singletons
 
-| Cache              | Module                                  | File                                             |
-| ------------------ | --------------------------------------- | ------------------------------------------------ |
-| Occupancy Cache    | `Voelgoedevents.Cache.OccupancyCache`   | `lib/voelgoedevents/cache/occupancy_cache.ex`    |
-| Recent Scans Cache | `Voelgoedevents.Cache.RecentScansCache` | `lib/voelgoedevents/cache/recent_scans_cache.ex` |
-| Pricing Cache      | `Voelgoedevents.Cache.PricingCache`     | `lib/voelgoedevents/cache/pricing_cache.ex`      |
+| Cache           | Module                                  | File                                               |
+| --------------- | --------------------------------------- | -------------------------------------------------- |
+| Seat Cache      | `Voelgoedevents.Caching.SeatCache`      | `lib/voelgoedevents/caching/seat_cache.ex`         |
+| Pricing Cache   | `Voelgoedevents.Caching.PricingCache`   | `lib/voelgoedevents/caching/pricing_cache.ex`      |
+| Occupancy Cache | `Voelgoedevents.Caching.OccupancyCache` | `lib/voelgoedevents/caching/occupancy_cache.ex`    |
+| Rate Limiter    | `Voelgoedevents.Caching.RateLimiter`    | `lib/voelgoedevents/caching/rate_limiter.ex`       |
 
 ### Registry Modules
 

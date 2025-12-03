@@ -1,0 +1,9 @@
+defmodule Voelgoedevents.Ash.Domains.AuditDomain do
+  @moduledoc "Ash domain for audit logging and compliance trails."
+
+  use Ash.Domain
+
+  resources do
+    resource Voelgoedevents.Ash.Resources.Audit.AuditLog
+  end
+end

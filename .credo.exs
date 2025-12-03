@@ -1,11 +1,13 @@
 %{
+  # Phases 1–9: keep Credo in report-only mode (CI uses --mute-exit-status) while focusing on
+  # the active backend slices. Re-enable full enforcement and broader scope in Phase 10.
   configs: [
     %{
       name: "default",
       strict: true,
       color: true,
       files: %{
-        included: ["lib/", "schemas/", "test/", "assets/", "priv/", "config/", "scanner_pwa/"],
+        included: ["lib/voelgoedevents/", "schemas/", "test/voelgoedevents/", "config/"],
         excluded: [~r"/_build/", ~r"/deps/", ~r"/node_modules/", ~r"/priv/static/"]
       },
       checks: [

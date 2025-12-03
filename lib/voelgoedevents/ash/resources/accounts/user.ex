@@ -114,20 +114,18 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
         allow_nil? false
       end
 
-      argument :role, :atom do
-        constraints one_of: [:owner, :admin, :staff, :scanner]
-        default :staff
+      argument :role_id, :uuid do
         allow_nil? false
       end
 
       change fn changeset, _context ->
         organization_id = Changeset.get_argument(changeset, :organization_id)
-        role = Changeset.get_argument(changeset, :role)
+        role_id = Changeset.get_argument(changeset, :role_id)
 
         Changeset.manage_relationship(
           changeset,
           :memberships,
-          [%{organization_id: organization_id, role: role}],
+          [%{organization_id: organization_id, role_id: role_id}],
           type: :create
         )
       end

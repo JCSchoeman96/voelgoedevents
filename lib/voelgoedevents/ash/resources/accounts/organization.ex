@@ -2,7 +2,11 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
   @moduledoc "Ash resource: Organization/tenant."
 
   alias Ash.Changeset
+  alias Ash.Context
+  alias Ash.Query
   alias Voelgoedevents.Ash.Policies.PlatformPolicy
+  alias Voelgoedevents.Ash.Resources.Accounts.Membership
+  alias Voelgoedevents.Caching.MembershipCache
 
   use Ash.Resource,
     domain: Voelgoedevents.Ash.Domains.AccountsDomain,
@@ -79,6 +83,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
 
       change load(:settings)
       change &__MODULE__.update_settings/1
+      change after_action(&__MODULE__.invalidate_membership_cache_on_suspend/3)
     end
 
     update :archive do
@@ -127,5 +132,36 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
       :error ->
         changeset
     end
+  end
+
+  def invalidate_membership_cache_on_suspend(changeset, organization, context) do
+    if suspended?(changeset) do
+      context
+      |> Context.to_opts()
+      |> Keyword.put_new(:actor, context.actor)
+      |> invalidate_memberships_for_org(organization.id)
+    end
+
+    {:ok, organization}
+  end
+
+  defp invalidate_memberships_for_org(opts, organization_id) do
+    Membership
+    |> Query.filter(organization_id == ^organization_id)
+    |> Ash.read(opts)
+    |> case do
+      {:ok, memberships} ->
+        Enum.each(memberships, fn membership ->
+          MembershipCache.invalidate(membership.user_id, membership.organization_id)
+        end)
+
+      {:error, _reason} ->
+        :ok
+    end
+  end
+
+  defp suspended?(changeset) do
+    Changeset.changing_attribute?(changeset, :status) and
+      Changeset.get_attribute(changeset, :status) == :suspended
   end
 end

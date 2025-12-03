@@ -1,4 +1,4 @@
-defmodule VoelgoedEvents.Ash.Resources.Ticketing.OrderState do
+defmodule Voelgoedevents.Ash.Resources.Ticketing.OrderState do
   @moduledoc """
   DOCS: Order State Machine Definition
   

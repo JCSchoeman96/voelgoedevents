@@ -8,6 +8,7 @@ defmodule Voelgoedevents.Ash.Domains.AccountsDomain do
     resource Voelgoedevents.Ash.Resources.Accounts.User
     resource Voelgoedevents.Ash.Resources.Accounts.Role
     resource Voelgoedevents.Ash.Resources.Accounts.Membership
+    resource Voelgoedevents.Ash.Resources.Accounts.Invitation
     resource Voelgoedevents.Ash.Resources.Accounts.Organization
     resource Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings
   end

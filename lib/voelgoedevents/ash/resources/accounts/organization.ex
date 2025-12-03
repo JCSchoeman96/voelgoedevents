@@ -1,10 +1,14 @@
 defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
   @moduledoc "Ash resource: Organization/tenant."
 
+  alias Voelgoedevents.Ash.Policies.PlatformPolicy
+
   use Ash.Resource,
     domain: Voelgoedevents.Ash.Domains.AccountsDomain,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
+
+  require PlatformPolicy
 
   postgres do
     table "organizations"
@@ -73,6 +77,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
   end
 
   policies do
+    PlatformPolicy.platform_admin_root_access()
+
     policy action(:create) do
       authorize_if expr(actor(:role) == :super_admin)
     end

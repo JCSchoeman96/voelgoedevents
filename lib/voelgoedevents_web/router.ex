@@ -46,6 +46,9 @@ defmodule VoelgoedeventsWeb.Router do
 
     # Checkout will be a LiveView
     live "/checkout", CheckoutLive, :show
+
+    post "/impersonation", ImpersonationController, :create
+    delete "/impersonation", ImpersonationController, :delete
   end
 
   # Other scopes may use custom stacks.

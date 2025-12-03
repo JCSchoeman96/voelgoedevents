@@ -11,7 +11,7 @@ defmodule Voelgoedevents.Infrastructure.EtsRegistry do
   All tables are node-local, `:public` named `:set` tables with read/write concurrency enabled. Callers **must** clear or refresh ETS entries whenever the corresponding Redis or database records change to keep the hot layer aligned with the warm layer.
   """
 
-  use GenServer
+  use Supervisor
 
   @tables [
     :seat_holds_hot,
@@ -20,27 +20,17 @@ defmodule Voelgoedevents.Infrastructure.EtsRegistry do
     :rbac_cache
   ]
 
-  @doc "Starts the registry under a supervisor."
-  def child_spec(opts) do
-    %{
-      id: __MODULE__,
-      start: {__MODULE__, :start_link, [opts]},
-      restart: :permanent,
-      shutdown: 5000,
-      type: :worker
-    }
-  end
-
-  @doc "Starts the ETS registry process." # credo:disable-for-next-line Credo.Check.Readability.Specs
+  @doc "Starts the registry under a supervisor." # credo:disable-for-next-line Credo.Check.Readability.Specs
+  @impl true
   def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+    Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
   @impl true
   def init(_opts) do
     Enum.each(@tables, &create_table/1)
 
-    {:ok, MapSet.new(@tables)}
+    Supervisor.init([], strategy: :one_for_one)
   end
 
   defp create_table(name) do

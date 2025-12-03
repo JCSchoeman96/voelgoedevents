@@ -6,6 +6,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Role do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias Voelgoedevents.Ash.Policies.PlatformPolicy
+
+  require PlatformPolicy
+
   @allowed_roles [:owner, :admin, :manager, :support, :read_only]
   @display_names %{
     owner: "Owner",
@@ -68,6 +72,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Role do
   end
 
   policies do
+    PlatformPolicy.platform_admin_root_access()
+
     policy action([:create, :update]) do
       authorize_if expr(actor(:role) in [:super_admin, :system])
     end

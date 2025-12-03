@@ -3,11 +3,14 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
 
   alias Ash.Changeset
   alias Voelgoedevents.Auth.RbacCache
+  alias Voelgoedevents.Ash.Policies.PlatformPolicy
 
   use Ash.Resource,
     domain: Voelgoedevents.Ash.Domains.AccountsDomain,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
+
+  require PlatformPolicy
 
   postgres do
     table "memberships"
@@ -112,6 +115,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
   end
 
   policies do
+    PlatformPolicy.platform_admin_root_access()
+
     policy action_type(:read) do
       authorize_if expr(organization_id == actor(:organization_id))
     end

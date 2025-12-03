@@ -4,6 +4,9 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
   alias Ash.{Changeset, Query}
   alias AshAuthentication.Info
   alias Voelgoedevents.Auth.ConfirmationSender
+  alias Voelgoedevents.Ash.Policies.PlatformPolicy
+
+  require PlatformPolicy
 
   use Ash.Resource,
     domain: Voelgoedevents.Ash.Domains.AccountsDomain,
@@ -221,6 +224,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
   end
 
   policies do
+    PlatformPolicy.platform_admin_root_access()
+
     policy action(:create) do
       authorize_if expr(arg(:organization_id) == actor(:organization_id))
     end

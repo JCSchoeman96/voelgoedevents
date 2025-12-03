@@ -101,4 +101,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Role do
   def default_display_name(role) when is_atom(role) do
     Map.get(@display_names, role, role |> Atom.to_string() |> String.capitalize())
   end
+
+  def allowed_roles, do: @allowed_roles
 end

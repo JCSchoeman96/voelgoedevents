@@ -1,0 +1,8 @@
+# Dialyzer ignore-warnings file
+#
+# Phases 1–9: use this list to document genuinely non-blocking false positives
+# surfaced during CI (report-only). Each entry must include a justification.
+# Remove or resolve entries when Phase 10 re-enables strict exits.
+#
+# Format: one warning pattern per line, e.g.:
+# lib/voelgoedevents/example.ex:42: Unknown function call (false positive: generated at runtime)

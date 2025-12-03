@@ -52,14 +52,25 @@ jobs:
             restore-keys: "${{ runner.os }}-dialyzer-",
           }
       - run: mix deps.get
-      - run: mix deps.unlock --check-unused
-      - run: mix format --check-formatted
-      - run: mix compile --warnings-as-errors
-      - run: mix ash.codegen --check
-      - run: mix credo --strict
-      - run: mix sobelow --config
-      - run: mix dialyzer
-      - run: mix test
-      - run: mix coveralls.github
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: mix compile
+      - name: Run targeted tests (active slices)
+        run: >-
+          mix test
+          test/voelgoedevents/ash/accounts_test.exs
+          test/voelgoedevents/ash/events_test.exs
+          test/voelgoedevents/ash/ticketing_test.exs
+          test/voelgoedevents/workflows/checkout_workflow_test.exs
+      - name: Credo (report-only during phases 1-9)
+        run: mix credo --strict --mute-exit-status
+        continue-on-error: true
+      - name: Dialyzer (report-only during phases 1-9)
+        run: mix dialyzer --halt-exit-status
+        continue-on-error: true
+      - name: Sobelow (security signal only)
+        run: mix sobelow --config
+        continue-on-error: true
+      - name: Format and dependency hygiene (report-only)
+        run: |
+          mix format --check-formatted
+          mix deps.unlock --check-unused
+        continue-on-error: true

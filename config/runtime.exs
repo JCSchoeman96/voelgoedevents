@@ -33,6 +33,17 @@ config :voelgoedevents,
   redis_url: System.get_env("REDIS_URL") || "redis://localhost:6379",
   redis_pool_size: redis_pool_size
 
+bind_session_ip_default = config_env() == :prod
+
+bind_session_ip =
+  System.get_env("BIND_SESSION_IP")
+  |> case do
+    nil -> bind_session_ip_default
+    value -> value in ~w(true 1)
+  end
+
+config :voelgoedevents, :bind_session_ip, bind_session_ip
+
 config :honeybadger,
   api_key: System.get_env("HONEYBADGER_API_KEY"),
   environment_name: System.get_env("PHX_HOST") || "development",

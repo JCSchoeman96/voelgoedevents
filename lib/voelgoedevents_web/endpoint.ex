@@ -8,6 +8,7 @@ defmodule VoelgoedeventsWeb.Endpoint do
     store: :cookie,
     key: "_voelgoedevents_key",
     signing_salt: "WIooNkzM",
+    max_age: 60 * 60 * 12,
     same_site: "Lax"
   ]
 

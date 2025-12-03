@@ -30,6 +30,10 @@ config :voelgoedevents,
   redis_url: "redis://localhost:6379",
   redis_pool_size: 10
 
+# --- SESSION SECURITY ---
+config :voelgoedevents,
+  bind_session_ip: false
+
 # --- CIRCUIT BREAKER CONFIG ---
 config :voelgoedevents, Voelgoedevents.Infrastructure.CircuitBreaker,
   open_failure_count: 5,

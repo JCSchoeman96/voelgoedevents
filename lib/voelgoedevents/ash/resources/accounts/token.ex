@@ -6,6 +6,13 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Token do
     data_layer: AshPostgres.DataLayer,
     extensions: [AshAuthentication.TokenResource]
 
+  token do
+    confirmation do
+      get_changes_action_name :get_confirmation_changes
+      store_changes_action_name :store_confirmation_changes
+    end
+  end
+
   postgres do
     table "user_tokens"
     repo Voelgoedevents.Repo

@@ -26,6 +26,9 @@ defmodule VoelgoedeventsWeb.Router do
     pipe_through :browser
 
     auth_routes Voelgoedevents.Ash.Domains.AccountsDomain, []
+
+    confirm_route Voelgoedevents.Ash.Resources.Accounts.User, :confirm,
+      live_view: VoelgoedeventsWeb.Auth.ConfirmationLive
   end
 
   scope "/", VoelgoedeventsWeb do

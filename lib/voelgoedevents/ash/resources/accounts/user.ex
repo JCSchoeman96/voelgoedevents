@@ -77,6 +77,13 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
       sensitive? true
     end
 
+    attribute :is_platform_admin, :boolean do
+      allow_nil? false
+      default false
+      public? false
+      description "Marks a user as a platform-wide administrator."
+    end
+
     timestamps()
   end
 
@@ -98,6 +105,16 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
   validations do
     validate present([:email, :first_name, :last_name, :status])
+
+    validate fn changeset ->
+      if changeset.action.type == :update and
+           Changeset.changing_attribute?(changeset, :is_platform_admin) and
+           match?(:error, Changeset.fetch_argument(changeset, :is_platform_admin)) do
+        Changeset.add_error(changeset, field: :is_platform_admin, message: "explicit input required")
+      else
+        changeset
+      end
+    end
   end
 
   actions do
@@ -121,6 +138,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
       accept [:email, :first_name, :last_name, :status, :hashed_password, :confirmed_at]
 
+      argument :is_platform_admin, :boolean do
+        allow_nil? true
+      end
+
       argument :organization_id, :uuid do
         allow_nil? false
       end
@@ -128,6 +149,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
       argument :role_id, :uuid do
         allow_nil? false
       end
+
+      change &set_platform_admin_from_argument/2
+
+      change &audit_platform_admin_change/2
 
       change fn changeset, _context ->
         organization_id = Changeset.get_argument(changeset, :organization_id)
@@ -145,6 +170,13 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     update :update do
       require_actor? true
       accept [:first_name, :last_name, :status, :confirmed_at]
+
+      argument :is_platform_admin, :boolean do
+        allow_nil? true
+      end
+
+      change &set_platform_admin_from_argument/2
+      change &audit_platform_admin_change/2
     end
 
     action :resend_confirmation do
@@ -202,5 +234,34 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     end
 
     default_policy :deny
+  end
+
+  defp set_platform_admin_from_argument(changeset, _context) do
+    case Changeset.fetch_argument(changeset, :is_platform_admin) do
+      {:ok, value} -> Changeset.force_change_attribute(changeset, :is_platform_admin, value)
+      :error -> changeset
+    end
+  end
+
+  defp audit_platform_admin_change(changeset, _context) do
+    previous_value = Map.get(changeset.data, :is_platform_admin)
+
+    Changeset.after_action(changeset, fn changeset, user, context ->
+      if Changeset.changing_attribute?(changeset, :is_platform_admin) do
+        actor = Map.get(context, :actor) || %{}
+
+        Voelgoedevents.AuditLogger.log_critical(%{
+          event: "accounts.user.is_platform_admin_changed",
+          actor_user_id: Map.get(actor, :id),
+          organization_id: Map.get(actor, :organization_id),
+          entity_type: "user",
+          entity_id: user.id,
+          previous_value: previous_value,
+          new_value: user.is_platform_admin
+        })
+      end
+
+      {:ok, user}
+    end)
   end
 end

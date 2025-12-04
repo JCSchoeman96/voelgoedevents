@@ -71,7 +71,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
 
       argument :settings, :map, allow_nil?: true
 
-      change &__MODULE__.ensure_settings/1
+      change &__MODULE__.ensure_settings/2
     end
 
     update :update do
@@ -113,7 +113,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     end
   end
 
-  def ensure_settings(changeset) do
+  def ensure_settings(changeset, _context) do
     settings_attrs = Changeset.get_argument(changeset, :settings) || %{}
 
     Changeset.manage_relationship(changeset, :settings, settings_attrs, type: :create)

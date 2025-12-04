@@ -69,6 +69,7 @@ Below is the full authoritative list.
 | **User**         | `Voelgoedevents.Ash.Resources.Accounts.User`              | `:user`         | `lib/voelgoedevents/ash/resources/accounts/user.ex`              |
 | **Role**         | `Voelgoedevents.Ash.Resources.Accounts.Role`              | `:role`         | `lib/voelgoedevents/ash/resources/accounts/role.ex`              |
 | **Membership**   | `Voelgoedevents.Ash.Resources.Accounts.Membership`        | `:membership`   | `lib/voelgoedevents/ash/resources/accounts/membership.ex`        |
+| **OrganizationSettings** | `Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings` | `:organization_settings` | `lib/voelgoedevents/ash/resources/organizations/organization_settings.ex` |
 | **Organization** | `Voelgoedevents.Ash.Resources.Accounts.Organization`      | `:organization` | `lib/voelgoedevents/ash/resources/accounts/organization.ex`      |
 
 **Domain File:**

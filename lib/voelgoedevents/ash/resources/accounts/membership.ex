@@ -81,15 +81,15 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
       primary? true
       accept [:role_id, :status, :invited_at, :joined_at, :user_id, :organization_id]
 
-      change &__MODULE__.maybe_set_invited_at/1
-      change &__MODULE__.maybe_set_joined_at/1
+      change &__MODULE__.maybe_set_invited_at/2
+      change &__MODULE__.maybe_set_joined_at/2
       change after_action(&__MODULE__.invalidate_membership_cache/3)
     end
 
     update :update do
       accept [:role_id, :status, :invited_at, :joined_at]
 
-      change &__MODULE__.maybe_set_joined_at/1
+      change &__MODULE__.maybe_set_joined_at/2
       change after_action(&__MODULE__.invalidate_membership_cache/3)
     end
 
@@ -97,7 +97,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
       accept [:role_id, :user_id, :organization_id]
 
       change set_attribute(:status, :inactive)
-      change &__MODULE__.set_invited_at/1
+      change &__MODULE__.set_invited_at/2
       change after_action(&__MODULE__.invalidate_membership_cache/3)
     end
 
@@ -105,7 +105,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
       accept []
 
       change set_attribute(:status, :active)
-      change &__MODULE__.set_joined_at/1
+      change &__MODULE__.set_joined_at/2
       change after_action(&__MODULE__.invalidate_membership_cache/3)
     end
 
@@ -145,7 +145,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     end
   end
 
-  def maybe_set_invited_at(changeset) do
+  def maybe_set_invited_at(changeset, _context) do
     status = Changeset.get_attribute(changeset, :status)
 
     if status == :inactive and is_nil(Changeset.get_attribute(changeset, :invited_at)) do
@@ -155,7 +155,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     end
   end
 
-  def maybe_set_joined_at(changeset) do
+  def maybe_set_joined_at(changeset, _context) do
     status = Changeset.get_attribute(changeset, :status)
     joined_at = Changeset.get_attribute(changeset, :joined_at)
 
@@ -165,11 +165,11 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     end
   end
 
-  def set_invited_at(changeset) do
+  def set_invited_at(changeset, _context) do
     Changeset.set_attribute(changeset, :invited_at, DateTime.utc_now())
   end
 
-  def set_joined_at(changeset) do
+  def set_joined_at(changeset, _context) do
     Changeset.set_attribute(changeset, :joined_at, DateTime.utc_now())
   end
 

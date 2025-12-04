@@ -84,16 +84,13 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
     end
 
     policy action_type(:create) do
-      authorize_if expr(
-                    actor(:role) == :super_admin or
-                      organization_id == actor(:organization_id)
-                  )
+      forbid_if expr(actor(:role) != :super_admin and organization_id != actor(:organization_id))
+      authorize_if always()
     end
 
     policy action_type([:read, :update]) do
-      authorize_if expr(organization_id == actor(:organization_id) or actor(:role) == :super_admin)
+      forbid_if expr(not (organization_id == actor(:organization_id) or actor(:role) == :super_admin))
+      authorize_if always()
     end
-
-    default_policy :deny
   end
 end

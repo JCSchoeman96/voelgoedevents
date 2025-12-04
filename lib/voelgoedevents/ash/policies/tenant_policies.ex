@@ -50,10 +50,9 @@ defmodule Voelgoedevents.Ash.Policies.TenantPolicies do
 
       policy action_type([:read, :create, :update, :destroy, :action]) do
         Voelgoedevents.Ash.Policies.TenantPolicies.forbid_without_actor_org()
+        forbid_if expr(organization_id != actor(:organization_id))
         Voelgoedevents.Ash.Policies.TenantPolicies.scope_to_actor_organization()
       end
-
-      default_policy :deny
     end
   end
 

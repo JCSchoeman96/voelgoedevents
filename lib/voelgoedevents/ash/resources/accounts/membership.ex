@@ -117,25 +117,32 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
   policies do
     PlatformPolicy.platform_admin_root_access()
 
+    policy action_type([:read, :create, :update, :destroy, :action]) do
+      forbid_if expr(actor(:id) == nil)
+    end
+
     policy action_type(:read) do
-      authorize_if expr(organization_id == actor(:organization_id))
+      forbid_if expr(organization_id != actor(:organization_id))
+      authorize_if always()
     end
 
     policy action([:create, :invite, :update, :remove]) do
-      authorize_if expr(
-                    organization_id == actor(:organization_id) and
-                      exists(
-                        organization.memberships,
-                        user_id == actor(:id) and role.name == :owner
-                      )
+      forbid_if expr(organization_id != actor(:organization_id))
+
+      forbid_if expr(
+                    not exists(
+                      organization.memberships,
+                      user_id == actor(:id) and role.name == :owner
+                    )
                   )
+
+      authorize_if always()
     end
 
     policy action(:join) do
-      authorize_if expr(user_id == actor(:id) and organization_id == actor(:organization_id))
+      forbid_if expr(user_id != actor(:id) or organization_id != actor(:organization_id))
+      authorize_if always()
     end
-
-    default_policy :deny
   end
 
   def maybe_set_invited_at(changeset) do

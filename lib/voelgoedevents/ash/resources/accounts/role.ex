@@ -61,7 +61,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Role do
     create :create do
       primary? true
       accept [:name, :display_name, :permissions]
-      change &__MODULE__.ensure_display_name/1
+      change &__MODULE__.ensure_display_name/2
     end
 
     update :update do
@@ -82,7 +82,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Role do
     end
   end
 
-  def ensure_display_name(changeset) do
+  def ensure_display_name(changeset, _context) do
     case Ash.Changeset.get_attribute(changeset, :display_name) do
       nil ->
         name = Ash.Changeset.get_attribute(changeset, :name)

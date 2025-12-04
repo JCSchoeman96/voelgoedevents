@@ -84,28 +84,32 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
     end
 
     policy action_type(:read) do
-      authorize_if expr(organization_id == actor(:organization_id))
+      forbid_if expr(organization_id != actor(:organization_id))
+      authorize_if always()
     end
 
     policy action(:create) do
-      authorize_if expr(
-                    organization_id == actor(:organization_id) and
-                      exists(
-                        organization.memberships,
-                        user_id == actor(:id) and role.name == :owner
-                      )
+      forbid_if expr(organization_id != actor(:organization_id))
+
+      forbid_if expr(
+                    not exists(
+                      organization.memberships,
+                      user_id == actor(:id) and role.name == :owner
+                    )
                   )
+
+      authorize_if always()
     end
 
     policy action(:accept) do
-      authorize_if expr(actor(:email) != nil)
+      forbid_if expr(actor(:email) == nil)
+      authorize_if always()
     end
 
     policy action_type(:destroy) do
-      authorize_if expr(organization_id == actor(:organization_id))
+      forbid_if expr(organization_id != actor(:organization_id))
+      authorize_if always()
     end
-
-    default_policy :deny
   end
 
   def ensure_token(changeset) do

@@ -229,18 +229,18 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     end
 
     policy action(:create) do
-      authorize_if expr(arg(:organization_id) == actor(:organization_id))
+      forbid_if expr(arg(:organization_id) != actor(:organization_id))
+      authorize_if always()
     end
 
     policy action_type([:read, :update]) do
-      authorize_if expr(exists(memberships, organization_id == actor(:organization_id)))
+      forbid_if expr(not exists(memberships, organization_id == actor(:organization_id)))
+      authorize_if always()
     end
 
     policy action([:confirm, :resend_confirmation]) do
       authorize_if always()
     end
-
-    default_policy :deny
   end
 
   defp set_platform_admin_from_argument(changeset, _context) do

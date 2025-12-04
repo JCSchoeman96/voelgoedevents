@@ -6,22 +6,25 @@ _A complete domain architecture reference for the VoelgoedEvents PETAL/Ash platf
 **Table of Contents**
 =====================
 
-1.  Introduction
-2.  Domain Structure Overview
-3.  Tenancy & Accounts
-4.  Events & Venues
-5.  Seating
-6.  Ticketing & Pricing
-7.  Payments & Ledger
-8.  Scanning & Devices
-9.  Analytics, Funnels & Marketing
-10.  Integrations & Webhooks
-11.  Reporting
-12.  Notifications & Delivery
-13.  Audit Logging
-14.  Public API & Access Keys
-15.  Ephemeral Domains (Non-Persistent)
-16.  Global Invariants
+*   Introduction
+*   Domain Structure Overview
+1.  Tenancy & Accounts
+2.  Access Control
+3.  Events & Venues
+4.  Seating
+5.  Ticketing & Pricing
+6.  Payments & Ledger
+7.  Finance
+8.  Monetization
+9.  Scanning & Devices
+10. Analytics, Funnels & Marketing
+11. Integrations & Webhooks (Roadmap)
+12. Reporting (Roadmap)
+13. Notifications & Delivery (Roadmap)
+14. Audit Logging
+15. Public API & Access Keys (Roadmap)
+16. Ephemeral Domains (Non-Persistent)
+17. Global Invariants
 
 **Introduction**
 ================
@@ -47,35 +50,45 @@ It is designed to support:
 **Domain Structure Overview**
 =============================
 
-The VoelgoedEvents platform is organized into **12 persistent domains** and **one shared ephemeral domain**.
+The VoelgoedEvents platform is organized into **implemented Ash domains**, **roadmap domains**, and **one shared ephemeral domain**.
 
-**Persistent Domains (Ash Resources)**
---------------------------------------
+**Implemented Ash Domains**
+---------------------------
 
 1.  **Tenancy & Accounts**
-    
-2.  **Events & Venues**
-    
-3.  **Seating**
-    
-4.  **Ticketing & Pricing**
-    
-5.  **Payments & Ledger**
-    
-6.  **Scanning & Devices**
-    
-7.  **Analytics, Funnels & Marketing**
-    
-8.  **Integrations & Webhooks**
-    
-9.  **Reporting**
-    
-10.  **Notifications & Delivery**
-    
-11.  **Audit Logging**
-    
-12.  **Public API & Access Keys**
-    
+
+2.  **Access Control**
+
+3.  **Events & Venues**
+
+4.  **Seating**
+
+5.  **Ticketing & Pricing**
+
+6.  **Payments & Ledger**
+
+7.  **Finance**
+
+8.  **Monetization**
+
+9.  **Scanning & Devices**
+
+10. **Analytics, Funnels & Marketing**
+
+11. **Audit Logging**
+
+
+**Roadmap Domains (Not Yet Implemented in Ash)**
+------------------------------------------------
+
+12. **Integrations & Webhooks**
+
+13. **Reporting**
+
+14. **Notifications & Delivery**
+
+15. **Public API & Access Keys** (beyond existing API key resource)
+
 
 **Ephemeral Domains (Non-Persistent)**
 --------------------------------------
@@ -185,10 +198,45 @@ Links users to organizations.
 *   At least one owner per organization
     
 
-**2\. Events & Venues**
+**2\. Access Control**
+======================
+
+Machine-to-machine credentials that grant scoped access to tenant resources.
+
+**2.1 ApiKey**
+--------------
+
+Represents a tenant-scoped API key for integrations and automation.
+
+**Fields**
+
+*   id
+
+*   name (human-friendly label)
+
+*   key_hash (hashed secret, never stored in plaintext)
+
+*   organization_id
+
+*   permissions (array of scoped abilities)
+
+*   inserted_at / updated_at
+
+**Relationships**
+
+*   belongs_to organization
+
+**Invariants**
+
+*   Key material is only stored as a hash; secrets are shown once on creation.
+
+*   All keys are organization-scoped and must not be reused across tenants.
+
+
+**3\. Events & Venues**
 =======================
 
-**2.1 Venue**
+**3.1 Venue**
 -------------
 
 Physical location of events.
@@ -217,7 +265,7 @@ Physical location of events.
 *   has\_many venue\_sections
     
 
-**2.2 VenueSection / Zone**
+**3.2 VenueSection / Zone**
 ---------------------------
 
 Used for navigation, reporting, scanning dashboards.
@@ -231,7 +279,7 @@ Used for navigation, reporting, scanning dashboards.
 *   code
     
 
-**2.3 Gate**
+**3.3 Gate**
 ------------
 
 Entry control.
@@ -247,7 +295,7 @@ Entry control.
 *   settings JSONB
     
 
-**2.4 Event**
+**3.4 Event**
 -------------
 
 Represents an individual event instance.
@@ -288,17 +336,17 @@ Represents an individual event instance.
 *   has\_many scan\_sessions
     
 
-**2.5 EventSeries (Future)**
+**3.5 EventSeries (Future)**
 ----------------------------
 
 Multi-day linked events.
 
-**3\. Seating**
+**4\. Seating**
 ===============
 
 Designed using hierarchical graph architecture.
 
-**3.1 Layout**
+**4.1 Layout**
 --------------
 
 Versioned seating layouts.
@@ -316,12 +364,12 @@ Versioned seating layouts.
 *   metadata (canvas/grid/etc.)
     
 
-**3.2 Section**
+**4.2 Section**
 ---------------
 
 Logical top-level grouping in a layout.
 
-**3.3 Block**
+**4.3 Block**
 -------------
 
 Seating area within a section.
@@ -339,7 +387,7 @@ Seating area within a section.
 *   settings JSONB
     
 
-**3.4 Seat**
+**4.4 Seat**
 ------------
 
 Individual seat.
@@ -361,20 +409,20 @@ Individual seat.
 *   base\_price\_cents
     
 
-**3.5 StandingArea**
+**4.5 StandingArea**
 --------------------
 
 For GA standing zones.
 
-**3.6 NonSeatingElement**
+**4.6 NonSeatingElement**
 -------------------------
 
 Obstacles, stage, pillars, mixers, etc.
 
-**4\. Ticketing & Pricing**
+**5\. Ticketing & Pricing**
 ===========================
 
-**4.1 Ticket**
+**5.1 Ticket**
 --------------
 
 Represents a single purchased ticket.
@@ -400,7 +448,7 @@ Represents a single purchased ticket.
 *   metadata
     
 
-**4.2 PricingRule**
+**5.2 PricingRule**
 -------------------
 
 Defines pricing logic.
@@ -420,30 +468,30 @@ Defines pricing logic.
 *   conditions JSONB
     
 
-**4.3 TicketGroup**
+**5.3 TicketGroup**
 -------------------
 
 Bundle/pack of tickets.
 
-**4.4 Coupon**
+**5.4 Coupon**
 --------------
 
 Promo codes.
 
-**4.5 TicketTransfer (Future)**
+**5.5 TicketTransfer (Future)**
 -------------------------------
 
 Transfer one ticket to another user.
 
-**4.6 Add-On (Future)**
+**5.6 Add-On (Future)**
 -----------------------
 
 Merch or perks.
 
-**5\. Payments & Ledger**
+**6\. Payments & Ledger**
 =========================
 
-**5.1 Transaction**
+**6.1 Transaction**
 -------------------
 
 Represents a checkout attempt.
@@ -459,22 +507,22 @@ Represents a checkout attempt.
 *   metadata JSONB
     
 
-**5.2 Refund**
+**6.2 Refund**
 --------------
 
 Refund action referencing transaction or ticket set.
 
-**5.3 LedgerAccount**
+**6.3 LedgerAccount**
 ---------------------
 
 Double-entry account.
 
-**5.4 JournalEntry**
+**6.4 JournalEntry**
 --------------------
 
 Debits/credits per event.
 
-**5.5 Payout**
+**6.5 Payout**
 --------------
 
 Settlement to organizer.
@@ -490,15 +538,73 @@ Settlement to organizer.
 *   payout\_reference
     
 
-**5.6 PaymentMethod**
+**6.6 PaymentMethod**
 ---------------------
 
 Store minimal provider tokens (PCI-light).
 
-**6\. Scanning & Devices**
+**7\. Finance**
+===============
+
+Double-entry bookkeeping container for balanced journal lines shared with the payments domain.
+
+**7.1 Ledger**
+--------------
+
+Top-level ledger container for a tenant.
+
+**Fields**
+
+*   id
+
+*   organization_id
+
+*   name (e.g., "Main Operational Ledger")
+
+*   currency (default :ZAR)
+
+*   active (boolean)
+
+*   inserted_at / updated_at
+
+**Relationships**
+
+*   belongs_to organization
+
+**Invariants**
+
+*   Ledgers are tenant-scoped; journal entries must balance per ledger and currency.
+
+
+**8\. Monetization**
+====================
+
+Configuration for platform and organizer fees plus optional donations applied during checkout.
+
+**8.1 FeeModel**
+---------------
+
+Defines a reusable fee structure (e.g., platform + organizer split).
+
+**8.2 FeePolicy**
+-----------------
+
+Concrete fee rules bound to a fee model (rates, caps, who pays).
+
+**8.3 Donation**
+----------------
+
+Tracks optional donations collected alongside ticket purchases.
+
+**Invariants**
+
+*   All monetization resources are organization-scoped.
+
+
+**9\. Scanning & Devices**
 ==========================
 
-**6.1 Scan**
+**9.1 Scan**
 ------------
 
 Each scan attempt.
@@ -520,35 +626,35 @@ Each scan attempt.
 *   metadata JSONB
     
 
-**6.2 ScanSession**
+**9.2 ScanSession**
 -------------------
 
 Grouping of scans per device/gate.
 
-**6.3 Device**
+**9.3 Device**
 --------------
 
 Represents scanner device identity.
 
-**6.4 GateAssignment**
+**9.4 GateAssignment**
 ----------------------
 
 Assign devices to gates.
 
-**6.5 InOutEvent**
+**9.5 InOutEvent**
 ------------------
 
 Direct tracking of enter/exit actions.
 
-**6.6 ScanRateStats**
+**9.6 ScanRateStats**
 ---------------------
 
 Real-time performance metrics.
 
-**7\. Analytics, Funnels & Marketing**
+**10. Analytics, Funnels & Marketing**
 ======================================
 
-**7.1 AnalyticsEvent**
+**10.1 AnalyticsEvent**
 ----------------------
 
 Raw activity stream.
@@ -570,50 +676,52 @@ Raw activity stream.
 *   scan\_success
     
 
-**7.2 FunnelSnapshot**
+**10.2 FunnelSnapshot**
 ----------------------
 
 Precomputed analytics.
 
-**7.3 MarketingAttribution**
+**10.3 MarketingAttribution**
 ----------------------------
 
 Stores UTM/referrer info.
 
-**7.4 Campaign**
+**10.4 Campaign**
 ----------------
 
 Marketing campaigns.
 
-**7.5 VisitSession**
+**10.5 VisitSession**
 --------------------
 
 Tracking anonymous → identified user flow.
 
-**7.6 EmailEvent**
+**10.6 EmailEvent**
 ------------------
 
 Open/click tracking.
 
-**8\. Integrations & Webhooks**
+**11. Integrations & Webhooks**
 ===============================
 
-**8.1 WebhookEndpoint**
+_Roadmap: domain not yet implemented in Ash; retained for future PSP/CRM connectors and webhook handling._
+
+**11.1 WebhookEndpoint**
 -----------------------
 
 User-configured outbound webhooks.
 
-**8.2 WebhookEvent**
+**11.2 WebhookEvent**
 --------------------
 
 Payload to be delivered.
 
-**8.3 WebhookDeliveryLog**
+**11.3 WebhookDeliveryLog**
 --------------------------
 
 Store attempts & retries.
 
-**8.4 IntegrationProvider**
+**11.4 IntegrationProvider**
 ---------------------------
 
 External systems like:
@@ -627,91 +735,97 @@ External systems like:
 *   SendGrid
     
 
-**9\. Reporting**
+**12. Reporting**
 =================
 
-**9.1 EventReport**
+_Roadmap: heavy read models and exports are not yet modeled in Ash; this section captures intended reporting scope._
+
+**12.1 EventReport**
 -------------------
 
 Tickets sold / revenue / attendance.
 
-**9.2 FinancialReport**
+**12.2 FinancialReport**
 -----------------------
 
 Ledger-based summaries.
 
-**9.3 GateReport**
+**12.3 GateReport**
 ------------------
 
 Gate performance.
 
-**9.4 RefundReport**
+**12.4 RefundReport**
 --------------------
 
 Summary of refunds.
 
-**10\. Notifications & Delivery**
+**13. Notifications & Delivery**
 =================================
 
-**10.1 Notification**
+_Roadmap: notification channels and delivery pipelines are not yet implemented; template/delivery resources remain planned._
+
+**13.1 Notification**
 ---------------------
 
 Represents a user/org notification.
 
-**10.2 DeliveryAttempt**
+**13.2 DeliveryAttempt**
 ------------------------
 
 Email/SMS/Webhook delivery.
 
-**10.3 Template**
+**13.3 Template**
 -----------------
 
 Reusable templates for email/PDF.
 
-**10.4 TicketDelivery**
+**13.4 TicketDelivery**
 -----------------------
 
 Email/PDF ticket issuing.
 
-**11\. Audit Logging**
+**14. Audit Logging**
 ======================
 
 Required for security & seating builder.
 
-**11.1 AuditLog**
+**14.1 AuditLog**
 -----------------
 
 Record any user/system action.
 
-**11.2 ChangeSetLog**
+**14.2 ChangeSetLog**
 ---------------------
 
 Per-resource diffs.
 
-**11.3 UserActionLog**
+**14.3 UserActionLog**
 ----------------------
 
 High-level actions.
 
-**12\. Public API & Access Keys**
+**15. Public API & Access Keys**
 =================================
 
-**12.1 ApiKey**
----------------
+_Roadmap: Public REST surface is not yet built; this section tracks intended API-facing resources beyond current API key support and clarifies reuse of the Access Control ApiKey resource._
 
-Programmatic access key.
+**15.1 ApiKey (shared)**
+------------------------
 
-**12.2 ApiRequestLog**
+Programmatic access key authenticated and owned by the Access Control domain; no duplicate resource is created here.
+
+**15.2 ApiRequestLog**
 ----------------------
 
 Audit for API usage.
 
-**12.3 RateLimitRule**
+**15.3 RateLimitRule**
 ----------------------
 
 Per API key rate control.
 
-**13\. Ephemeral Domains (Non-Persistent)**
+**16. Ephemeral Domains (Non-Persistent)**
 ===========================================
 
 Includes:
@@ -737,7 +851,7 @@ Includes:
 
 These do **not** write to the DB; they accelerate workflows.
 
-**14\. Global Invariants**
+**17. Global Invariants**
 ==========================
 
 1.  **Multi-tenant boundaries**

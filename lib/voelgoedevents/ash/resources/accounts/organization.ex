@@ -14,6 +14,9 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     authorizers: [Ash.Policy.Authorizer]
 
   require PlatformPolicy
+  alias Ash.Query, as: Query
+  require Query
+
 
   postgres do
     table "organizations"
@@ -94,12 +97,12 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     PlatformPolicy.platform_admin_root_access()
 
     policy action(:create) do
-      forbid_if expr(actor(:id) == nil)
+      forbid_if expr(is_nil(actor(:id)))
       authorize_if expr(actor(:role) == :super_admin)
     end
 
     policy action(:update) do
-      forbid_if expr(actor(:id) == nil)
+      forbid_if expr(is_nil(actor(:id)))
       authorize_if always()
     end
 
@@ -108,7 +111,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     end
 
     policy action(:archive) do
-      forbid_if expr(actor(:id) == nil)
+      forbid_if expr(is_nil(actor(:id)))
       authorize_if always()
     end
   end

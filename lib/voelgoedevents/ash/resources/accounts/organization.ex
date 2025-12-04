@@ -80,7 +80,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
       argument :settings, :map, allow_nil?: true
 
       change load(:settings)
-      change &__MODULE__.update_settings/1
+      change &__MODULE__.update_settings/2
       change after_action(&__MODULE__.invalidate_membership_cache_on_suspend/3)
     end
 
@@ -119,7 +119,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     Changeset.manage_relationship(changeset, :settings, settings_attrs, type: :create)
   end
 
-  def update_settings(changeset) do
+  def update_settings(changeset, _context) do
     case Changeset.fetch_argument(changeset, :settings) do
       {:ok, attrs} ->
         attrs_with_id =

@@ -118,7 +118,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     PlatformPolicy.platform_admin_root_access()
 
     policy action_type([:read, :create, :update, :destroy, :action]) do
-      forbid_if expr(actor(:id) == nil)
+      forbid_if expr(is_nil(actor(:id)))
     end
 
     policy action_type(:read) do

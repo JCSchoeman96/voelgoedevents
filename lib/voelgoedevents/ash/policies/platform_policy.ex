@@ -28,7 +28,6 @@ defmodule Voelgoedevents.Ash.Policies.PlatformPolicy do
              ] do
         description "Platform admin root access (authorization only; audit/rate limits still apply)"
         authorize_if always()
-        stop_if always()
       end
     end
   end

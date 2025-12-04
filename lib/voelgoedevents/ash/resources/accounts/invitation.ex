@@ -61,7 +61,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
     defaults [:read, :destroy]
 
     create :create do
-      require_actor? true
       accept [:email, :role]
 
       change set_attribute(:organization_id, actor(:organization_id))
@@ -69,8 +68,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
     end
 
     action :accept do
-      require_actor? true
-
       argument :token, :string do
         allow_nil? false
       end
@@ -81,6 +78,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
 
   policies do
     PlatformPolicy.platform_admin_root_access()
+
+    policy action_type([:read, :create, :destroy, :action]) do
+      forbid_if expr(actor(:id) == nil)
+    end
 
     policy action_type(:read) do
       authorize_if expr(organization_id == actor(:organization_id))

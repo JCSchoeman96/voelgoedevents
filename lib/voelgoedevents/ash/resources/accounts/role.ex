@@ -62,12 +62,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Role do
       primary? true
       accept [:name, :display_name, :permissions]
       change &__MODULE__.ensure_display_name/1
-      require_actor? true
     end
 
     update :update do
       accept [:display_name, :permissions]
-      require_actor? true
     end
   end
 
@@ -75,6 +73,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Role do
     PlatformPolicy.platform_admin_root_access()
 
     policy action([:create, :update]) do
+      forbid_if expr(actor(:id) == nil)
       authorize_if expr(actor(:role) in [:super_admin, :system])
     end
 

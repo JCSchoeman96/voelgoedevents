@@ -125,8 +125,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
   actions do
     read :read do
-      require_actor? true
-
       prepare build(fn query, %{actor: actor} ->
         case Map.get(actor, :organization_id) do
           nil ->
@@ -140,7 +138,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
     create :create do
       primary? true
-      require_actor? true
 
       accept [:email, :first_name, :last_name, :status, :hashed_password, :confirmed_at]
 
@@ -174,7 +171,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     end
 
     update :update do
-      require_actor? true
       accept [:first_name, :last_name, :status, :confirmed_at]
 
       argument :is_platform_admin, :boolean do
@@ -187,8 +183,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     end
 
     action :resend_confirmation do
-      require_actor? false
-
       argument :email, :string do
         allow_nil? false
         sensitive? true
@@ -229,6 +223,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
   policies do
     PlatformPolicy.platform_admin_root_access()
+
+    policy action([:create, :read, :update]) do
+      forbid_if expr(actor(:id) == nil)
+    end
 
     policy action(:create) do
       authorize_if expr(arg(:organization_id) == actor(:organization_id))

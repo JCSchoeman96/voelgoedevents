@@ -67,7 +67,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
 
     create :create do
       primary? true
-      require_actor? true
       accept [:name, :slug, :status]
 
       argument :settings, :map, allow_nil?: true
@@ -76,7 +75,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     end
 
     update :update do
-      require_actor? true
       accept [:name, :slug, :status]
 
       argument :settings, :map, allow_nil?: true
@@ -96,14 +94,21 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     PlatformPolicy.platform_admin_root_access()
 
     policy action(:create) do
+      forbid_if expr(actor(:id) == nil)
       authorize_if expr(actor(:role) == :super_admin)
     end
 
-    policy action_type([:read, :update]) do
+    policy action(:update) do
+      forbid_if expr(actor(:id) == nil)
+      authorize_if always()
+    end
+
+    policy action_type(:read) do
       authorize_if always()
     end
 
     policy action(:archive) do
+      forbid_if expr(actor(:id) == nil)
       authorize_if always()
     end
   end

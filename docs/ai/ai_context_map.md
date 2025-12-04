@@ -492,6 +492,9 @@ Ash.read(Ticket, filter: [user_id: user_id, organization_id: org_id])
 # Use only verified modules
 Voelgoedevents.Workflows.Ticketing.ReserveSeat
 Voelgoedevents.Caching.OccupancyCache
+
+# Always load the Ash policy guide when editing policies:
+# docs/coding_style/ash_policies.md
 ```
 
 ---
@@ -522,6 +525,9 @@ Voelgoedevents.Caching.OccupancyCache
 - `config/dev.exs` - Development config
 - `config/test.exs` - Test config
 - `config/prod.exs` - Production config
+
+### Policy Documentation
+- `coding_style/ash_policies.md` – Canonical Ash 3.x policy guidelines. Includes allowed checks, rule structure, bypass handling, `action_type/1`, and multi-tenant access patterns.
 
 ---
 

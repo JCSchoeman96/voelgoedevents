@@ -99,12 +99,15 @@ The agent **MUST** load the correct style guide(s):
 | -------------------------- | ------------------------------ |
 | Elixir business logic      | `elixir_general.md` + `ash.md` |
 | Ash resources & validators | `ash.md`                       |
+| Ash policies               | `ash.md` + `ash_policies.md`   |
 | Phoenix controllers        | `phoenix_liveview.md`          |
 | LiveView modules/pages     | `phoenix_liveview.md`          |
 | HEEx templates             | `heex.md`                      |
 | Tailwind UI                | `tailwind.md`                  |
 | JavaScript/TypeScript      | `js_guidelines.md`             |
 | Svelte components          | `svelte.md`                    |
+
+When modifying any `policies do` block or any policy helper module (e.g., PlatformPolicy, OrganizationPolicy), you MUST also load and follow `/docs/coding_style/ash_policies.md`. Only Ash 3.x policy DSL is allowed.
 
 If unsure which coding_style doc applies, load ALL of them.
 

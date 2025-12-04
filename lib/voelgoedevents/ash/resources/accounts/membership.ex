@@ -62,7 +62,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
   validations do
     validate present([:status, :role_id, :user_id, :organization_id])
 
-    validate fn changeset ->
+    validate fn changeset, _context ->
       status = Changeset.get_attribute(changeset, :status)
       joined_at = Changeset.get_attribute(changeset, :joined_at)
 

@@ -64,7 +64,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
       accept [:email, :role]
 
       change set_attribute(:organization_id, actor(:organization_id))
-      change &__MODULE__.ensure_token/1
+      change &__MODULE__.ensure_token/2
     end
 
     action :accept do
@@ -112,7 +112,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
     end
   end
 
-  def ensure_token(changeset) do
+  def ensure_token(changeset, _context) do
     case Changeset.get_attribute(changeset, :token) do
       nil -> Changeset.force_change_attribute(changeset, :token, generate_token())
       _ -> changeset

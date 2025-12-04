@@ -53,8 +53,6 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
 
   actions do
     read :read do
-      require_actor? true
-
       prepare build(fn query, %{actor: actor} ->
         cond do
           Map.get(actor, :role) == :super_admin -> query
@@ -67,7 +65,6 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
 
     create :create do
       primary? true
-      require_actor? true
 
       accept [:currency, :timezone, :primary_color, :logo_url, :organization_id]
 
@@ -75,14 +72,16 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
     end
 
     update :update do
-      require_actor? true
-
       accept [:currency, :timezone, :primary_color, :logo_url]
     end
   end
 
   policies do
     PlatformPolicy.platform_admin_root_access()
+
+    policy action_type([:read, :create, :update]) do
+      forbid_if expr(actor(:id) == nil)
+    end
 
     policy action_type(:create) do
       authorize_if expr(

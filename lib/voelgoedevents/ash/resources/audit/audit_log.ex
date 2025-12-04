@@ -48,16 +48,12 @@ defmodule Voelgoedevents.Ash.Resources.Audit.AuditLog do
     defaults []
 
     create :create do
-      require_actor? true
-
       accept [:actor_id, :action, :resource, :resource_id, :changes, :organization_id]
 
       change set_attribute(:organization_id, actor(:organization_id))
     end
 
-    read :read do
-      require_actor? true
-    end
+    read :read
   end
 
   policies do

@@ -2,7 +2,7 @@ defmodule Voelgoedevents.Ash.Policies.PlatformPolicy do
   @moduledoc """
   Platform admin short-circuit policy helper.
 
-  Inserts a bypass policy that authorizes actors flagged with
+  Inserts a guarded policy that authorizes actors flagged with
   `:is_platform_admin` (or the `:is_platform_admin?` accessor) before tenant or
   RBAC checks run. This aligns with the security architecture: platform admins
   can act as Root for authorization decisions while auditing and rate limiting
@@ -15,16 +15,20 @@ defmodule Voelgoedevents.Ash.Policies.PlatformPolicy do
   """
 
   @doc """
-  Adds a platform-admin bypass policy for all action types.
+  Adds a platform-admin policy guard for all action types.
 
   This only short-circuits authorization; auditing, rate-limiting, and other
   non-authorization hooks must still run in their own layers.
   """
   defmacro platform_admin_root_access do
     quote do
-      policy action_type([:read, :create, :update, :destroy, :action]) do
+      policy [
+               action_type([:read, :create, :update, :destroy, :action]),
+               expr(actor(:is_platform_admin) == true or actor(:is_platform_admin?) == true)
+             ] do
         description "Platform admin root access (authorization only; audit/rate limits still apply)"
-        bypass_if expr(actor(:is_platform_admin) == true or actor(:is_platform_admin?) == true)
+        authorize_if always()
+        stop_if always()
       end
     end
   end

@@ -1,7 +1,8 @@
 defmodule Voelgoedevents.Ash.Resources.Audit.AuditLog do
   @moduledoc "Ash resource: Immutable audit log entry."
 
-  alias Voelgoedevents.Ash.Policies.TenantPolicies
+  # Removed the failing macro call context
+  # require Voelgoedevents.Ash.Policies.TenantPolicies
 
   use Ash.Resource,
     domain: Voelgoedevents.Ash.Domains.AuditDomain,
@@ -57,6 +58,13 @@ defmodule Voelgoedevents.Ash.Resources.Audit.AuditLog do
   end
 
   policies do
-    TenantPolicies.enforce_tenant_policies()
+    # FIX: Replaced failing TenantPolicies.enforce_tenant_policies()
+    # with explicit policies to avoid macro variable hygiene errors.
+
+    policy action_type(:read) do
+      description "Users can only read audit logs for their organization."
+      forbid_if expr(organization_id != actor(:organization_id))
+      authorize_if always()
+    end
   end
 end

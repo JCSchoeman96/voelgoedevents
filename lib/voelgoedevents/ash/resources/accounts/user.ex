@@ -6,8 +6,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
   alias Voelgoedevents.Auth.ConfirmationSender
   alias Voelgoedevents.Ash.Policies.PlatformPolicy
   alias Voelgoedevents.Caching.MembershipCache
+  alias Voelgoedevents.Ash.Validations.RequireExplicitPlatformAdmin
 
   require PlatformPolicy
+  require Ash.Query
 
   use Ash.Resource,
     domain: Voelgoedevents.Ash.Domains.AccountsDomain,
@@ -41,9 +43,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
       enabled? true
       require_token_presence_for_authentication? true
       token_resource Voelgoedevents.Ash.Resources.Accounts.Token
-      signing_secret fn _, _ ->
-        {:ok, Application.fetch_env!(:voelgoedevents, :token_signing_secret)}
-      end
+      # FIX: Use __MODULE__ (must be public)
+      signing_secret &__MODULE__.get_token_signing_secret/2
     end
   end
 
@@ -109,31 +110,14 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
   validations do
     validate present([:email, :first_name, :last_name, :status])
-
     validate {Voelgoedevents.Ash.Validations.PasswordPolicy, field: :password}
-
-    validate fn changeset ->
-      if changeset.action.type == :update and
-           Changeset.changing_attribute?(changeset, :is_platform_admin) and
-           match?(:error, Changeset.fetch_argument(changeset, :is_platform_admin)) do
-        Changeset.add_error(changeset, field: :is_platform_admin, message: "explicit input required")
-      else
-        changeset
-      end
-    end
+    validate RequireExplicitPlatformAdmin
   end
 
   actions do
     read :read do
-      prepare build(fn query, %{actor: actor} ->
-        case Map.get(actor, :organization_id) do
-          nil ->
-            Query.filter(query, false)
-
-          organization_id ->
-            Query.filter(query, exists(memberships, organization_id == ^organization_id))
-        end
-      end)
+      # FIX: Use __MODULE__ reference
+      prepare &__MODULE__.filter_by_organization/2
     end
 
     create :create do
@@ -153,21 +137,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
         allow_nil? false
       end
 
-      change &set_platform_admin_from_argument/2
-
-      change &audit_platform_admin_change/2
-
-      change fn changeset, _context ->
-        organization_id = Changeset.get_argument(changeset, :organization_id)
-        role_id = Changeset.get_argument(changeset, :role_id)
-
-        Changeset.manage_relationship(
-          changeset,
-          :memberships,
-          [%{organization_id: organization_id, role_id: role_id}],
-          type: :create
-        )
-      end
+      # FIX: Use __MODULE__ references for changes
+      change &__MODULE__.set_platform_admin_from_argument/2
+      change &__MODULE__.audit_platform_admin_change/2
+      change &__MODULE__.setup_new_user_membership/2
     end
 
     update :update do
@@ -177,8 +150,9 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
         allow_nil? true
       end
 
-      change &set_platform_admin_from_argument/2
-      change &audit_platform_admin_change/2
+      # FIX: Use __MODULE__ references for changes
+      change &__MODULE__.set_platform_admin_from_argument/2
+      change &__MODULE__.audit_platform_admin_change/2
       change after_action(&__MODULE__.invalidate_membership_cache_on_deactivate/3)
     end
 
@@ -188,36 +162,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
         sensitive? true
       end
 
-      run fn %{email: email}, context ->
-        opts = Ash.Context.to_opts(context)
-
-        with {:ok, [user]} <-
-               __MODULE__
-               |> Query.new()
-               |> Query.filter(email == ^email)
-               |> Ash.read(opts),
-             strategy <- Info.strategy!(__MODULE__, :confirm),
-             {:ok, token} <-
-               AshAuthentication.AddOn.Confirmation.confirmation_token(
-                 strategy,
-                 Changeset.new(user),
-                 user,
-                 opts
-               ) do
-          {sender, send_opts} = strategy.sender
-
-          send_opts
-          |> Keyword.put(:tenant, context.tenant)
-          |> Keyword.put(:changeset, Changeset.new(user))
-          |> then(&sender.send(user, token, &1))
-
-          {:ok, user}
-        else
-          {:ok, []} -> {:error, :not_found}
-          {:error, reason} -> {:error, reason}
-          :error -> {:error, :not_found}
-        end
-      end
+      # FIX: Use __MODULE__ reference
+      run &__MODULE__.run_resend_confirmation/2
     end
   end
 
@@ -225,7 +171,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     PlatformPolicy.platform_admin_root_access()
 
     policy action([:create, :read, :update]) do
-      forbid_if expr(actor(:id) == nil)
+      forbid_if expr(is_nil(actor(:id)))
     end
 
     policy action(:create) do
@@ -243,14 +189,77 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     end
   end
 
-  defp set_platform_admin_from_argument(changeset, _context) do
+  # ===========================================================================
+  # PUBLIC NAMED FUNCTIONS (Must be public for &__MODULE__ captures)
+  # ===========================================================================
+
+  def get_token_signing_secret(_context, _resource) do
+    {:ok, Application.fetch_env!(:voelgoedevents, :token_signing_secret)}
+  end
+
+  def filter_by_organization(query, %{actor: actor}) do
+    case Map.get(actor, :organization_id) do
+      nil ->
+        Query.filter(query, false)
+
+      organization_id ->
+        Query.filter(query, exists(memberships, organization_id == ^organization_id))
+    end
+  end
+
+  def setup_new_user_membership(changeset, _context) do
+    organization_id = Changeset.get_argument(changeset, :organization_id)
+    role_id = Changeset.get_argument(changeset, :role_id)
+
+    Changeset.manage_relationship(
+      changeset,
+      :memberships,
+      [%{organization_id: organization_id, role_id: role_id}],
+      type: :create
+    )
+  end
+
+  def run_resend_confirmation(%{email: email}, context) do
+    opts = Ash.Context.to_opts(context)
+
+    with {:ok, [user]} <-
+           __MODULE__
+           |> Query.new()
+           |> Query.filter(email == ^email)
+           |> Ash.read(opts),
+         strategy <- Info.strategy!(__MODULE__, :confirm),
+         {:ok, token} <-
+           AshAuthentication.AddOn.Confirmation.confirmation_token(
+             strategy,
+             Changeset.new(user),
+             user,
+             opts
+           ) do
+      {sender, send_opts} = strategy.sender
+
+      send_opts
+      |> Keyword.put(:tenant, context.tenant)
+      |> Keyword.put(:changeset, Changeset.new(user))
+      |> then(&sender.send(user, token, &1))
+
+      {:ok, user}
+    else
+      {:ok, []} -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+      :error -> {:error, :not_found}
+    end
+  end
+
+  # Changed from defp to def
+  def set_platform_admin_from_argument(changeset, _context) do
     case Changeset.fetch_argument(changeset, :is_platform_admin) do
       {:ok, value} -> Changeset.force_change_attribute(changeset, :is_platform_admin, value)
       :error -> changeset
     end
   end
 
-  defp audit_platform_admin_change(changeset, _context) do
+  # Changed from defp to def
+  def audit_platform_admin_change(changeset, _context) do
     previous_value = Map.get(changeset.data, :is_platform_admin)
 
     Changeset.after_action(changeset, fn changeset, user, context ->
@@ -272,6 +281,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     end)
   end
 
+  # Changed from defp to def
   def invalidate_membership_cache_on_deactivate(changeset, user, context) do
     if disabled?(changeset) do
       context
@@ -283,6 +293,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     {:ok, user}
   end
 
+  # Helper functions can remain private (defp) as they are not called by the DSL
   defp invalidate_memberships(opts, user) do
     case Ash.load(user, :memberships, opts) do
       {:ok, %{memberships: memberships}} when is_list(memberships) ->

@@ -38,7 +38,7 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentOrgPlug do
     platform_admin?(user) or active_member?(user, organization_id)
   end
 
-  defp platform_admin?(%User{} = user), do: Map.get(user, :is_platform_admin?, false)
+  defp platform_admin?(%User{} = user), do: Map.get(user, :is_platform_admin, false)
 
   defp active_member?(%User{id: user_id, memberships: memberships}, organization_id) when is_list(memberships) do
     memberships

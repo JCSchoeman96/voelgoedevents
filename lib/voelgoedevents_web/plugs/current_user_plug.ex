@@ -69,7 +69,7 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentUserPlug do
   defp load_user_from_session(%{conn: conn} = session) do
     with {:ok, %User{} = user} <- load_user(session.target_user_id),
          :ok <- ensure_active_session(session, user, conn) do
-      assign_user(conn, session, user)
+      assign_user(session, user)
     else
       {:error, :invalid_session} -> drop_session(conn)
       _ -> fallback_to_primary_user(session)

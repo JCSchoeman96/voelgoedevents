@@ -5,6 +5,7 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
   alias Voelgoedevents.Ash.Policies.PlatformPolicy
 
   require PlatformPolicy
+  require Ash.Query
 
   use Ash.Resource,
     domain: Voelgoedevents.Ash.Domains.AccountsDomain,
@@ -52,35 +53,47 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
   end
 
   actions do
-    read :read do
-      prepare build(fn query, %{actor: actor} ->
-        cond do
-          Map.get(actor, :role) == :super_admin -> query
-          Map.get(actor, :is_platform_admin) == true -> query
-          organization_id = Map.get(actor, :organization_id) -> Query.filter(query, organization_id == ^organization_id)
-          true -> Query.filter(query, false)
-        end
-      end)
-    end
+  read :read do
+    prepare fn query, %{actor: actor} = _context ->
+      cond do
+        # 1) Super admin: unrestricted
+        Map.get(actor, :role) == :super_admin ->
+          query
 
-    create :create do
-      primary? true
+        # 2) Platform admin: unrestricted
+        Map.get(actor, :is_platform_admin) == true ->
+          query
 
-      accept [:currency, :timezone, :primary_color, :logo_url, :organization_id]
+        # 3) Normal actor: scope to their organization_id
+        organization_id = Map.get(actor, :organization_id) ->
+          Query.filter(query, organization_id == ^organization_id)
 
-      change relate_actor(:organization)
-    end
-
-    update :update do
-      accept [:currency, :timezone, :primary_color, :logo_url]
+        # 4) No actor / no org: return no rows
+        true ->
+          Query.filter(query, false)
+      end
     end
   end
+
+  create :create do
+    primary? true
+
+    accept [:currency, :timezone, :primary_color, :logo_url, :organization_id]
+
+    change relate_actor(:organization)
+  end
+
+  update :update do
+    accept [:currency, :timezone, :primary_color, :logo_url]
+  end
+end
+
 
   policies do
     PlatformPolicy.platform_admin_root_access()
 
     policy action_type([:read, :create, :update]) do
-      forbid_if expr(actor(:id) == nil)
+      forbid_if expr(is_nil(actor(:id)))
     end
 
     policy action_type(:create) do

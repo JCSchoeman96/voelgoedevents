@@ -11,6 +11,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
     authorizers: [Ash.Policy.Authorizer]
 
   require PlatformPolicy
+  require Ash.Query
 
   @role_names Role.allowed_roles()
 
@@ -72,7 +73,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
         allow_nil? false
       end
 
-      run &__MODULE__.accept_invitation/3
+      # FIX: Updated to arity 2
+      run &__MODULE__.accept_invitation/2
     end
   end
 
@@ -80,7 +82,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
     PlatformPolicy.platform_admin_root_access()
 
     policy action_type([:read, :create, :destroy, :action]) do
-      forbid_if expr(actor(:id) == nil)
+      forbid_if expr(is_nil(actor(:id)))
     end
 
     policy action_type(:read) do
@@ -92,17 +94,17 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
       forbid_if expr(organization_id != actor(:organization_id))
 
       forbid_if expr(
-                    not exists(
-                      organization.memberships,
-                      user_id == actor(:id) and role.name == :owner
-                    )
-                  )
+        not exists(
+          organization.memberships,
+          user_id == actor(:id) and role.name == :owner
+        )
+      )
 
       authorize_if always()
     end
 
     policy action(:accept) do
-      forbid_if expr(actor(:email) == nil)
+      forbid_if expr(is_nil(actor(:email)))
       authorize_if always()
     end
 
@@ -119,7 +121,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
     end
   end
 
-  def accept_invitation(_changeset, %{token: token}, context) do
+  # FIX: Changed signature to (input, context) for generic action
+  def accept_invitation(%{token: token} = _input, context) do
     opts = Context.to_opts(context)
 
     with {:ok, actor} <- fetch_actor(context),
@@ -192,7 +195,11 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
 
       {:ok, []} ->
         Membership
-        |> Changeset.for_create(:create, %{organization_id: organization_id, role_id: role_id, user_id: user_id})
+        |> Changeset.for_create(:create, %{
+          organization_id: organization_id,
+          role_id: role_id,
+          user_id: user_id
+        })
         |> Ash.create(membership_opts)
 
       {:error, reason} ->

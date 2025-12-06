@@ -10,6 +10,8 @@ defmodule Voelgoedevents.Caching.MembershipCache do
   alias Voelgoedevents.Ash.Resources.Accounts.Membership
   alias Voelgoedevents.Infrastructure.Redis
 
+  require Ash.Query
+
   @type role_value :: atom() | nil
 
   @redis_prefix "vge:mem"

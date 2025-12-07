@@ -94,6 +94,20 @@ lib/voelgoedevents/ash/domains/access_control_domain.ex
 
 ---
 
+### 📝 AUDIT DOMAIN (`:audit`)
+
+| Resource     | Module                                               | Atom         | File                                                    |
+| ------------ | ---------------------------------------------------- | ------------ | ------------------------------------------------------- |
+| **AuditLog** | `Voelgoedevents.Ash.Resources.Audit.AuditLog`        | `:audit_log` | `lib/voelgoedevents/ash/resources/audit/audit_log.ex`   |
+
+**Domain File:**
+
+```
+lib/voelgoedevents/ash/domains/audit_domain.ex
+```
+
+---
+
 ### 🎟️ TICKETING DOMAIN (`:ticketing`)
 
 | Resource        | Module                                                 | Atom             | File                                                |

@@ -6,6 +6,8 @@
 > This document prevents the AI from hallucinating module names, file paths, atoms, or domain boundaries.
 > Any coding agent MUST treat this as the single source of truth for naming, modules, folder layout, and architectural conventions.
 
+> **Ultimate sources of truth:** Always cross-check against [AGENTS.md](../AGENTS.md), [MASTER_BLUEPRINT.md](../MASTER_BLUEPRINT.md), and the domain catalog in [DOMAIN_MAP.md](../DOMAIN_MAP.md) before using the registry tables below.
+
 ---
 
 ## ⚠️ CRITICAL RULES FOR ALL AI AGENTS

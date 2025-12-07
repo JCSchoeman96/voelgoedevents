@@ -149,7 +149,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     status = Changeset.get_attribute(changeset, :status)
 
     if status == :inactive and is_nil(Changeset.get_attribute(changeset, :invited_at)) do
-      Changeset.set_attribute(changeset, :invited_at, DateTime.utc_now())
+      Changeset.change_attribute(changeset, :invited_at, DateTime.utc_now())
     else
       changeset
     end
@@ -160,17 +160,17 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     joined_at = Changeset.get_attribute(changeset, :joined_at)
 
     cond do
-      status == :active and is_nil(joined_at) -> Changeset.set_attribute(changeset, :joined_at, DateTime.utc_now())
+      status == :active and is_nil(joined_at) -> Changeset.change_attribute(changeset, :joined_at, DateTime.utc_now())
       true -> changeset
     end
   end
 
   def set_invited_at(changeset, _context) do
-    Changeset.set_attribute(changeset, :invited_at, DateTime.utc_now())
+    Changeset.change_attribute(changeset, :invited_at, DateTime.utc_now())
   end
 
   def set_joined_at(changeset, _context) do
-    Changeset.set_attribute(changeset, :joined_at, DateTime.utc_now())
+    Changeset.change_attribute(changeset, :joined_at, DateTime.utc_now())
   end
 
   def invalidate_membership_cache(_changeset, membership, _context) do

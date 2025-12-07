@@ -1,66 +1,117 @@
 defmodule Voelgoedevents.Ash.Policies.TenantPolicies do
   @moduledoc """
-  Shared tenant-isolation helpers for Ash resources.
+  Centralized authorization policies for multi-tenant RBAC.
 
-  Centralizes the Appendix B multi-tenancy rules so every resource:
-  - Declares an `organization_id` attribute
-  - Denies by default and only authorizes when the record organization matches `actor(:organization_id)`
-  - Scopes all reads and mutations to the actor organization without trusting params
+  Enforces role-based access control across all VoelgoedEvents resources.
 
-  See `docs/architecture/02_multi_tenancy.md` for the platform-wide guidance these helpers enforce.
+  NOTE: Organization filtering is handled by FilterByTenant preparation.
+  This module ONLY enforces role-based decisions.
   """
 
-  alias Ash.Resource.Info
+  require Ash.Query
 
-  @doc """
-  Compile-time guard that raises if the resource omits the required `organization_id` attribute.
-  """
-  defmacro require_organization_attribute! do
-    quote do
-      Voelgoedevents.Ash.Policies.TenantPolicies.__ensure_organization_attribute!(__MODULE__)
+  # ============================================================================
+  # RBAC Helper Functions (Used by all resource policies)
+  # ============================================================================
+
+  @doc "Check if user belongs to an organization (has membership)"
+  def user_belongs_to_org?(actor, org_id) do
+    case actor do
+      nil -> false
+      actor when is_map(actor) ->
+        # actor.organization_id already filtered by FilterByTenant
+        # Just check if it exists
+        Map.get(actor, :organization_id) == org_id
+      _ -> false
     end
   end
 
-  @doc """
-  Forbid access when the actor has no organization context (Appendix B Rule: no orgless access).
-  """
-  defmacro forbid_without_actor_org do
-    quote do
-      forbid_if expr(is_nil(actor(:organization_id)))
+  @doc "Check if user has a specific role in an organization"
+  def user_has_role?(actor, org_id, required_role) when is_atom(required_role) do
+    case actor do
+      nil -> false
+      actor when is_map(actor) ->
+        user_id = Map.get(actor, :id)
+
+        # Load user's membership in this org (cached in ETS via MembershipCache)
+        # Note: We query Membership directly here. In a hot path, this should ideally
+        # hit the MembershipCache, but for policy authorization happening inside Ash,
+        # we often rely on the actor already having context or a fast DB lookup.
+        # Given MembershipCache exists, we could potentially leverage it if valid.
+        # For now, we follow the standard Ash pattern of querying the join resource.
+        Voelgoedevents.Ash.Resources.Accounts.Membership
+        |> Ash.Query.filter(user_id: user_id)
+        |> Ash.Query.filter(organization_id: org_id)
+        |> Ash.Query.load(:role)
+        |> Ash.read_one()
+        |> case do
+          {:ok, %{role: %{name: name}}} ->
+            name == required_role
+
+          _ ->
+            false
+        end
+      _ -> false
     end
   end
 
-  @doc """
-  Authorize only when the record organization matches the actor organization and apply a strict filter
-  so all reads/mutations are scoped server-side (Appendix B Rules: never trust params; no cross-org joins).
-  """
-  defmacro scope_to_actor_organization do
-    quote do
-      authorize_if filter(expr(organization_id == actor(:organization_id)))
-    end
-  end
+  # ============================================================================
+  # Policy Functions (Imported in resource policy blocks)
+  # ============================================================================
 
   @doc """
-  Default tenant policy set: enforce presence of `organization_id`, deny by default, forbid orgless actors,
-  and scope everything to the actor organization.
-  """
-  defmacro enforce_tenant_policies do
-    quote do
-      Voelgoedevents.Ash.Policies.TenantPolicies.require_organization_attribute!()
+  Authorize a READ action.
 
-      policy action_type([:read, :create, :update, :destroy, :action]) do
-        Voelgoedevents.Ash.Policies.TenantPolicies.forbid_without_actor_org()
-        forbid_if expr(organization_id != actor(:organization_id))
-        Voelgoedevents.Ash.Policies.TenantPolicies.scope_to_actor_organization()
+  FilterByTenant already filters by organization_id automatically.
+  No additional check needed here unless we want to restrict internal roles.
+  """
+  defmacro authorize_read do
+    quote do
+      policy action_type(:read) do
+        authorize_if always()
       end
     end
   end
 
-  @doc false
-  def __ensure_organization_attribute!(resource) do
-    unless Info.attribute(resource, :organization_id) do
-      raise ArgumentError,
-            "#{inspect(resource)} must define :organization_id per Appendix B tenant isolation rules"
+  @doc """
+  Authorize a CREATE/UPDATE action by role.
+
+  Requires: user belongs to org AND has required role.
+  FilterByTenant ensures they can only create within their org.
+  """
+  defmacro authorize_write(required_roles) when is_list(required_roles) do
+    quote do
+      policy action_type([:create, :update]) do
+        authorize_if expr(
+          actor(:organization_id) == organization_id and
+          actor(:role) in unquote(required_roles)
+        )
+      end
     end
   end
+
+  @doc """
+  Authorize a DESTROY action by role.
+
+  Requires: user belongs to org AND has required role.
+  """
+  defmacro authorize_destroy(required_roles) when is_list(required_roles) do
+    quote do
+      policy action_type(:destroy) do
+        authorize_if expr(
+          actor(:organization_id) == organization_id and
+          actor(:role) in unquote(required_roles)
+        )
+      end
+    end
+  end
+
+  # ============================================================================
+  # Preset Roles (Convenience functions)
+  # ============================================================================
+
+  def admin_only, do: [:owner, :admin]
+  def staff_or_above, do: [:owner, :admin, :staff]
+  def read_only, do: [:owner, :admin, :staff, :viewer]
+  def scanner_only, do: [:scanner_only]
 end

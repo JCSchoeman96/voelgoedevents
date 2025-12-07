@@ -183,8 +183,9 @@ defmodule Voelgoedevents.Ash.Resources.Ticketing.Ticket do
   policies do
     PlatformPolicy.platform_admin_root_access()
 
-    policy action_type([:read, :update]) do
+    policy action_type([:read, :update, :destroy]) do
       forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(is_nil(actor(:organization_id)))
       forbid_if expr(organization_id != actor(:organization_id))
       authorize_if always()
     end

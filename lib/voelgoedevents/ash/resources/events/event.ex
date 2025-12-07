@@ -1,9 +1,14 @@
 defmodule Voelgoedevents.Ash.Resources.Events.Event do
   @moduledoc "Ash resource: Event aggregate root."
 
+  alias Voelgoedevents.Ash.Policies.PlatformPolicy
+
+  require PlatformPolicy
+
   use Ash.Resource,
     domain: Voelgoedevents.Ash.Domains.EventsDomain,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table "events"
@@ -90,6 +95,22 @@ defmodule Voelgoedevents.Ash.Resources.Events.Event do
     end
 
     destroy :destroy do
+    end
+  end
+
+  policies do
+    PlatformPolicy.platform_admin_root_access()
+
+    policy action(:create) do
+      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(arg(:organization_id) != actor(:organization_id))
+      authorize_if always()
+    end
+
+    policy action_type([:read, :update, :destroy]) do
+      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(organization_id != actor(:organization_id))
+      authorize_if always()
     end
   end
 end

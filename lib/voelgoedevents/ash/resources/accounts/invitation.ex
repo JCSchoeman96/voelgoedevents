@@ -64,7 +64,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
     create :create do
       accept [:email, :role]
 
-      change set_attribute(:organization_id, actor(:organization_id))
+      change change_attribute(:organization_id, actor(:organization_id))
       change &__MODULE__.ensure_token/2
     end
 

@@ -89,7 +89,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
 
     update :archive do
       accept []
-      change set_attribute(:status, :archived)
+      change change_attribute(:status, :archived)
     end
   end
 

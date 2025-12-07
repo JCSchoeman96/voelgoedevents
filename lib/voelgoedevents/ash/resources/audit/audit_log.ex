@@ -51,7 +51,7 @@ defmodule Voelgoedevents.Ash.Resources.Audit.AuditLog do
     create :create do
       accept [:actor_id, :action, :resource, :resource_id, :changes, :organization_id]
 
-      change set_attribute(:organization_id, actor(:organization_id))
+      change change_attribute(:organization_id, actor(:organization_id))
     end
 
     read :read

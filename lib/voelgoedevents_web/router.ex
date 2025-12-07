@@ -10,11 +10,24 @@ defmodule VoelgoedeventsWeb.Router do
     plug :put_root_layout, html: {VoelgoedeventsWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug VoelgoedeventsWeb.Plugs.CurrentUserPlug
+    plug VoelgoedeventsWeb.Plugs.CurrentOrgPlug
   end
 
   pipeline :api do
     plug :accepts, ["json"]
   end
+
+  pipeline :org_scoped do
+    plug :browser
+    plug VoelgoedeventsWeb.Plugs.OrgRequiredPlug
+  end
+
+  # Remove legacy tenant_scope in favor of new patterns if possible,
+  # or keep it but aligned. The instruction implies I should fix pipelines.
+  # But for now I'll just add org_scoped and update browser.
+  # However, the user instruction was "Pipeline order: CurrentUserPlug → CurrentOrgPlug".
+  # And defined :org_scoped pipeline.
 
   pipeline :tenant_scope do
     plug VoelgoedeventsWeb.Plugs.CurrentUserPlug

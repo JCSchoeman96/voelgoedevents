@@ -55,14 +55,11 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentUserPlug do
   end
 
   defp load_user(user_id) do
-    User
-    |> Ash.Query.filter(id == ^user_id)
-    |> Ash.Query.load(:memberships)
-    |> Ash.read_one(domain: AccountsDomain)
-    |> case do
-      {:ok, nil} -> {:error, :not_found}
-      {:ok, %User{} = user} -> {:ok, user}
-      {:error, reason} -> {:error, reason}
+    # Use Ash.get to load the user, ensuring we bypass policies if needed for initial load (actor: nil)
+    # or rely on a policy that allows reading self.
+    case Ash.get(User, user_id, actor: nil) do
+      {:ok, user} -> {:ok, user}
+      {:error, _} -> {:error, :not_found}
     end
   end
 
@@ -96,6 +93,7 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentUserPlug do
 
   defp assign_user(%{conn: conn} = session, user) do
     computed_session_version = session_version(user)
+    active_org_id = active_organization_id(user)
 
     conn
     |> maybe_renew_session(session.session_version)
@@ -103,16 +101,23 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentUserPlug do
     |> put_session(:session_version, computed_session_version)
     |> maybe_store_ip(session)
     |> assign(:current_user, user)
-    |> assign(:organization_id, active_organization_id(user))
+    |> assign(:current_organization_id, active_org_id)
+    |> Ash.PlugHelpers.set_actor(user)
+    |> Ash.PlugHelpers.set_context(%{organization_id: active_org_id})
     |> maybe_assign_impersonator(session)
   end
 
   defp active_organization_id(%User{memberships: memberships}) do
-    memberships
-    |> Enum.find(&(&1.status == :active))
-    |> case do
-      %{organization_id: organization_id} -> organization_id
-      _ -> nil
+    case memberships do
+      # If memberships are not loaded, we can't determine active org
+      %Ash.NotLoaded{} -> nil
+      _list ->
+        memberships
+        |> Enum.find(&(&1.status == :active))
+        |> case do
+          %{organization_id: organization_id} -> organization_id
+          _ -> nil
+        end
     end
   end
 

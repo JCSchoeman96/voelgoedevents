@@ -6,11 +6,90 @@ defmodule Voelgoedevents.Ash.Resources.Events.Event do
     data_layer: AshPostgres.DataLayer
 
   postgres do
-    # TODO: configure correct table name and repo
-    table("events")
-    repo(Voelgoedevents.Repo)
+    table "events"
+    repo Voelgoedevents.Repo
   end
 
-  # TODO: define attributes, relationships, actions, identities, calculations, and changes.
-  # See docs/domain/*.md for details.
+  attributes do
+    uuid_primary_key :id
+
+    attribute :organization_id, :uuid do
+      allow_nil? false
+    end
+
+    attribute :venue_id, :uuid do
+      allow_nil? false
+    end
+
+    attribute :name, :string do
+      allow_nil? false
+    end
+
+    attribute :slug, :string do
+      allow_nil? false
+    end
+
+    attribute :description, :string do
+      allow_nil? true
+      default ""
+    end
+
+    attribute :status, :atom do
+      allow_nil? false
+      constraints one_of: [:draft, :published, :on_sale, :paused, :closed]
+      default :draft
+    end
+
+    attribute :start_at, :utc_datetime do
+      allow_nil? false
+    end
+
+    attribute :end_at, :utc_datetime do
+      allow_nil? false
+    end
+
+    attribute :settings, :map do
+      allow_nil? true
+      default %{}
+    end
+
+    timestamps()
+  end
+
+  relationships do
+    belongs_to :organization, Voelgoedevents.Ash.Resources.Accounts.Organization do
+      allow_nil? false
+      attribute_writable? true
+    end
+
+    belongs_to :venue, Voelgoedevents.Ash.Resources.Venues.Venue do
+      allow_nil? false
+      attribute_writable? true
+    end
+  end
+
+  identities do
+    identity :unique_slug_per_organization, [:slug, :organization_id]
+  end
+
+  validations do
+    validate present([:organization_id, :venue_id, :name, :slug, :status, :start_at, :end_at])
+    validate compare(:end_at, greater_than: :start_at)
+  end
+
+  actions do
+    defaults [:read]
+
+    create :create do
+      primary? true
+      accept [:organization_id, :venue_id, :name, :slug, :description, :status, :start_at, :end_at, :settings]
+    end
+
+    update :update do
+      accept [:venue_id, :name, :slug, :description, :status, :start_at, :end_at, :settings]
+    end
+
+    destroy :destroy do
+    end
+  end
 end

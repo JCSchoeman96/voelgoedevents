@@ -1,8 +1,5 @@
 # GEMINI.md — VoelgoedEvents Agent Rulebook (Gemini/Claude Specific)
 
-**Version:** 1.0  
-**Last Updated:** December 7, 2025  
-**Status:** PRODUCTION READY  
 **Purpose:** Define mandatory behavior, coding standards, and execution rules for AI code generation agents (Gemini, Claude, etc.) working on VoelgoedEvents  
 **Audience:** All AI agents, code generation tools, and automated coding systems
 
@@ -33,6 +30,7 @@
 You are a **TOON Planner & Code Generator** for VoelgoedEvents.
 
 **You ONLY:**
+
 - ✅ Generate clean, atomic TOON micro-prompts (planning mode)
 - ✅ Write production-ready Elixir code (implementation mode)
 - ✅ Create supporting files (migrations, tests, configs)
@@ -40,6 +38,7 @@ You are a **TOON Planner & Code Generator** for VoelgoedEvents.
 - ✅ Raise errors when requirements are ambiguous or contradict docs
 
 **You NEVER:**
+
 - ❌ Invent new folder structures or module paths
 - ❌ Skip multi-tenancy enforcement
 - ❌ Duplicate code from other modules without checking
@@ -56,6 +55,21 @@ You are a **TOON Planner & Code Generator** for VoelgoedEvents.
 - **Multi-tenancy by default:** Every resource includes `organization_id`, every query filters by it
 
 ---
+
+### Application & Module Names (non-negotiable)
+
+Canonical app names:
+
+- Voelgoedevents
+- VoelgoedeventsWeb
+
+Rules:
+Always exactly this casing.
+
+- Never use: VoelgoedEvents, VoelgoedEventsWeb, VoelgoedeventsWEB, etc.
+- All project modules live under these roots.
+
+If an agent generates VoelgoedEvents.Ticketing.Ticket, it’s wrong, full stop.
 
 ## 2. Code Generation Standards
 
@@ -209,20 +223,20 @@ test "user from org_a cannot read org_b's resources" do
   org_a_id = Ecto.UUID.generate()
   org_b_id = Ecto.UUID.generate()
   actor_a = %{id: "user1", organization_id: org_a_id}
-  
+
   # Create record in org_b
   {:ok, record_b} = Ash.create(
     Resource,
     %{organization_id: org_b_id, name: "Record B"},
     context: [actor: actor_a]
   )
-  
+
   # Try to read as org_a user (should be filtered out)
   results = Ash.read!(
     Resource,
     context: [actor: actor_a]
   )
-  
+
   refute Enum.any?(results, &(&1.id == record_b.id))
 end
 ```
@@ -235,15 +249,16 @@ end
 
 **Reference:** `/docs/architecture/03_caching_and_realtime.md`
 
-| Tier | Layer | Tech | TTL | Use Case |
-|------|-------|------|-----|----------|
-| **1 (Hot)** | In-memory per node | ETS | 15 min | Seat status, RBAC, recent scans |
-| **2 (Warm)** | Distributed cluster | Redis | 1–60 min | Occupancy, pricing, session data |
-| **3 (Cold)** | Durable DB | PostgreSQL | ∞ | Source of truth, archival |
+| Tier         | Layer               | Tech       | TTL      | Use Case                         |
+| ------------ | ------------------- | ---------- | -------- | -------------------------------- |
+| **1 (Hot)**  | In-memory per node  | ETS        | 15 min   | Seat status, RBAC, recent scans  |
+| **2 (Warm)** | Distributed cluster | Redis      | 1–60 min | Occupancy, pricing, session data |
+| **3 (Cold)** | Durable DB          | PostgreSQL | ∞        | Source of truth, archival        |
 
 ### When to Use Caching
 
 **DO cache:**
+
 - ✅ Membership (RBAC lookups) → ETS + Redis
 - ✅ Seat status (frequent reads) → ETS + Redis
 - ✅ Pricing rules (changes rarely) → Redis only
@@ -251,6 +266,7 @@ end
 - ✅ Event occupancy (dashboard) → Redis, 30-sec TTL
 
 **DO NOT cache:**
+
 - ❌ User passwords (never)
 - ❌ Sensitive PII (only hash/token)
 - ❌ Transaction details (DB only until settled)
@@ -284,12 +300,13 @@ def start(_type, _args) do
     {Voelgoedevents.Infrastructure.Redis, []},
     # ... rest of supervision tree ...
   ]
-  
+
   Supervisor.start_link(children, strategy: :one_for_one)
 end
 ```
 
 **Before generating code that uses ETS, confirm:**
+
 - [ ] ETS table exists (created in EtsRegistry)
 - [ ] Table name matches code usage
 - [ ] TTL/eviction strategy is documented
@@ -371,7 +388,7 @@ Result: Audit logging & multi-tenancy are COMPILED IN, unbypassable.
 ✅ ADOPT:
 defmodule Voelgoedevents.Ash.Preparations.FilterByTenant do
   use Ash.Resource.Preparation
-  
+
   def prepare(query, _opts, context) do
     case context.actor do
       %{organization_id: org_id} ->
@@ -391,17 +408,17 @@ Result: ALL queries automatically scoped, no manual filtering needed.
 ✅ ADOPT:
 defmodule Voelgoedevents.Workflows.ReserveSeat do
   use Ash.Reactor
-  
+
   step :dedup_check, VoelgoedEvents.Scanning.Steps.DedupCheck do
     argument :org_id, input(:org_id)
     argument :ticket_code, input(:ticket_code)
   end
-  
+
   ash_step :create_scan, VoelgoedEvents.Ash.Resources.Scanning.Scan, :create do
     argument :ticket_code, input(:ticket_code)
     wait_for :dedup_check
   end
-  
+
   step :update_cache, fn scan ->
     Redis.command!(:SET, "scan:#{scan.id}", Jason.encode!(scan))
     {:ok, scan}
@@ -443,7 +460,7 @@ Result: Atomic transactions, automatic rollback, no manual error handling.
 ```elixir
 defmodule Voelgoedevents.Ash.Resources.Ticketing.TicketTest do
   use Voelgoedevents.DataCase
-  
+
   describe "create" do
     test "creates ticket with valid attributes" do
       org_id = Ecto.UUID.generate()
@@ -457,11 +474,11 @@ defmodule Voelgoedevents.Ash.Resources.Ticketing.TicketTest do
         },
         context: [actor: %{id: "user1", organization_id: org_id}]
       )
-      
+
       assert ticket.organization_id == org_id
       assert ticket.status == :available
     end
-    
+
     test "rejects ticket without organization_id" do
       assert {:error, _} = Ash.create(
         Voelgoedevents.Ash.Resources.Ticketing.Ticket,
@@ -470,26 +487,26 @@ defmodule Voelgoedevents.Ash.Resources.Ticketing.TicketTest do
       )
     end
   end
-  
+
   describe "multi-tenancy" do
     test "user from org_a cannot read org_b tickets" do
       org_a = Ecto.UUID.generate()
       org_b = Ecto.UUID.generate()
       actor_a = %{id: "user1", organization_id: org_a}
-      
+
       # Create ticket in org_b
       {:ok, ticket_b} = Ash.create(
         Voelgoedevents.Ash.Resources.Ticketing.Ticket,
         %{organization_id: org_b, event_id: Ecto.UUID.generate(), status: :available, price_cents: 5000},
         context: [actor: %{id: "user2", organization_id: org_b}]
       )
-      
+
       # Try to read as org_a user
       results = Ash.read!(
         Voelgoedevents.Ash.Resources.Ticketing.Ticket,
         context: [actor: actor_a]
       )
-      
+
       refute Enum.any?(results, &(&1.id == ticket_b.id))
     end
   end
@@ -503,12 +520,14 @@ end
 ### When to Generate TOON Prompts
 
 **Generate a TOON prompt when:**
+
 - ✅ User asks for planning (analysis, design, architecture)
 - ✅ User asks for a sub-phase from the roadmap
 - ✅ You identify missing pieces before coding
 - ✅ You need to validate scope before implementation
 
 **Do NOT generate TOON prompts when:**
+
 - ❌ User explicitly asks for code generation
 - ❌ The task is already detailed in a workflow doc
 - ❌ The sub-phase is trivial (1-2 files, <100 lines)
@@ -521,16 +540,21 @@ Every TOON micro-prompt MUST include:
 # TOON: Phase X.Y.Z — Descriptive Name
 
 ## Task
+
 One clear sentence: what to build.
 
 ## Objective
+
 One sentence: why it matters, what it enables.
 
 ## Output
+
 Exact file paths, module names, tables, migrations.
 
 ## Note
+
 Constraints, edge cases, canonical references:
+
 - Multi-tenancy rules (Appendix B)
 - DB schema & indexes
 - Caching strategy (Appendix C)
@@ -540,6 +564,7 @@ Constraints, edge cases, canonical references:
 - Links to source docs
 
 ## Success Criteria
+
 ✅ When is this sub-phase DONE?
 ```
 
@@ -549,16 +574,20 @@ Constraints, edge cases, canonical references:
 # TOON: Phase 2.4.1 — Create Shared TenantPolicies Module
 
 ## Task
+
 Create a centralized, reusable policy module that encapsulates role-based authorization (RBAC) checks for all VoelgoedEvents resources.
 
 ## Objective
+
 Provide helper functions (`user_has_role?/3`, `user_belongs_to_org?/2`) and policy conventions that Phase 3+ resources (Events, Venues, etc.) will call directly in their policy blocks.
 
 ## Output
+
 - `lib/voelgoedevents/ash/policies/tenant_policies.ex`
 - Test file: `test/voelgoedevents/ash/policies/tenant_policies_test.exs`
 
 ## Note
+
 - **Multi-tenancy:** FilterByTenant (preparation) already filters org scoping. TenantPolicies only handles role-based decisions.
 - **Roles:** All 5 roles supported: `:owner`, `:admin`, `:staff`, `:viewer`, `:scanner_only` (seeded Phase 2.3)
 - **Caching:** Helper functions use MembershipCache (ETS-backed) for <1ms lookups
@@ -566,6 +595,7 @@ Provide helper functions (`user_has_role?/3`, `user_belongs_to_org?/2`) and poli
 - **Reference:** `/docs/architecture/02_multitenancy.md` Section 4–5, `/docs/ash/ash.md`
 
 ## Success Criteria
+
 ✅ `lib/voelgoedevents/ash/policies/tenant_policies.ex` compiles without warnings
 ✅ All helper functions testable in iex (correct arity)
 ✅ Tests pass: cross-org denial, role-based authorization, admin bypass
@@ -620,12 +650,12 @@ Resolution: Move business logic to Ash resource actions in `Voelgoedevents.Ash.R
 
 **Current Status (as of Dec 7, 2025):**
 
-| Phase | Status | Output |
-|-------|--------|--------|
-| Phase 1 (Foundation) | ✅ COMPLETE | Redis, ETS, Oban, DLM, PubSub |
-| Phase 2 (Tenancy & Auth) | ✅ COMPLETE | Organization, User, Role, Membership, Policies |
-| Phase 3 (Events & Venues) | ⏳ NEXT | Event, Venue, TicketType resources |
-| Phase 4+ | 📋 PLANNED | Ticketing, Payments, Scanning, etc. |
+| Phase                     | Status      | Output                                         |
+| ------------------------- | ----------- | ---------------------------------------------- |
+| Phase 1 (Foundation)      | ✅ COMPLETE | Redis, ETS, Oban, DLM, PubSub                  |
+| Phase 2 (Tenancy & Auth)  | ✅ COMPLETE | Organization, User, Role, Membership, Policies |
+| Phase 3 (Events & Venues) | ⏳ NEXT     | Event, Venue, TicketType resources             |
+| Phase 4+                  | 📋 PLANNED  | Ticketing, Payments, Scanning, etc.            |
 
 ### Domains & Boundaries
 
@@ -796,6 +826,7 @@ end
 You are the **guardian of architecture quality** for VoelgoedEvents.
 
 Your job is to:
+
 - ✅ Catch violations early
 - ✅ Push back on ambiguous specs
 - ✅ Enforce multi-tenancy, PETAL boundaries, Ash purity
@@ -827,11 +858,13 @@ If something feels ambiguous or contradictory:
 ## 14. Links & References
 
 **Load these first:**
+
 - `/docs/AGENTS.md` — Supreme rulebook
 - `/docs/INDEX.md` — Folder structure
 - `/docs/MASTER_BLUEPRINT.md` — Architecture vision
 
 **For implementation:**
+
 - `/docs/architecture/02_multitenancy.md` — Tenant isolation rules
 - `/docs/architecture/03_caching_and_realtime.md` — Caching tiers
 - `/docs/architecture/07_securityandauth.md` — Authorization patterns
@@ -839,6 +872,7 @@ If something feels ambiguous or contradictory:
 - `/docs/ai/ai_context_map.md` — Module registry
 
 **For specific features:**
+
 - `VOELGOEDEVENTS_FINAL_ROADMAP.md` — Phase roadmap
 - `/docs/workflows/*.md` — Workflow specifications
 - `/docs/domain/*.md` — Domain models
@@ -847,9 +881,9 @@ If something feels ambiguous or contradictory:
 
 ## 15. Version History
 
-| Version | Date | Status | Changes |
-|---------|------|--------|---------|
-| 1.0 | Dec 7, 2025 | PRODUCTION READY | Initial release; Ash-native architecture; multi-tenancy enforcement; TOON standards |
+| Version | Date        | Status           | Changes                                                                             |
+| ------- | ----------- | ---------------- | ----------------------------------------------------------------------------------- |
+| 1.0     | Dec 7, 2025 | PRODUCTION READY | Initial release; Ash-native architecture; multi-tenancy enforcement; TOON standards |
 
 ---
 

@@ -1,5 +1,10 @@
 defmodule Voelgoedevents.Ash.Resources.Audit.AuditLog do
-  @moduledoc "Ash resource: Immutable audit log entry."
+  @moduledoc """
+  Ash resource: Immutable audit log entry.
+
+  NOTE: Does NOT use Voelgoedevents.Ash.Resources.Base to avoid recursive auditing via AuditChange.
+  Tenant isolation is enforced via explicit policies.
+  """
 
   # Removed the failing macro call context
   # require Voelgoedevents.Ash.Policies.TenantPolicies

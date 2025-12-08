@@ -6,11 +6,9 @@ defmodule Voelgoedevents.Ash.Resources.Ticketing.Ticket do
 
   require PlatformPolicy
 
-  use Ash.Resource,
+  use Voelgoedevents.Ash.Resources.Base,
     domain: Voelgoedevents.Ash.Domains.TicketingDomain,
-    data_layer: AshPostgres.DataLayer,
-    extensions: [AshStateMachine],
-    authorizers: [Ash.Policy.Authorizer]
+    extensions: [AshStateMachine]
 
   postgres do
     table("tickets")

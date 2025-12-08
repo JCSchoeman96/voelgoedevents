@@ -1,11 +1,11 @@
-defmodule VoelgoedEvents.Ash.Extensions.Auditable do
+defmodule Voelgoedevents.Ash.Extensions.Auditable do
   @moduledoc """
-  EXTENSION: Auditable
-  Automatically records who did what.
+  Marker extension for resources that participate in audit logging.
+
+  NOTE: The main logic currently lives in Voelgoedevents.Ash.Changes.AuditChange,
+  which is injected by Voelgoedevents.Ash.Resources.Base.
   """
   use Spark.Dsl.Extension,
     transformers: [],
     sections: []
-
-  # TODO: Logic for hooking into changesets to record actor_id
 end

@@ -5,10 +5,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
   alias Voelgoedevents.Ash.Policies.PlatformPolicy
   alias Voelgoedevents.Ash.Resources.Accounts.{Membership, Role}
 
-  use Ash.Resource,
-    domain: Voelgoedevents.Ash.Domains.AccountsDomain,
-    data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+  use Voelgoedevents.Ash.Resources.Base,
+    domain: Voelgoedevents.Ash.Domains.AccountsDomain
 
   require PlatformPolicy
   require Ash.Query

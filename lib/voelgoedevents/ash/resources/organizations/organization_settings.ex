@@ -7,10 +7,8 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
   require PlatformPolicy
   require Ash.Query
 
-  use Ash.Resource,
-    domain: Voelgoedevents.Ash.Domains.AccountsDomain,
-    data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+  use Voelgoedevents.Ash.Resources.Base,
+    domain: Voelgoedevents.Ash.Domains.AccountsDomain
 
   postgres do
     table "organization_settings"
@@ -53,27 +51,7 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
   end
 
   actions do
-  read :read do
-    prepare fn query, %{actor: actor} = _context ->
-      cond do
-        # 1) Super admin: unrestricted
-        Map.get(actor, :role) == :super_admin ->
-          query
-
-        # 2) Platform admin: unrestricted
-        Map.get(actor, :is_platform_admin) == true ->
-          query
-
-        # 3) Normal actor: scope to their organization_id
-        organization_id = Map.get(actor, :organization_id) ->
-          Query.filter(query, organization_id == ^organization_id)
-
-        # 4) No actor / no org: return no rows
-        true ->
-          Query.filter(query, false)
-      end
-    end
-  end
+    read :read
 
   create :create do
     primary? true

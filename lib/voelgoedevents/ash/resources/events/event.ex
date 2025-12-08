@@ -5,10 +5,8 @@ defmodule Voelgoedevents.Ash.Resources.Events.Event do
 
   require PlatformPolicy
 
-  use Ash.Resource,
-    domain: Voelgoedevents.Ash.Domains.EventsDomain,
-    data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+  use Voelgoedevents.Ash.Resources.Base,
+    domain: Voelgoedevents.Ash.Domains.EventsDomain
 
   postgres do
     table "events"

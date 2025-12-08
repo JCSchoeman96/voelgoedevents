@@ -3,9 +3,8 @@ defmodule Voelgoedevents.Ash.Resources.Finance.Ledger do
   RESOURCE: Ledger
   The top-level container for double-entry bookkeeping (e.g. "General Ledger", "Sales 2024").
   """
-  use Ash.Resource,
+  use Voelgoedevents.Ash.Resources.Base,
     domain: Voelgoedevents.Ash.Domains.FinanceDomain,
-    data_layer: AshPostgres.DataLayer,
     # ✅ KEPT YOUR EXTENSION
     extensions: [AshPaperTrail]
 

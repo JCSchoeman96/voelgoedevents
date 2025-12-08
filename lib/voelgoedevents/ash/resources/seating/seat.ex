@@ -1,16 +1,23 @@
 defmodule Voelgoedevents.Ash.Resources.Seating.Seat do
   @moduledoc "Ash resource: Individual seat."
 
-  use Ash.Resource,
-    domain: Voelgoedevents.Ash.Domains.SeatingDomain,
-    data_layer: AshPostgres.DataLayer
+  use Voelgoedevents.Ash.Resources.Base,
+    domain: Voelgoedevents.Ash.Domains.SeatingDomain
 
   postgres do
-    # TODO: configure correct table name and repo
-    table("CHANGE_ME")
-    repo(Voelgoedevents.Repo)
+    # TODO: configure correct table name
+    table "seats"
+    repo Voelgoedevents.Repo
   end
 
-  # TODO: define attributes, relationships, actions, identities, calculations, and changes.
+  attributes do
+    uuid_primary_key :id
+
+    attribute :organization_id, :uuid do
+      allow_nil? false
+    end
+  end
+
+  # TODO: define relationships, actions, identities, calculations, and changes.
   # See docs/domain/*.md for details.
 end

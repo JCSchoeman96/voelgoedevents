@@ -72,7 +72,7 @@
 
 **Never:**
 
-- Create custom folders (always use Standard Ash Layout)
+- Create custom folders (always use Standard Ash 3.0 Layout)
 - Put business logic outside Ash resources
 - Skip multi-tenancy enforcement (see Appendix B)
 - Duplicate caching logic (reference Appendix C)
@@ -108,52 +108,10 @@ Every sub-phase follows this structure:
 
 ## 📦 REPOSITORY ANALYSIS
 
-**Repository:** [https://github.com/JCSchoeman96/voelgoedevents](https://github.com/JCSchoeman96/voelgoedevents)
+## 📦 Repository Structure
 
-### Current State (Verified December 2, 2025)
-
-```
-lib/voelgoedevents/
-  ash/
-    domains/           ✅ EXISTS (empty)
-    resources/         ✅ EXISTS (empty subdirs for all slices)
-    policies/          ✅ EXISTS (empty)
-    preparations/      ✅ EXISTS (empty)
-    validations/       ✅ EXISTS (empty)
-    calculations/      ✅ EXISTS (empty)
-    changes/           ✅ EXISTS (empty)
-    extensions/        ✅ EXISTS (empty)
-  workflows/           ✅ EXISTS (empty)
-  caching/             ✅ EXISTS (empty)
-  queues/              ✅ EXISTS (empty)
-  contracts/           ✅ EXISTS (empty)
-  notifications/       ✅ EXISTS (empty)
-  application.ex       ✅ Basic supervision tree
-  repo.ex              ✅ Ecto repo configured
-  mailer.ex            ✅ Swoosh configured
-
-lib/voelgoedevents_web/
-  controllers/         ✅ Basic scaffold
-  components/          ✅ Phoenix 1.7 components
-  endpoint.ex          ✅ Phoenix endpoint
-  router.ex            ✅ Basic routes
-
-mix.exs                ✅ Phoenix + Ash dependencies
-config/                ✅ Basic config files
-priv/repo/migrations/  ✅ Empty (no migrations yet)
-```
-
-### Starting Point
-
-✅ **Clean, well-structured scaffold**  
-❌ **No business logic implemented**  
-❌ **No migrations**  
-❌ **No authentication**  
-❌ **No resources defined**
-
-**This roadmap builds the entire platform from Phase 0.**
-
----
+✅ See `/docs/INDEX.md` Section 4.1 for the current validated folder and file structure.  
+✅ This roadmap is folder-agnostic — it enforces folder correctness via `/docs/INDEX.md`, not duplication.  
 
 ## 🔧 PHASE 0: Agent Setup & Safety Rails
 

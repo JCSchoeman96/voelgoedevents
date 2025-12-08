@@ -24,6 +24,13 @@ Out of scope:
 - Event-specific configuration (belongs to Events & Venues)
 - Notification preferences and channels (belongs to Notifications & Delivery)
 
+### Actor Construction for System Flows
+
+All Ash calls operating on tenant data must supply either:
+
+1.  A **user actor** with `organization_id`, constructed via `Voelgoedevents.Tenancy.Actor.user_actor/2`.
+2.  A **system actor** with explicit `organization_id` for jobs and maintenance, constructed via `Voelgoedevents.Tenancy.Actor.system_actor/2`.
+
 ---
 
 ## 2. Core Resources

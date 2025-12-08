@@ -113,20 +113,7 @@ If unsure which coding_style doc applies, load ALL of them.
 
 **Agents must not generate any code until all relevant style guides are loaded.**
 
-### Step 8 — Load .agent rules if using Antigravity
-
-Located in:
-
-- `.agent/rules/`
-- `.agent/workflows/`
-
-**Examples:**
-
-- WSL integration
-- Mix compile workflow
-- Linux command boundaries
-
-### Step 9 — Load Folder-Specific READMEs (Mandatory)
+### Step 8 — Load Folder-Specific READMEs (Mandatory)
 
 For any file creation or modification, the agent **MUST** check and adhere to the architectural rules defined in the corresponding folder's `README.md`.
 
@@ -207,6 +194,21 @@ Additionally:
 **Agents must perform a Performance & Scaling Review before finalizing any code.**
 
 ---
+
+### 3.5 Application & Module Names (non-negotiable)
+
+Canonical app names:
+
+- Voelgoedevents
+- VoelgoedeventsWeb
+
+Rules:
+
+- Always exactly this casing.
+- Never use: VoelgoedEvents, VoelgoedEventsWeb, VoelgoedeventsWEB, etc.
+- All project modules live under these roots.
+
+If an agent generates VoelgoedEvents.Ticketing.Ticket, it’s wrong, full stop.
 
 ## 4. File Placement Rules
 

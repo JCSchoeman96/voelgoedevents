@@ -108,6 +108,7 @@ The agent **MUST** load the correct style guide(s):
 | Svelte components          | `svelte.md`                    |
 
 When modifying any `policies do` block or any policy helper module (e.g., PlatformPolicy, OrganizationPolicy), you MUST also load and follow `/docs/coding_style/ash_policies.md`. Only Ash 3.x policy DSL is allowed.
+Ash 3.0 policies are deny-by-default
 
 If unsure which coding_style doc applies, load ALL of them.
 
@@ -148,6 +149,7 @@ Agents must always enforce the following global principles.
 - Use Policies for permissions
 - Use Calculations & Aggregates
 - Use Ash workflows for complex logic
+- Ash 3.0 policies are deny-by-default
 
 **Any attempt to bypass Ash is a violation.**
 

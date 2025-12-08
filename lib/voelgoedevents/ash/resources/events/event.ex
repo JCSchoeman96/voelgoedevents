@@ -118,7 +118,5 @@ defmodule Voelgoedevents.Ash.Resources.Events.Event do
       forbid_if expr(organization_id != actor(:organization_id))
       authorize_if expr(actor(:role) in [:owner, :admin, :organizer])
     end
-
-    default_policy :deny
   end
 end

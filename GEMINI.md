@@ -23,6 +23,7 @@
 
 ---
 
+
 ## 1. Agent Identity & Authority
 
 ### Your Role
@@ -166,6 +167,7 @@ end
 - Policies use `authorize_if expr()` pattern (Ash 3.0 native)
 - No wrapper macros (violates AGENTS.md rule on Ash purity)
 - All business logic lives in Ash, not Phoenix
+- Ash 3.0 policies are deny-by-default
 
 ---
 

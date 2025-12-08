@@ -80,9 +80,6 @@ defmodule Voelgoedevents.Ash.Resources.AccessControl.ApiKey do
       forbid_if expr(organization_id != actor(:organization_id))
       authorize_if expr(actor(:role) in [:owner, :admin])
     end
-
-    # Default deny
-    default_policy :deny
   end
 
   actions do

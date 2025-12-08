@@ -1,5 +1,6 @@
 defmodule Voelgoedevents.Ash.Preparations.FilterByTenant do
   use Ash.Resource.Preparation
+  require Ash.Query
 
   @impl true
   def prepare(query, _opts, context) do
@@ -24,11 +25,11 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenant do
 
       # 1. Tenant user / admin – prefer organization_id from actor
       not is_nil(org_id_from_actor) ->
-        Ash.Query.filter(query, organization_id: ^org_id_from_actor)
+        Ash.Query.filter(query, organization_id == ^org_id_from_actor)
 
       # 2. Fallback: context carries active tenant
       not is_nil(org_id_from_context) ->
-        Ash.Query.filter(query, organization_id: ^org_id_from_context)
+        Ash.Query.filter(query, organization_id == ^org_id_from_context)
 
       # 3. Fail closed – neither actor nor context carries org
       true ->

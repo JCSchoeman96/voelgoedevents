@@ -56,7 +56,7 @@ defmodule Voelgoedevents.Ash.Resources.Audit.AuditLog do
     create :create do
       accept [:actor_id, :action, :resource, :resource_id, :changes, :organization_id]
 
-      change change_attribute(:organization_id, actor(:organization_id))
+      change &__MODULE__.set_organization_from_actor/2
     end
 
     read :read
@@ -70,6 +70,15 @@ defmodule Voelgoedevents.Ash.Resources.Audit.AuditLog do
       description "Users can only read audit logs for their organization."
       forbid_if expr(organization_id != actor(:organization_id))
       authorize_if always()
+    end
+  end
+  
+  def set_organization_from_actor(changeset, context) do
+    case context[:actor] do
+      %{organization_id: org_id} ->
+        Ash.Changeset.change_attribute(changeset, :organization_id, org_id)
+      _ ->
+        changeset
     end
   end
 end

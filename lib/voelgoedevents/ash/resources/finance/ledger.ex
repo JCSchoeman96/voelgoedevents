@@ -63,8 +63,6 @@ defmodule Voelgoedevents.Ash.Resources.Finance.Ledger do
       forbid_if expr(organization_id != actor(:organization_id))
       authorize_if expr(actor(:role) in [:owner, :admin])
     end
-
-    default_policy :deny
   end
 
   actions do

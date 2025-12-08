@@ -9,25 +9,21 @@ defmodule Voelgoedevents.Ash.Resources.Base do
   """
 
   defmacro __using__(opts) do
-    extensions = [Voelgoedevents.Ash.Extensions.Auditable | Keyword.get(opts, :extensions, [])]
+    # 1. Merge Extensions (Auditable + whatever is passed in)
+    extension_list = [Voelgoedevents.Ash.Extensions.Auditable | Keyword.get(opts, :extensions, [])]
 
-    # We remove extensions from opts to avoid duplication if we passed it manually,
-    # though strict Keyword.merge might be better.
-    # But since we are constructing the call to `use Ash.Resource`, we should prepare the arguments.
+    # 2. Merge Authorizers (Policy.Authorizer + whatever is passed in)
+    authorizer_list = [Ash.Policy.Authorizer | Keyword.get(opts, :authorizers, [])] |> Enum.uniq()
 
-    # Authorizers: Always include Ash.Policy.Authorizer
-    authorizers = [Ash.Policy.Authorizer | Keyword.get(opts, :authorizers, [])] |> Enum.uniq()
-
-    # Data Layer: Default to AshPostgres.DataLayer unless specified (but task says "Base should set data_layer")
-    # We will force it or default it. Let's strictly use AshPostgres as requested.
-    opts =
+    # 3. Construct Final Options for Ash.Resource
+    final_opts =
       opts
       |> Keyword.put(:data_layer, AshPostgres.DataLayer)
-      |> Keyword.put(:extensions, extensions)
-      |> Keyword.put(:authorizers, authorizers)
+      |> Keyword.put(:extensions, extension_list)
+      |> Keyword.put(:authorizers, authorizer_list)
 
     quote do
-      use Ash.Resource, unquote(opts)
+      use Ash.Resource, unquote(final_opts)
 
       preparations do
         prepare Voelgoedevents.Ash.Preparations.FilterByTenant

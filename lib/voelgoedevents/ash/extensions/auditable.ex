@@ -27,11 +27,6 @@ defmodule Voelgoedevents.Ash.Extensions.Auditable do
   - **Synchronous (default)**: Audit failures cause transaction rollback
   - **Asynchronous**: Audit failures are logged but don't block the main transaction
   """
-
-  use Spark.Dsl.Extension,
-    sections: [@auditable_section],
-    transformers: [Voelgoedevents.Ash.Extensions.Auditable.Transformer]
-
   @auditable_section %Spark.Dsl.Section{
     name: :auditable,
     describe: "Automatic audit logging configuration",
@@ -58,4 +53,8 @@ defmodule Voelgoedevents.Ash.Extensions.Auditable do
       ]
     ]
   }
+
+  use Spark.Dsl.Extension,
+    sections: [@auditable_section],
+    transformers: [Voelgoedevents.Ash.Extensions.Auditable.Transformer]
 end

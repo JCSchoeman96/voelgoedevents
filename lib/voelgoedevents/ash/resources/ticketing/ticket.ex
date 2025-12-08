@@ -5,8 +5,8 @@ defmodule Voelgoedevents.Ash.Resources.Ticketing.Ticket do
   alias Voelgoedevents.Ash.Policies.PlatformPolicy
 
   require PlatformPolicy
-
-  use Voelgoedevents.Ash.Resources.Base,
+  
+use Voelgoedevents.Ash.Resources.Base,
     domain: Voelgoedevents.Ash.Domains.TicketingDomain,
     extensions: [AshStateMachine]
 
@@ -15,26 +15,24 @@ defmodule Voelgoedevents.Ash.Resources.Ticketing.Ticket do
     repo(Voelgoedevents.Repo)
   end
 
-  states do
-    state :active do
-      initial? true
-      description "Issued ticket that has not been scanned."
-    end
+  state_machine do
+    state_attribute :status
 
-    state :scanned do
-      description "Ticket scanned for entry; re-entry may be allowed."
-    end
+    initial_states [:active]
+    default_initial_state :active
 
-    state :used do
-      description "Ticket fully consumed for the event."
-    end
-
-    state :voided do
-      description "Ticket invalidated (fraud/ops action)."
-    end
-
-    state :refunded do
-      description "Ticket refunded after purchase."
+    # State Descriptions (moved to comments as DSL doesn't support them):
+    # :active   -> "Issued ticket that has not been scanned."
+    # :scanned  -> "Ticket scanned for entry; re-entry may be allowed."
+    # :used     -> "Ticket fully consumed for the event."
+    # :voided   -> "Ticket invalidated (fraud/ops action)."
+    # :refunded -> "Ticket refunded after purchase."
+    
+    transitions do
+      transition(:scan, from: [:active, :scanned], to: :scanned)
+      transition(:mark_used, from: [:active, :scanned], to: :used)
+      transition(:void, from: [:active, :scanned], to: :voided)
+      transition(:refund, from: [:active, :scanned, :voided], to: :refunded)
     end
   end
 
@@ -156,24 +154,26 @@ defmodule Voelgoedevents.Ash.Resources.Ticketing.Ticket do
         allow_nil? true
       end
 
+      change transition_state(:scanned)
       change &__MODULE__.apply_scan/2
     end
 
     update :mark_used do
       accept []
 
+      change transition_state(:used)
       change &__MODULE__.transition_status_to_used/2
     end
 
     update :void do
       accept []
-
+      change transition_state(:voided)
       change &__MODULE__.transition_status_to_voided/2
     end
 
     update :refund do
       accept []
-
+      change transition_state(:refunded)
       change &__MODULE__.transition_status_to_refunded/2
     end
   end
@@ -200,58 +200,23 @@ defmodule Voelgoedevents.Ash.Resources.Ticketing.Ticket do
       forbid_if expr(organization_id != actor(:organization_id))
       authorize_if expr(actor(:role) in [:owner, :admin, :staff])
     end
-
-    default_policy :deny
-  end
   end
 
   def apply_scan(changeset, _context) do
-    case Changeset.get_attribute(changeset, :status) do
-      status when status in [:active, :scanned] ->
-        gate_id =
-          Changeset.get_argument(changeset, :gate_id) ||
-            Changeset.get_attribute(changeset, :last_gate_id)
+    # Logic simplified as state_machine handles transition validation
+    gate_id =
+      Changeset.get_argument(changeset, :gate_id) ||
+        Changeset.get_attribute(changeset, :last_gate_id)
 
-        changeset
-        |> Changeset.change_attribute(:status, :scanned)
-        |> Changeset.change_attribute(:scanned_at, DateTime.utc_now())
-        |> maybe_set_gate(gate_id)
-        |> increment_scan_count()
-
-      status ->
-        Changeset.add_error(
-          changeset,
-          :status,
-          "status must be :active or :scanned to record a scan (current: #{status})"
-        )
-    end
+    changeset
+    |> Changeset.change_attribute(:scanned_at, DateTime.utc_now())
+    |> maybe_set_gate(gate_id)
+    |> increment_scan_count()
   end
 
-  def transition_status_to_used(changeset, _context) do
-    transition_status(changeset, :used, [:active, :scanned])
-  end
-
-  def transition_status_to_voided(changeset, _context) do
-    transition_status(changeset, :voided, [:active, :scanned])
-  end
-
-  def transition_status_to_refunded(changeset, _context) do
-    transition_status(changeset, :refunded, [:active, :scanned, :voided])
-  end
-
-  defp transition_status(changeset, target, allowed) do
-    current = Changeset.get_attribute(changeset, :status)
-
-    if current in allowed do
-      Changeset.change_attribute(changeset, :status, target)
-    else
-      Changeset.add_error(
-        changeset,
-        :status,
-        "cannot transition from #{current} to #{target}"
-      )
-    end
-  end
+  def transition_status_to_used(changeset, _context), do: changeset
+  def transition_status_to_voided(changeset, _context), do: changeset
+  def transition_status_to_refunded(changeset, _context), do: changeset
 
   defp maybe_set_gate(changeset, nil), do: changeset
 

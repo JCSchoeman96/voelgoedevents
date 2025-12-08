@@ -94,7 +94,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     create :invite do
       accept [:role_id, :user_id, :organization_id]
 
-      change change_attribute(:status, :inactive)
+      change set_attribute(:status, :inactive)
       change &__MODULE__.set_invited_at/2
       change after_action(&__MODULE__.invalidate_membership_cache/3)
     end
@@ -102,7 +102,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     update :join do
       accept []
 
-      change change_attribute(:status, :active)
+      change set_attribute(:status, :active)
       change &__MODULE__.set_joined_at/2
       change after_action(&__MODULE__.invalidate_membership_cache/3)
     end
@@ -173,6 +173,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
 
   def invalidate_membership_cache(_changeset, membership, _context) do
     MembershipCache.invalidate(membership.user_id, membership.organization_id)
-    {:ok, membership}
+    {:ok, membership} 
   end
 end

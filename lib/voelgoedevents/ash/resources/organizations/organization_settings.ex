@@ -1,11 +1,9 @@
 defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
   @moduledoc "Ash resource: Organization settings."
 
-  alias Ash.Query
   alias Voelgoedevents.Ash.Policies.PlatformPolicy
 
   require PlatformPolicy
-  require Ash.Query
 
   use Voelgoedevents.Ash.Resources.Base,
     domain: Voelgoedevents.Ash.Domains.AccountsDomain

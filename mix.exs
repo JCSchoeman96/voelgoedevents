@@ -58,6 +58,7 @@ defmodule Voelgoedevents.MixProject do
       {:ex_money_sql, "~> 1.0"},
       {:ash_cloak, "~> 0.1"},       # Encryption
       {:ash_oban, "~> 0.2"},        # Background Jobs Integration
+      {:picosat_elixir, "~> 0.2"},  # SAT solver for Ash policy analysis
 
       # --- INFRASTRUCTURE (The "Tank" Armor) ---
       {:redix, "~> 1.0"},

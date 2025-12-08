@@ -148,6 +148,7 @@ use Voelgoedevents.Ash.Resources.Base,
     end
 
     update :scan do
+      require_atomic? false
       accept [:last_gate_id]
 
       argument :gate_id, :uuid do
@@ -159,6 +160,7 @@ use Voelgoedevents.Ash.Resources.Base,
     end
 
     update :mark_used do
+      require_atomic? false
       accept []
 
       change transition_state(:used)
@@ -166,12 +168,14 @@ use Voelgoedevents.Ash.Resources.Base,
     end
 
     update :void do
+      require_atomic? false
       accept []
       change transition_state(:voided)
       change &__MODULE__.transition_status_to_voided/2
     end
 
     update :refund do
+      require_atomic? false
       accept []
       change transition_state(:refunded)
       change &__MODULE__.transition_status_to_refunded/2

@@ -4,7 +4,8 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentUserPlug do
   import Plug.Conn
   require Ash.Query
 
-  alias Voelgoedevents.Ash.Domains.AccountsDomain
+  # TODO: Scaffolding - will be used when Domain-based reads are needed
+  # alias Voelgoedevents.Ash.Domains.AccountsDomain
   alias Voelgoedevents.Ash.Resources.Accounts.User
 
   def init(opts), do: opts

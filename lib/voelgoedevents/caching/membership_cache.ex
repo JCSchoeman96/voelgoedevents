@@ -47,10 +47,8 @@ defmodule Voelgoedevents.Caching.MembershipCache do
 
     ttl_ms = Keyword.get(opts, :ttl_ms, @ets_ttl_ms)
 
-    case role_from_membership(membership) do
-      {:ok, role} -> persist_all(membership.user_id, membership.organization_id, role, ttl_ms)
-      {:error, reason} -> {:error, reason}
-    end
+    {:ok, role} = role_from_membership(membership)
+    persist_all(membership.user_id, membership.organization_id, role, ttl_ms)
   end
 
   @doc "Invalidate both cache layers for the given user/organization pair."

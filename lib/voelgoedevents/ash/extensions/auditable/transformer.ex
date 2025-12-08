@@ -18,6 +18,7 @@ defmodule Voelgoedevents.Ash.Extensions.Auditable.Transformer do
   use Spark.Dsl.Transformer
   alias Spark.Dsl.Transformer
 
+  @impl true
   def after_compile?, do: false
 
   @impl true
@@ -46,10 +47,8 @@ defmodule Voelgoedevents.Ash.Extensions.Auditable.Transformer do
 
     # Inject after_action hook for each mutation action
     Enum.reduce_while(mutation_actions, {:ok, dsl_state}, fn action, {:ok, state} ->
-      case add_audit_hook(state, action, strategy, excluded_fields, async?) do
-        {:ok, new_state} -> {:cont, {:ok, new_state}}
-        {:error, reason} -> {:halt, {:error, reason}}
-      end
+      {:ok, new_state} = add_audit_hook(state, action, strategy, excluded_fields, async?)
+      {:cont, {:ok, new_state}}
     end)
   end
 
@@ -100,7 +99,7 @@ defmodule Voelgoedevents.Ash.Extensions.Auditable.Transformer do
       }
 
       # Create audit log entry
-      case Voelgoedevents.Ash.Domains.AuditDomain.create(
+      case Ash.create(
         Voelgoedevents.Ash.Resources.Audit.AuditLog,
         audit_params,
         actor: actor

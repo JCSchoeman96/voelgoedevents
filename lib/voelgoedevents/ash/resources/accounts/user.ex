@@ -144,6 +144,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     end
 
     update :update do
+      require_atomic? false
       accept [:first_name, :last_name, :status, :confirmed_at]
 
       argument :is_platform_admin, :boolean do

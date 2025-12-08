@@ -21,7 +21,6 @@ defmodule Voelgoedevents.Infrastructure.EtsRegistry do
   ]
 
   @doc "Starts the registry under a supervisor." # credo:disable-for-next-line Credo.Check.Readability.Specs
-  @impl true
   def start_link(opts \\ []) do
     Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end

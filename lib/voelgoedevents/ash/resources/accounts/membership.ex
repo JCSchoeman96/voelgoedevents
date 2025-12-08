@@ -85,6 +85,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     end
 
     update :update do
+      require_atomic? false
       accept [:role_id, :status, :invited_at, :joined_at]
 
       change &__MODULE__.maybe_set_joined_at/2
@@ -100,6 +101,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     end
 
     update :join do
+      require_atomic? false
       accept []
 
       change set_attribute(:status, :active)
@@ -108,6 +110,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     end
 
     destroy :remove do
+      require_atomic? false
       change after_action(&__MODULE__.invalidate_membership_cache/3)
     end
   end

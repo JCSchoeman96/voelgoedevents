@@ -4,7 +4,8 @@ defmodule VoelgoedeventsWeb.Plugs.AnalyticsPlug do
   TODO(Phase 3 - TOON-010): Implement real analytics pipeline.
   """
 
-  import Plug.Conn
+  # TODO: Scaffolding - will be used when implementing full analytics pipeline
+  # import Plug.Conn
   require Logger
 
   def init(opts), do: opts

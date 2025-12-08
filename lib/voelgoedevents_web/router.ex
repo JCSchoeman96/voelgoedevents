@@ -49,6 +49,7 @@ defmodule VoelgoedeventsWeb.Router do
     auth_routes Voelgoedevents.Ash.Domains.AccountsDomain, []
 
     get "/", PageController, :home
+    live "/select-organization", Live.Tenancy.OrganizationSelectionLive, :index
   end
 
   # Tenant-scoped routes (multi-tenancy enforcement)

@@ -39,11 +39,15 @@ defmodule VoelgoedeventsWeb.Plugs.SetAshActorPlug do
   - Platform admins get `is_platform_admin: true` flag
   """
 
-  import Plug.Conn
+  # TODO: Scaffolding - will be used for future session management
+  # import Plug.Conn
   require Ash.Query
 
-  alias Voelgoedevents.Ash.Domains.AccountsDomain
+  # TODO: Scaffolding - will be used when Domain-based reads are needed
+  # alias Voelgoedevents.Ash.Domains.AccountsDomain
   alias Voelgoedevents.Ash.Resources.Accounts.Membership
+  # TODO: Scaffolding - will be used for organization context switching
+  # alias Voelgoedevents.Ash.Resources.Accounts.Organization
 
   def init(opts), do: opts
 
@@ -86,10 +90,13 @@ defmodule VoelgoedeventsWeb.Plugs.SetAshActorPlug do
     query =
       Membership
       |> Ash.Query.filter(user_id == ^user_id and organization_id == ^org_id and status == :active)
+      # NOTE: Membership has a belongs_to :role, which is automatically loaded
+      # and the full record is returned by Ash.read_one.
       |> Ash.Query.select([:role])
 
-    case AccountsDomain.read_one(query, actor: nil) do
-      {:ok, %{role: role}} -> role
+    # We read the Membership resource to get the role
+    case Ash.read_one(query, actor: nil) do
+      {:ok, %{role: %{name: role}}} -> role
       _ -> nil  # No active membership found
     end
   end

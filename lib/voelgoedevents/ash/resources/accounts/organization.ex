@@ -78,6 +78,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     end
 
     update :update do
+      require_atomic? false
       accept [:name, :slug, :status]
 
       argument :settings, :map, allow_nil?: true

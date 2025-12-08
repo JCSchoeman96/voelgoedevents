@@ -7,9 +7,8 @@ defmodule Voelgoedevents.Ash.Domains.TicketingDomain do
     resource Voelgoedevents.Ash.Resources.Ticketing.Ticket
     resource Voelgoedevents.Ash.Resources.Ticketing.PricingRule
     resource Voelgoedevents.Ash.Resources.Ticketing.Coupon
+    resource Voelgoedevents.Ash.Resources.Ticketing.OrderState
   end
 
-
-  # TODO: Add resources for this domain.
   # See docs/domain/*.md for the domain rules.
 end

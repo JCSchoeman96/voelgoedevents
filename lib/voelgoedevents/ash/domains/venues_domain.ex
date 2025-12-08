@@ -9,6 +9,4 @@ defmodule Voelgoedevents.Ash.Domains.VenuesDomain do
   end
 
 
-  # TODO: Add resources for this domain.
-  # See docs/domain/*.md for the domain rules.
 end

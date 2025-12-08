@@ -11,7 +11,7 @@ defmodule VoelgoedeventsWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug VoelgoedeventsWeb.Plugs.CurrentUserPlug
-    plug VoelgoedeventsWeb.Plugs.CurrentOrgPlug
+    # NOTE: Actor hydration moved to :ash_actor pipeline (runs after tenant resolution)
   end
 
   pipeline :api do
@@ -23,20 +23,18 @@ defmodule VoelgoedeventsWeb.Router do
     plug VoelgoedeventsWeb.Plugs.OrgRequiredPlug
   end
 
-  # Remove legacy tenant_scope in favor of new patterns if possible,
-  # or keep it but aligned. The instruction implies I should fix pipelines.
-  # But for now I'll just add org_scoped and update browser.
-  # However, the user instruction was "Pipeline order: CurrentUserPlug → CurrentOrgPlug".
-  # And defined :org_scoped pipeline.
-
   pipeline :tenant_scope do
-    plug VoelgoedeventsWeb.Plugs.CurrentUserPlug
-    plug VoelgoedeventsWeb.Plugs.LoadTenant
+    plug VoelgoedeventsWeb.Plugs.LoadTenant  # Sets org from slug
     plug VoelgoedeventsWeb.Plugs.CurrentOrgPlug
   end
 
+  # Dedicated actor hydration pipeline (runs AFTER tenant resolution)
+  pipeline :ash_actor do
+    plug VoelgoedeventsWeb.Plugs.SetAshActorPlug
+  end
+
   scope "/auth" do
-    pipe_through :browser
+    pipe_through [:browser, :ash_actor]
 
     auth_routes Voelgoedevents.Ash.Domains.AccountsDomain, []
 
@@ -45,7 +43,7 @@ defmodule VoelgoedeventsWeb.Router do
   end
 
   scope "/", VoelgoedeventsWeb do
-    pipe_through :browser
+    pipe_through [:browser, :ash_actor]
 
 
     auth_routes Voelgoedevents.Ash.Domains.AccountsDomain, []
@@ -55,7 +53,8 @@ defmodule VoelgoedeventsWeb.Router do
 
   # Tenant-scoped routes (multi-tenancy enforcement)
   scope "/t/:slug", VoelgoedeventsWeb do
-    pipe_through [:browser, :tenant_scope]
+    # CRITICAL: browser -> tenant_scope (resolves org) -> THEN ash_actor (hydrates with org)
+    pipe_through [:browser, :tenant_scope, :ash_actor]
 
     # Checkout will be a LiveView
     live "/checkout", CheckoutLive, :show

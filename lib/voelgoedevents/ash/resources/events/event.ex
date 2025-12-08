@@ -99,16 +99,26 @@ defmodule Voelgoedevents.Ash.Resources.Events.Event do
   policies do
     PlatformPolicy.platform_admin_root_access()
 
-    policy action(:create) do
+    # Read: Allow all authenticated org members
+    policy action_type(:read) do
       forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(arg(:organization_id) != actor(:organization_id))
-      authorize_if always()
+      authorize_if expr(organization_id == actor(:organization_id))
     end
 
-    policy action_type([:read, :update, :destroy]) do
+    # Create: Only organizers, admins, and owners can create events
+    policy action_type(:create) do
+      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(arg(:organization_id) != actor(:organization_id))
+      authorize_if expr(actor(:role) in [:owner, :admin, :organizer])
+    end
+
+    # Update/Destroy: Only organizers, admins, and owners
+    policy action_type([:update, :destroy]) do
       forbid_if expr(is_nil(actor(:id)))
       forbid_if expr(organization_id != actor(:organization_id))
-      authorize_if always()
+      authorize_if expr(actor(:role) in [:owner, :admin, :organizer])
     end
+
+    default_policy :deny
   end
 end

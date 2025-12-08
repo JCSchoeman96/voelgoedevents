@@ -29,12 +29,16 @@ defmodule Voelgoedevents.Ash.Resources.Base do
     quote do
       use Ash.Resource, unquote(opts)
 
-      changes do
-        change Voelgoedevents.Ash.Changes.AuditChange
-      end
-
       preparations do
         prepare Voelgoedevents.Ash.Preparations.FilterByTenant
+      end
+
+      # Auditable extension handles audit hooks via transformer
+      auditable do
+        enabled? true
+        strategy :full_diff
+        excluded_fields [:updated_at, :created_at, :inserted_at]
+        async false  # Synchronous (strict compliance)
       end
     end
   end

@@ -44,6 +44,47 @@ defmodule Voelgoedevents.Ash.Resources.AccessControl.ApiKey do
     belongs_to :organization, Voelgoedevents.Ash.Resources.Accounts.Organization
   end
 
+  policies do
+    # Platform admins have root access to all API keys across all tenants
+    # authorize_if expr(actor(:is_platform_admin) == true)
+    policy always() do
+      authorize_if expr(actor(:is_platform_admin) == true)
+    end
+
+    # Read actions: Allow if actor belongs to same organization
+    policy action_type(:read) do
+      forbid_if expr(is_nil(actor(:id)))
+      authorize_if expr(organization_id == actor(:organization_id))
+    end
+
+    # Create actions: Only owners and admins can create API keys
+    # Must create within their own organization
+    policy action_type(:create) do
+      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(arg(:organization_id) != actor(:organization_id))
+      authorize_if expr(actor(:role) in [:owner, :admin])
+    end
+
+    # Update actions: Only owners and admins can update API keys
+    # Must be within their own organization
+    policy action_type(:update) do
+      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(organization_id != actor(:organization_id))
+      authorize_if expr(actor(:role) in [:owner, :admin])
+    end
+
+    # Destroy actions: Only owners and admins can destroy API keys
+    # Must be within their own organization
+    policy action_type(:destroy) do
+      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(organization_id != actor(:organization_id))
+      authorize_if expr(actor(:role) in [:owner, :admin])
+    end
+
+    # Default deny
+    default_policy :deny
+  end
+
   actions do
     defaults [:read, :destroy]
 

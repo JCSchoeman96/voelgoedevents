@@ -102,7 +102,7 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentUserPlug do
     |> maybe_store_ip(session)
     |> assign(:current_user, user)
     |> assign(:current_organization_id, active_org_id)
-    |> Ash.PlugHelpers.set_actor(user)
+    # NOTE: Actor hydration moved to SetAshActorPlug for proper role inclusion
     |> Ash.PlugHelpers.set_context(%{organization_id: active_org_id})
     |> maybe_assign_impersonator(session)
   end

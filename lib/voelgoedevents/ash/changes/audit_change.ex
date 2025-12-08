@@ -1,8 +1,13 @@
 defmodule Voelgoedevents.Ash.Changes.AuditChange do
   @moduledoc """
+  @deprecated "Use Voelgoedevents.Ash.Extensions.Auditable instead"
+
   Ash Change: captures changes and writes them to the AuditLog.
 
-  NOTE: If an audit entry cannot be written, the action fails and the transaction is rolled back.
+  NOTE: This module is kept for backward compatibility and test purposes only.
+  New code should rely on the Auditable extension which is automatically applied via Base.
+
+  If an audit entry cannot be written, the action fails and the transaction is rolled back.
   """
   use Ash.Resource.Change
 

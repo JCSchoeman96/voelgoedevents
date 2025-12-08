@@ -74,10 +74,28 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
            } = expression
   end
 
-  test "platform admin bypasses tenant filter" do
+  test "platform admin with skip_tenant_rule bypasses tenant filter" do
     actor = %{
       id: "55555555-5555-5555-5555-555555555555",
       is_platform_admin: true
+    }
+
+    context = %{actor: actor, skip_tenant_rule: true}
+
+    query = Ash.Query.new(TenantResource)
+    prepared = FilterByTenant.prepare(query, [], context)
+
+    # Filter should be nil (empty) – global read
+    assert is_nil(prepared.filter)
+  end
+
+  test "platform admin without skip_tenant_rule is still tenant-scoped" do
+    org_id = "99999999-9999-9999-9999-999999999999"
+
+    actor = %{
+      id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      is_platform_admin: true,
+      organization_id: org_id
     }
 
     context = %{actor: actor}
@@ -85,8 +103,26 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
     query = Ash.Query.new(TenantResource)
     prepared = FilterByTenant.prepare(query, [], context)
 
-    # Filter should be nil (empty)
-    assert is_nil(prepared.filter)
+    assert %Ash.Filter{expression: expression} = prepared.filter
+
+    assert %Ash.Query.BooleanExpression{
+             op: :eq,
+             left: %Ash.Query.Ref{attribute: %Ash.Resource.Attribute{name: :organization_id}},
+             right: ^org_id
+           } = expression
+  end
+
+  test "non-admin with skip_tenant_rule raises error" do
+    actor = %{id: "88888888-8888-8888-8888-888888888888"}
+    context = %{actor: actor, skip_tenant_rule: true}
+
+    query = Ash.Query.new(TenantResource)
+
+    assert_raise RuntimeError,
+                 ~r/skip_tenant_rule may only be used with platform-admin actors/,
+                 fn ->
+                   FilterByTenant.prepare(query, [], context)
+                 end
   end
 
   test "missing org and non-admin raises error" do

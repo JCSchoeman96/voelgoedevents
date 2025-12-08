@@ -181,18 +181,28 @@ defmodule Voelgoedevents.Ash.Resources.Ticketing.Ticket do
   policies do
     PlatformPolicy.platform_admin_root_access()
 
-    policy action_type([:read, :update, :destroy]) do
+    # Read: Allow all authenticated org members (customers can view their tickets)
+    policy action_type(:read) do
       forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(is_nil(actor(:organization_id)))
-      forbid_if expr(organization_id != actor(:organization_id))
-      authorize_if always()
+      authorize_if expr(organization_id == actor(:organization_id))
     end
 
-    policy action(:create) do
+    # Create: Only staff, admin, owner can create tickets
+    policy action_type(:create) do
       forbid_if expr(is_nil(actor(:id)))
       forbid_if expr(arg(:organization_id) != actor(:organization_id))
-      authorize_if always()
+      authorize_if expr(actor(:role) in [:owner, :admin, :staff])
     end
+
+    # Update/Destroy: Only staff, admin, owner
+    policy action_type([:update, :destroy]) do
+      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(organization_id != actor(:organization_id))
+      authorize_if expr(actor(:role) in [:owner, :admin, :staff])
+    end
+
+    default_policy :deny
+  end
   end
 
   def apply_scan(changeset, _context) do

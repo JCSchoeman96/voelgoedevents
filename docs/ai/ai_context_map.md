@@ -6,6 +6,8 @@
 > This document prevents the AI from hallucinating module names, file paths, atoms, or domain boundaries.
 > Any coding agent MUST treat this as the single source of truth for naming, modules, folder layout, and architectural conventions.
 
+> **Ultimate sources of truth:** Always cross-check against [AGENTS.md](../AGENTS.md), [MASTER_BLUEPRINT.md](../MASTER_BLUEPRINT.md), and the domain catalog in [DOMAIN_MAP.md](../DOMAIN_MAP.md) before using the registry tables below.
+
 ---
 
 ## ⚠️ CRITICAL RULES FOR ALL AI AGENTS
@@ -90,6 +92,20 @@ lib/voelgoedevents/ash/domains/accounts_domain.ex
 
 ```
 lib/voelgoedevents/ash/domains/access_control_domain.ex
+```
+
+---
+
+### 📝 AUDIT DOMAIN (`:audit`)
+
+| Resource     | Module                                               | Atom         | File                                                    |
+| ------------ | ---------------------------------------------------- | ------------ | ------------------------------------------------------- |
+| **AuditLog** | `Voelgoedevents.Ash.Resources.Audit.AuditLog`        | `:audit_log` | `lib/voelgoedevents/ash/resources/audit/audit_log.ex`   |
+
+**Domain File:**
+
+```
+lib/voelgoedevents/ash/domains/audit_domain.ex
 ```
 
 ---
@@ -238,14 +254,15 @@ lib/voelgoedevents/ash/domains/monetization_domain.ex
 
 ## ⚙️ 3. Workflow Modules (All Confirmed in Repo)
 
-| Workflow          | Module                                               | File Path                                                    |
-| ----------------- | ---------------------------------------------------- | ------------------------------------------------------------ |
-| Start Checkout    | `Voelgoedevents.Workflows.Checkout.StartCheckout`    | `lib/voelgoedevents/workflows/checkout/start_checkout.ex`    |
-| Complete Checkout | `Voelgoedevents.Workflows.Checkout.CompleteCheckout` | `lib/voelgoedevents/workflows/checkout/complete_checkout.ex` |
-| Reserve Seat      | `Voelgoedevents.Workflows.Ticketing.ReserveSeat`     | `lib/voelgoedevents/workflows/ticketing/reserve_seat.ex`     |
-| Release Seat      | `Voelgoedevents.Workflows.Ticketing.ReleaseSeat`     | `lib/voelgoedevents/workflows/ticketing/release_seat.ex`     |
-| Process Scan      | `Voelgoedevents.Workflows.Scanning.ProcessScan`      | `lib/voelgoedevents/workflows/scanning/process_scan.ex`      |
-| Funnel Builder    | `Voelgoedevents.Workflows.Analytics.FunnelBuilder`   | `lib/voelgoedevents/workflows/analytics/funnel_builder.ex`   |
+| Workflow               | Module                                                    | File Path                                                |
+| ---------------------- | --------------------------------------------------------- | --------------------------------------------------------- |
+| Start Checkout         | `Voelgoedevents.Workflows.Checkout.StartCheckout`         | `lib/voelgoedevents/workflows/checkout/start_checkout.ex` |
+| Complete Checkout      | `Voelgoedevents.Workflows.Checkout.CompleteCheckout`      | `lib/voelgoedevents/workflows/checkout/complete_checkout.ex` |
+| Reserve Seat           | `Voelgoedevents.Workflows.Ticketing.ReserveSeat`          | `lib/voelgoedevents/workflows/ticketing/reserve_seat.ex`  |
+| Release Seat           | `Voelgoedevents.Workflows.Ticketing.ReleaseSeat`          | `lib/voelgoedevents/workflows/ticketing/release_seat.ex`  |
+| Process Scan           | `Voelgoedevents.Workflows.Scanning.ProcessScan`           | `lib/voelgoedevents/workflows/scanning/process_scan.ex`   |
+| Scanning Sync Resolver | `Voelgoedevents.Workflows.Scanning.SyncResolver`          | `lib/voelgoedevents/workflows/scanning/sync_resolver.ex`  |
+| Funnel Builder         | `Voelgoedevents.Workflows.Analytics.FunnelBuilder`        | `lib/voelgoedevents/workflows/analytics/funnel_builder.ex` |
 
 All verified.
 

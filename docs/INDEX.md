@@ -51,6 +51,8 @@ Use the links below to find the authoritative source for any topic.
 - [**OTP Architecture**](architecture/10_otp_architecture.md)
 - [**Ash-Native Metaprogramming**](architecture/11_ash-native_metaprogramming.md)
 - [**Type Safety & Contracts**](architecture/12_type_safety_contracts.md)
+- [**PubSub Topics (13_pubsub_topics.md.md)**](architecture/13_pubsub_topics.md.md)
+- [**Database Index Strategy (14_db_indexes.md)**](architecture/14_db_indexes.md)
 
 ---
 
@@ -72,6 +74,14 @@ Use the links below to find the authoritative source for any topic.
 - [**Payments & Ledger**](domain/payments_ledger.md)
 - [**Scanning & Devices**](domain/scanning_devices.md)
 - [**Analytics & Marketing**](domain/analytics_marketing.md)
+- [**Accounts (accounts.md)**](domain/accounts.md)
+- [**Audit Logging (audit_logging.md)**](domain/audit_logging.md)
+- [**Ephemeral / Real-Time State (ephemeral_realtime_state.md)**](domain/ephemeral_realtime_state.md)
+- [**Integrations & Webhooks (integrations_webhooks.md)**](domain/integrations_webhooks.md)
+- [**Invariants (invariants_global.md)**](domain/invariants_global.md)
+- [**Notifications & Delivery (notifications_delivery.md)**](domain/notifications_delivery.md)
+- [**Public API & Access Keys (public_api_access_keys.md)**](domain/public_api_access_keys.md)
+- [**Reporting (reporting.md)**](domain/reporting.md)
 
 ---
 
@@ -158,6 +168,19 @@ Use the links below to find the authoritative source for any topic.
 | Document                                   | Description                                                |
 | ------------------------------------------ | ---------------------------------------------------------- |
 | [**Workflow README**](workflows/README.md) | **The Flows.** Index of all documented business workflows. |
+
+### Detailed Workflows
+
+- [**complete_checkout.md**](workflows/complete_checkout.md)
+- [**funnel_builder.md**](workflows/funnel_builder.md)
+- [**offline_sync.md**](workflows/offline_sync.md)
+- [**process_scan.md**](workflows/process_scan.md)
+- [**release_seat.md**](workflows/release_seat.md)
+- [**reserve_seat.md**](workflows/reserve_seat.md)
+- [**scanner_offline_sync.md**](workflows/scanner_offline_sync.md)
+- [**seat_hold_lifecycle.md**](workflows/seat_hold_lifecycle.md)
+- [**seat_hold_registry.md**](workflows/seat_hold_registry.md)
+- [**start_checkout.md**](workflows/start_checkout.md)
 
 ---
 

@@ -116,8 +116,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     PlatformPolicy.platform_admin_root_access()
 
     policy action(:create) do
-      forbid_if expr(is_nil(actor(:id)))
-      authorize_if expr(actor(:role) == :super_admin)
+      forbid_if expr(not actor(:is_platform_admin) and not actor(:is_platform_admin?))
     end
 
     policy action(:update) do

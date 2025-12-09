@@ -68,7 +68,7 @@ All Ash calls operating on tenant data must supply either:
   - `id`
   - `user_id`
   - `organization_id`
-  - `role` (owner, admin, manager, support, read_only, etc.)
+  - `role` (owner, admin, staff, viewer, scanner_only, etc.)
   - `invited_by_user_id` (optional)
   - `invited_at`, `accepted_at`
 - Invariants:

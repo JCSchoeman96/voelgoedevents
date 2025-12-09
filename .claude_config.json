@@ -1,0 +1,794 @@
+{
+    "project": {
+        "name": "VoelgoedEvents",
+        "type": "PETAL Stack (Phoenix + Elixir + Tailwind + Ash + LiveView)",
+        "description": "Full-stack, multi-tenant event ticketing platform with real-time scanning, offline support, and complex seat hold workflows",
+        "version": "Phase 3 (Events & Venues — IN PROGRESS)"
+    },
+    "supreme_authority": {
+        "description": "These documents are IMMUTABLE. They override all other guidance.",
+        "documents": [
+            "/docs/AGENTS.md",
+            "/docs/INDEX.md",
+            "/docs/MASTER_BLUEPRINT.md"
+        ]
+    },
+    "mandatory_load_order": [
+        {
+            "step": 1,
+            "file": "/docs/AGENTS.md",
+            "purpose": "Supreme rulebook — defines all agent behavior, coding standards, multi-tenancy, PETAL boundaries",
+            "critical": true
+        },
+        {
+            "step": 2,
+            "file": "/docs/INDEX.md",
+            "purpose": "Canonical file structure, module paths, Standard Ash Layout verification",
+            "critical": true
+        },
+        {
+            "step": 3,
+            "file": "/docs/MASTER_BLUEPRINT.md",
+            "purpose": "System architecture, domain boundaries, vision, feature overview",
+            "critical": true
+        },
+        {
+            "step": 4,
+            "file": "/docs/ai/CLAUDE.md",
+            "purpose": "Claude-specific extensions, reasoning patterns, escalation templates",
+            "critical": true
+        },
+        {
+            "step": 5,
+            "file": "/docs/ai/ai_context_map.md",
+            "purpose": "Authoritative module registry, canonical paths, domain-to-module mapping",
+            "critical": true
+        },
+        {
+            "step": 6,
+            "file": "/docs/architecture/*.md",
+            "purpose": "Specific to task: multi-tenancy, caching, security, workflows, scaling",
+            "critical": false,
+            "conditional": "Load only if task touches this domain"
+        },
+        {
+            "step": 7,
+            "file": "/docs/domain/*.md",
+            "purpose": "Domain-specific models, contracts, invariants",
+            "critical": false,
+            "conditional": "Load only if task modifies this slice"
+        },
+        {
+            "step": 8,
+            "file": "/docs/coding_style/*.md",
+            "purpose": "Language/framework-specific patterns: Elixir, Ash, Phoenix, HEEx, etc.",
+            "critical": false,
+            "conditional": "Load based on file type being modified"
+        }
+    ],
+    "critical_rules": [
+        {
+            "rule": "AGENTS.md is supreme",
+            "enforcement": "Any conflict between docs → AGENTS.md wins, always",
+            "violation": "Proceeding with contradictory guidance"
+        },
+        {
+            "rule": "All business logic in Ash, never Phoenix",
+            "enforcement": "Use Ash resources, actions, validations, policies. Phoenix is I/O only.",
+            "violation": "Service layer, controller logic, LiveView business rules",
+            "reference": "AGENTS.md Section 3.1"
+        },
+        {
+            "rule": "Every persistent resource requires organization_id",
+            "enforcement": "Mandatory: `attribute :organization_id, :uuid, allow_nil?: false`",
+            "violation": "Missing org_id → cross-tenant data leak",
+            "reference": "AGENTS.md Section 3.3"
+        },
+        {
+            "rule": "FilterByTenant preparation handles org scoping",
+            "enforcement": "Do NOT manually filter by organization_id in queries (redundant, violates DRY)",
+            "violation": "Manual `Ash.Query.filter(query, organization_id: actor.org_id)`",
+            "reference": "GEMINI.md Section 3 (Multi-Tenancy Enforcement)"
+        },
+        {
+            "rule": "Ash 3.0 policies are deny-by-default",
+            "enforcement": "Always include `default_policy :deny` in policy blocks",
+            "violation": "Missing deny-by-default → unprotected access",
+            "reference": "AGENTS.md Section 7, GEMINI.md Section 5"
+        },
+        {
+            "rule": "No service layer, no wrapper macros, no direct Repo calls",
+            "enforcement": "Business logic ONLY in Ash (resources, actions, calculations, aggregates)",
+            "violation": "Voelgoedevents.Services.*, defmacro, Repo.insert!, Repo.update!",
+            "reference": "AGENTS.md Section 3.1"
+        },
+        {
+            "rule": "Use Standard Ash Layout, never custom folder structures",
+            "enforcement": "Must match `/docs/INDEX.md` Section 4.1 and `ai_context_map.md`",
+            "violation": "lib/voelgoedevents/ticketing/*, lib/voelgoedevents/services/*, custom slices",
+            "reference": "AGENTS.md Section 4, INDEX.md Section 4.1"
+        },
+        {
+            "rule": "Verify all file paths against ai_context_map.md before generating",
+            "enforcement": "Every path must exist in ai_context_map.md; reject if missing",
+            "violation": "Hallucinated paths, invented modules, unregistered resources",
+            "reference": "GEMINI.md Section 2 (Code Generation Standards)"
+        },
+        {
+            "rule": "Caching tiers: ETS (15min) → Redis (1-60min) → PostgreSQL (source of truth)",
+            "enforcement": "No direct DB calls on hot paths; use 3-tier model",
+            "violation": "Unbounded Postgres queries, unscoped ETS/Redis keys",
+            "reference": "AGENTS.md Section 3.4, /docs/architecture/03_caching_and_realtime.md"
+        },
+        {
+            "rule": "Redis keys and ETS entries must be namespaced by organization_id",
+            "enforcement": "Pattern: `{namespace}:{org_id}:{resource}:{identifier}`",
+            "violation": "Keys without org_id → cross-tenant cache leak",
+            "reference": "GEMINI.md Section 4 (Caching Strategy)"
+        },
+        {
+            "rule": "Strict module naming: PascalCase modules, snake_case files",
+            "enforcement": "Module: Voelgoedevents.Ash.Resources.Events.Venue; File: venue.ex",
+            "violation": "VoelgoedEvents (wrong casing), voelgoedevents_web (wrong casing)",
+            "reference": "AGENTS.md Section 3.5, GEMINI.md Section 2 (Module Naming)"
+        },
+        {
+            "rule": "Canonical app names only: Voelgoedevents, VoelgoedeventsWeb",
+            "enforcement": "NEVER: VoelgoedEvents, VoelgoedEventsWeb, VoelgoedeventsWEB",
+            "violation": "Wrong casing in module declarations, file paths",
+            "reference": "AGENTS.md Section 3.5"
+        },
+        {
+            "rule": "Phase-aware: Don't implement out-of-phase domains",
+            "enforcement": "Current phase is 3 (Events & Venues). Don't code Phase 4+ features.",
+            "violation": "Ticketing (Phase 4), Scanning (Phase 5), Payments (Phase 6) logic in Phase 3",
+            "reference": "CLAUDE.md Section 8, VOELGOEDEVENTS_FINAL_ROADMAP.md"
+        },
+        {
+            "rule": "Multi-tenancy testing mandatory",
+            "enforcement": "Every resource must have cross-org denial test",
+            "violation": "Missing: test 'user from org_a cannot read org_b'",
+            "reference": "GEMINI.md Section 3 (Multi-Tenancy in Policies)"
+        },
+        {
+            "rule": "Complete, production-ready code only",
+            "enforcement": "No TODOs, no placeholders, no incomplete implementations",
+            "violation": "# TODO: implement, [TBD], stub functions",
+            "reference": "AGENTS.md Section 6 (Code Generation Rules)"
+        },
+        {
+            "rule": "Use Ash.Reactor for complex workflows",
+            "enforcement": "Multi-step operations must be orchestrated via Ash.Reactor",
+            "violation": "Manual step sequencing, ad-hoc transaction handling",
+            "reference": "GEMINI.md Section 5 (Ash-Native Architecture)"
+        }
+    ],
+    "escalation_rules": {
+        "when_to_stop_and_ask": [
+            {
+                "scenario": "Task requires out-of-phase work",
+                "example": "You ask for Scanning (Phase 5) while Phase 3 is current",
+                "action": "STOP. Ask: 'Phase 3 is current. Scanning is Phase 5. Should we reorder the roadmap, or do you want a Phase 3.X task instead?'",
+                "dont_proceed": "Do NOT attempt to code around phase boundaries",
+                "reference": "CLAUDE.md Section 8, VOELGOEDEVENTS_FINAL_ROADMAP.md"
+            },
+            {
+                "scenario": "Documentation contradicts AGENTS.md",
+                "example": "MASTER_BLUEPRINT says X, but AGENTS.md says Y",
+                "action": "STOP. Say: 'AGENTS.md Rule (cite rule) contradicts MASTER_BLUEPRINT (cite section). AGENTS.md is supreme. Which approach aligns with your intent?'",
+                "reference": "/docs/AGENTS.md is ALWAYS supreme",
+                "principle": "Never guess when docs conflict"
+            },
+            {
+                "scenario": "File path not in ai_context_map.md",
+                "example": "You ask for lib/voelgoedevents/services/ticket_service.ex",
+                "action": "STOP. Say: 'This path is not registered in /docs/ai/ai_context_map.md. It must be added to the canonical registry before I can generate code. Please confirm the correct path per AGENTS.md Section 4.'",
+                "dont_invent": "Never hallucinate module paths or folder structures",
+                "reference": "GEMINI.md Section 2 (File Path Validation)"
+            },
+            {
+                "scenario": "Requirements incomplete or ambiguous",
+                "example": "You say 'Add a validation' but don't specify which resource or rule",
+                "action": "STOP. Ask: 'Please clarify: Which resource? What business rule? Should this validation be Ash-native (in the resource) or custom? Reference: CLAUDE.md Section 10 (Interaction Style — Be Clear and Decisive)'",
+                "principle": "Better to ask than guess; zero tolerance for ambiguous specs"
+            },
+            {
+                "scenario": "Request violates multi-tenancy or Ash purity",
+                "example": "You ask to 'add a service layer' or 'manually filter org_id'",
+                "action": "STOP. Escalate with reference: 'This violates AGENTS.md Section 3.1 (business logic in Ash) / Section 3.3 (FilterByTenant). Here's the correct approach: [restructure as Ash actions / remove manual filter]'",
+                "dont_proceed": "Do NOT generate code that violates core architecture"
+            }
+        ]
+    },
+    "success_criteria": {
+        "code_generation": {
+            "all_critical_rules_followed": "No violations of /docs/AGENTS.md 16 critical rules",
+            "multi_tenancy_tested": "Cross-org denial test included: test 'user from org_a cannot read org_b'",
+            "no_todos_or_placeholders": "Zero TODOs, [TBD], stub functions, or partial implementations",
+            "compilation_success": "Code compiles without warnings: `mix compile`",
+            "phase_aligned": "Feature exists in current phase roadmap (Phase 3)",
+            "documented": "Module has @moduledoc explaining purpose + phase + dependencies",
+            "file_path_valid": "Path matches /docs/INDEX.md Section 4.1 and ai_context_map.md exactly",
+            "ash_3_native": "Uses Ash 3.x patterns: Base inheritance, deny-by-default policies, native validations",
+            "organization_id_included": "Every persistent resource includes `attribute :organization_id, :uuid, allow_nil?: false`",
+            "filterby_tenant_inherited": "FilterByTenant preparation is inherited via Base; no manual org filtering",
+            "naming_correct": "Module names PascalCase (Voelgoedevents.*), file names snake_case (venue.ex)",
+            "caching_documented": "If caching used: ETS/Redis/DB tier specified, org_id namespacing confirmed"
+        },
+        "toon_generation": {
+            "atomic_responsibility": "One TOON = one concern (not compound tasks)",
+            "prerequisites_clear": "Lists blocking tasks or dependencies (if any)",
+            "success_metrics_observable": "How to verify the TOON succeeded (tests pass, code compiles, etc.)",
+            "references_canonical_docs": "Cites AGENTS.md, MASTER_BLUEPRINT, or relevant domain doc with section numbers",
+            "output_paths_exact": "File paths match ai_context_map.md exactly",
+            "constraints_explicit": "Multi-tenancy, caching, Ash patterns, testing edge cases all documented"
+        }
+    },
+    "prompt_examples": {
+        "bad_prompts": [
+            {
+                "prompt": "Create a service to handle events",
+                "problem": "❌ Vague scope, suggests service layer (forbidden by AGENTS.md 3.1), no phase specified",
+                "correct": "✅ Create Event resource in Ash (Phase 3.1) with create/read/update/destroy actions. Include multi-tenancy tests (cross-org denial) and deny-by-default policies."
+            },
+            {
+                "prompt": "Add caching to seat lookups",
+                "problem": "❌ Doesn't specify ETS vs Redis vs DB tier, no organization_id namespacing, no phase context",
+                "correct": "✅ Implement 3-tier cache for seat lookups (Phase 3.3): ETS (15min TTL) → Redis (org_id:{event_id}:seats, 1-hour TTL) → PostgreSQL (source of truth). Test cache invalidation on seat status change."
+            },
+            {
+                "prompt": "Plan the scanning feature",
+                "problem": "❌ Scanning is Phase 5. Requesting out-of-phase work without acknowledgment.",
+                "correct": "✅ Phase 3 is current (Events & Venues). Scanning is Phase 5. Would you like to: (1) Plan Phase 3.X task instead, or (2) Reorder the roadmap?"
+            },
+            {
+                "prompt": "Write code for updating a user",
+                "problem": "❌ Ambiguous scope, no domain context, no phase, unclear if this is Phase 2 Accounts or Phase 3+",
+                "correct": "✅ Update User resource in Accounts (Phase 2). Specifically: change the action for [attribute]. Reference: /docs/domain/accounts.md and /docs/VOELGOEDEVENTS_FINAL_ROADMAP.md Phase 2"
+            }
+        ],
+        "good_prompts": [
+            {
+                "prompt": "Build Event resource (Phase 3.1) with Ash 3.x. Include: Ash resource with Base inheritance, deny-by-default policies, multi-tenancy tests (cross-org denial). Reference: /docs/MASTER_BLUEPRINT.md, /docs/ai/ai_context_map.md",
+                "why": "✅ Specific phase, clear framework (Ash 3.x), explicit testing requirement, cites canonical docs"
+            },
+            {
+                "prompt": "Plan Phase 3.2 (Seating model). First create TOON prompts outlining dependencies, blocking tasks, and success criteria. Reference: VOELGOEDEVENTS_FINAL_ROADMAP.md Phase 3.2",
+                "why": "✅ Asks for planning first (TOON), not code. Respects phase boundaries. Expects structured output with explicit criteria."
+            },
+            {
+                "prompt": "Generate a TOON for Phase 3.3 — Seat model with hold/release workflows. Must include: 3-tier caching (ETS→Redis→DB), multi-tenancy safety, Ash.Reactor orchestration, cross-org denial tests. Reference: /docs/workflows/reserve_seat.md, /docs/architecture/03_caching_and_realtime.md",
+                "why": "✅ Specifies phase, lists concrete requirements, cites relevant workflow and architecture docs, expects TOON (not code)"
+            },
+            {
+                "prompt": "Create a test for Venue resource (Phase 3.2). Test that user from org_a cannot read venues from org_b. Reference: GEMINI.md Section 3 (Multi-Tenancy in Policies)",
+                "why": "✅ Specific resource, clear test case, cites the pattern to follow"
+            }
+        ]
+    },
+    "ash_3_best_practices": {
+        "resource_structure": {
+            "pattern": "Use Voelgoedevents.Ash.Resources.Base inheritance",
+            "includes": [
+                "Audit logging (via extension)",
+                "FilterByTenant preparation (automatic org scoping)",
+                "Standard timestamps",
+                "Deny-by-default policies"
+            ],
+            "example": "use Voelgoedevents.Ash.Resources.Base"
+        },
+        "policies": {
+            "pattern": "Ash.Policy.Guide native DSL (deny-by-default)",
+            "rules": [
+                "NEVER use custom permission layers (wrapper macros, custom middleware)",
+                "ALWAYS include `default_policy :deny`",
+                "Use `authorize_if expr()` for conditions",
+                "Use `authorize_if always()` only after FilterByTenant confirms org scoping"
+            ],
+            "example_correct": {
+                "policies": "policy action_type(:read) do\n  authorize_if always()\nend\ndefault_policy :deny"
+            },
+            "example_wrong": {
+                "violation": "policy do\n  authorize_if expr(actor.role == :admin)  # Hardcoded, not abstracted\nend"
+            }
+        },
+        "actions": {
+            "pattern": "Ash actions encapsulate business logic",
+            "rules": [
+                "Use `change` for transformations",
+                "Use `validate` for business rule checks",
+                "Use `argument` for input parameters",
+                "Use `prepare` for query customization (sparingly)",
+                "Use `error_handler` for failure paths"
+            ],
+            "example": {
+                "action_name": "reserve_seat",
+                "type": "create",
+                "includes": [
+                    "arguments",
+                    "changes",
+                    "validations",
+                    "policy checks"
+                ]
+            }
+        },
+        "calculations_and_aggregates": {
+            "pattern": "Derived values via Ash, not application code",
+            "rules": [
+                "Use `calculations` for non-persisted derived values",
+                "Use `aggregates` for counts, sums, rollups",
+                "Prefer Ash expressions over manual computation"
+            ],
+            "example": "calculate :available_seats, :integer, expr(total_capacity - sold_count)"
+        },
+        "validations": {
+            "pattern": "All business rule checks in Ash validations, not Phoenix",
+            "rules": [
+                "Use Ash's built-in validators: `required`, `numericality`, `string_length`, etc.",
+                "Use custom validators for domain-specific checks",
+                "NEVER validate in LiveView or controller"
+            ],
+            "example": "validate required(:organization_id)\nvalidate numericality(:capacity, greater_than: 0)"
+        },
+        "relationships": {
+            "pattern": "Ash handles relationship integrity",
+            "rules": [
+                "Define `belongs_to`, `has_many`, `has_one` with foreign key constraints",
+                "Let Ash manage lazy vs. eager loading",
+                "Use `through` for pivot relationships"
+            ]
+        },
+        "error_handling": {
+            "pattern": "Ash changesets capture errors naturally",
+            "rules": [
+                "Don't use `!` suffix in Ash calls; instead pattern match on `{:ok, record}` and `{:error, changeset}`",
+                "Use `error_handler` to customize failure responses",
+                "Test both happy path and error cases"
+            ]
+        }
+    },
+    "naming_conventions": {
+        "modules": {
+            "case": "PascalCase (CapitalizedWords)",
+            "app_root": "Voelgoedevents or VoelgoedeventsWeb (NEVER VoelgoedEvents, VoelgoedEventsWeb)",
+            "resources": "Voelgoedevents.Ash.Resources.{Domain}.{ResourceName}",
+            "domains": "Voelgoedevents.Ash.Domains.{DomainName}",
+            "policies": "Voelgoedevents.Ash.Policies.{PolicyName}",
+            "workflows": "Voelgoedevents.Workflows.{Domain}.{WorkflowName}",
+            "liveviews": "VoelgoedeventsWeb.Live.{Domain}.{PageName}Live",
+            "controllers": "VoelgoedeventsWeb.{Domain}Controller",
+            "examples": [
+                "✅ Voelgoedevents.Ash.Resources.Events.Venue",
+                "✅ Voelgoedevents.Ash.Policies.TenantPolicies",
+                "✅ Voelgoedevents.Workflows.Ticketing.ReserveSeat",
+                "❌ VoelgoedEvents.Resources.Venues.Venue (wrong app name casing)",
+                "❌ Voelgoedevents.Services.TicketService (service layer forbidden)",
+                "❌ voelgoedevents.resources.Venue (wrong module casing)"
+            ]
+        },
+        "files": {
+            "case": "snake_case (lowercase_underscore)",
+            "resources": "lib/voelgoedevents/ash/resources/{domain}/{resource_name}.ex",
+            "domains": "lib/voelgoedevents/ash/domains/{domain_name}.ex",
+            "policies": "lib/voelgoedevents/ash/policies/{policy_name}.ex",
+            "workflows": "lib/voelgoedevents/workflows/{domain}/{workflow_name}.ex",
+            "migrations": "priv/repo/migrations/{timestamp}_{change_description}.exs",
+            "tests": "test/voelgoedevents/{structure_matches_source}.exs",
+            "examples": [
+                "✅ lib/voelgoedevents/ash/resources/events/venue.ex",
+                "✅ lib/voelgoedevents/ash/policies/tenant_policies.ex",
+                "✅ lib/voelgoedevents/workflows/ticketing/reserve_seat.ex",
+                "❌ lib/voelgoedevents/Venue.ex (wrong structure)",
+                "❌ lib/voelgoedevents/resources/Venue.ex (wrong casing)"
+            ]
+        },
+        "database": {
+            "tables": "snake_case (lowercase_underscore)",
+            "columns": "snake_case (lowercase_underscore)",
+            "timestamps": "inserted_at, updated_at (Ash automatic)",
+            "foreign_keys": "{resource_singular}_id (user_id, organization_id, event_id)",
+            "examples": [
+                "✅ venues table with organization_id FK",
+                "✅ tickets table with event_id, venue_id, organization_id FKs",
+                "❌ venueS (plural in table name)",
+                "❌ orgId (camelCase in database)"
+            ]
+        },
+        "cache_keys": {
+            "pattern": "{namespace}:{org_id}:{resource}:{identifier}",
+            "redis_ets": "Always include organization_id for multi-tenancy isolation",
+            "examples": [
+                "✅ tenancy:membership:user-123:org-456",
+                "✅ ticketing:holds:event-789:org-456",
+                "✅ pricing:effective:org-456:ticket-type-111",
+                "❌ membership:user-123 (missing org_id → cross-tenant leak)",
+                "❌ seat:seat-456 (missing org_id)"
+            ]
+        },
+        "constants_and_enums": {
+            "case": "UPPER_SNAKE_CASE for constants",
+            "example_constant": "SEAT_HOLD_TTL_MINUTES = 5",
+            "example_enum": "attribute :status, :atom, constraints: [one_of: [:available, :held, :sold]]"
+        }
+    },
+    "validation_checklist": {
+        "before_generating_any_code": [
+            {
+                "check": "Have I loaded /docs/AGENTS.md first?",
+                "critical": true,
+                "action": "If NO: STOP. Load AGENTS.md and re-read."
+            },
+            {
+                "check": "Does the task match the CURRENT phase (3: Events & Venues)?",
+                "critical": true,
+                "action": "If NO: Reject task. Phase boundaries are strict.",
+                "reference": "CLAUDE.md Section 8 (Phase & Roadmap Awareness)"
+            },
+            {
+                "check": "Is the file path valid per /docs/INDEX.md Section 4.1 and ai_context_map.md?",
+                "critical": true,
+                "action": "If NO: Reject with 'This resource/path does not exist in INDEX or ai_context_map.md'",
+                "reference": "GEMINI.md Section 2 (File Path Validation)"
+            },
+            {
+                "check": "Does every persistent resource include organization_id?",
+                "critical": true,
+                "action": "If NO: Reject. Add `attribute :organization_id, :uuid, allow_nil?: false`",
+                "reference": "AGENTS.md Section 3.3"
+            },
+            {
+                "check": "Is the module name correctly cased (PascalCase, not VoelgoedEvents)?",
+                "critical": true,
+                "action": "If wrong casing: Fix it before proceeding.",
+                "reference": "AGENTS.md Section 3.5, GEMINI.md Section 2"
+            },
+            {
+                "check": "Are file paths in snake_case (not PascalCase)?",
+                "critical": true,
+                "action": "If wrong casing: Fix file path before proceeding.",
+                "reference": "GEMINI.md Section 2 (Module Naming)"
+            },
+            {
+                "check": "Is business logic proposed for Ash (resources/actions), not Phoenix?",
+                "critical": true,
+                "action": "If NO: Restructure. All business logic in Ash only.",
+                "reference": "AGENTS.md Section 3.1"
+            },
+            {
+                "check": "Is FilterByTenant preparation being used (inherited via Base)?",
+                "critical": true,
+                "action": "If manually filtering org_id: Remove. FilterByTenant handles it.",
+                "reference": "GEMINI.md Section 3"
+            },
+            {
+                "check": "Do policies include `default_policy :deny`?",
+                "critical": true,
+                "action": "If missing: Add deny-by-default before generating.",
+                "reference": "GEMINI.md Section 5 (Ash-Native Architecture)"
+            },
+            {
+                "check": "Are multi-tenancy tests planned (cross-org denial)?",
+                "critical": true,
+                "action": "If NO: Add tests before completing.",
+                "reference": "GEMINI.md Section 3 (Multi-Tenancy in Policies)"
+            },
+            {
+                "check": "Is caching strategy documented (ETS/Redis/DB)?",
+                "critical": false,
+                "action": "If missing: Document before finalizing.",
+                "reference": "GEMINI.md Section 4 (Caching Strategy)"
+            },
+            {
+                "check": "Will the code compile without warnings?",
+                "critical": true,
+                "action": "If uncertain: Review Ash docs and examples.",
+                "reference": "AGENTS.md Section 6"
+            },
+            {
+                "check": "Have I checked for anti-patterns (service layer, wrapper macros, direct Repo)?",
+                "critical": true,
+                "action": "If any found: Restructure before generating.",
+                "reference": "GEMINI.md Section 5 (Reject These Anti-Patterns)"
+            }
+        ]
+    },
+    "documentation_paths": {
+        "supreme_rulebooks": {
+            "agents": "/docs/AGENTS.md",
+            "index": "/docs/INDEX.md",
+            "blueprint": "/docs/MASTER_BLUEPRINT.md"
+        },
+        "agent_specific": {
+            "claude": "/docs/ai/CLAUDE.md",
+            "gemini": "/docs/ai/GEMINI.md",
+            "ai_context_map": "/docs/ai/ai_context_map.md"
+        },
+        "architecture": {
+            "foundation": "/docs/architecture/01_foundation.md",
+            "multitenancy": "/docs/architecture/02_multitenancy.md",
+            "caching_realtime": "/docs/architecture/03_caching_and_realtime.md",
+            "vertical_slices": "/docs/architecture/04_vertical_slices.md",
+            "eventing": "/docs/architecture/05_eventing_model.md",
+            "jobs_async": "/docs/architecture/06_jobs_and_async.md",
+            "security_auth": "/docs/architecture/07_security_and_auth.md",
+            "cicd_deployment": "/docs/architecture/08_cicd_and_deployment.md",
+            "scaling_resilience": "/docs/architecture/09_scaling_and_resilience.md"
+        },
+        "domain_models": {
+            "accounts": "/docs/domain/accounts.md",
+            "events_venues": "/docs/domain/events_venues.md",
+            "seating": "/docs/domain/seating.md",
+            "ticketing_pricing": "/docs/domain/ticketing_pricing.md",
+            "scanning_devices": "/docs/domain/scanning_devices.md",
+            "payments_ledger": "/docs/domain/payments_ledger.md"
+        },
+        "workflows": {
+            "reserve_seat": "/docs/workflows/reserve_seat.md",
+            "release_seat": "/docs/workflows/release_seat.md",
+            "complete_checkout": "/docs/workflows/complete_checkout.md",
+            "process_scan": "/docs/workflows/process_scan.md",
+            "offline_sync": "/docs/workflows/offline_sync.md",
+            "start_checkout": "/docs/workflows/start_checkout.md",
+            "funnel_builder": "/docs/workflows/funnel_builder.md"
+        },
+        "coding_style": {
+            "ash": "/docs/coding_style/ash.md",
+            "ash_policies": "/docs/coding_style/ash_policies.md",
+            "elixir_general": "/docs/coding_style/elixir_general.md",
+            "phoenix_liveview": "/docs/coding_style/phoenix_liveview.md",
+            "heex": "/docs/coding_style/heex.md",
+            "tailwind": "/docs/coding_style/tailwind.md",
+            "svelte": "/docs/coding_style/svelte.md",
+            "javascript": "/docs/coding_style/js_guidelines.md"
+        },
+        "roadmap_and_planning": {
+            "final_roadmap": "/VOELGOEDEVENTS_FINAL_ROADMAP.md",
+            "master_guide": "/PROJECT_GUIDE.md",
+            "product_vision": "/PRODUCT_VISION.md"
+        }
+    },
+    "toon_prompt_template": {
+        "format": "Markdown",
+        "structure": {
+            "heading": "# TOON: Phase X.Y.Z — Descriptive Task Name",
+            "sections": [
+                {
+                    "name": "Task",
+                    "requirement": "Single clear sentence: what to build, what to create, what to modify",
+                    "example": "Create a single, reusable policy module (`lib/voelgoedevents/ash/policies/tenant_policies.ex`) that encapsulates all RBAC logic (role-based authorization checks) for VoelgoedEvents resources in Phase 2 and beyond."
+                },
+                {
+                    "name": "Objective",
+                    "requirement": "Single sentence: why this matters, what it enables downstream",
+                    "example": "Provide abstracted policy helpers so Phase 3+ resources (Event, Venue, Ticket) can call these instead of duplicating authorization logic. Isolate RBAC from business logic."
+                },
+                {
+                    "name": "Output",
+                    "requirement": "Exact file paths, module names, migration files, resources, domains",
+                    "example": "- `lib/voelgoedevents/ash/policies/tenant_policies.ex` (module with 5 helper functions + policy macros)\n- `test/voelgoedevents/ash/policies/tenant_policies_test.exs` (comprehensive test suite)\n- No migrations, no resources, no database changes"
+                },
+                {
+                    "name": "Note",
+                    "requirement": "Constraints, edge cases, canonical references (NEVER fluff). Include: Multi-tenancy policy, DB schema, Caching strategy, Ash-native patterns, Workflows/Reactors, Performance targets, Testing edge cases, Links to source docs",
+                    "example": "- **Multi-tenancy:** FilterByTenant (preparation) already filters org scoping per AGENTS.md 3.3. TenantPolicies only handles role-based decisions, not org isolation.\n- **Roles:** All 5 roles supported (seeded Phase 2.3): `:owner`, `:admin`, `:staff`, `:viewer`, `:scanner_only`\n- **Caching:** Helper functions use MembershipCache (ETS-backed) for <1ms role lookups. Cache key: `\"tenancy:membership:#{user_id}:#{org_id}\"`\n- **RBAC pattern:** Ash.Policy.Guide native DSL (Ash 3.0 deny-by-default)\n- **Testing:** Must test cross-org denial, role-based denial, admin bypass, missing org context\n- **Reference:** AGENTS.md Section 3.1, AGENTS.md Section 3.3, `/docs/architecture/02_multitenancy.md` (Section 4–5), `/docs/architecture/07_security_and_auth.md` (RBAC design)"
+                },
+                {
+                    "name": "Success Criteria",
+                    "requirement": "Specific, observable outcomes: Code compiles, tests pass (including multi-tenancy), feature integrates, ready for next sub-phase",
+                    "example": "✅ `lib/voelgoedevents/ash/policies/tenant_policies.ex` compiles without warnings\n✅ All 5 helper functions callable in iex with correct arity\n✅ Tests pass: cross-org denial, role-based authorization, admin bypass, missing context\n✅ Ready for Phase 3: Event/Venue/Ticket resources can import and call `TenantPolicies.authorize_write(:admin)`\n✅ No service layer, no wrapper macros, pure Ash functions"
+                }
+            ]
+        },
+        "single_responsibility": "Each TOON handles ONE concern: create/extend resource, create migration, add/extend policies, add invariants/validations, add relationships, add caching, add PubSub events, add workflows/reactors, add tests",
+        "when_to_generate": [
+            "User asks for planning (analysis, design, architecture)",
+            "User asks for a roadmap sub-phase breakdown",
+            "You identify missing scope or architectural gaps",
+            "You need to validate and refine requirements before implementation",
+            "You're breaking down a large task into atomic units",
+            "You're designing a new feature that touches multiple domains"
+        ],
+        "when_NOT_to_generate": [
+            "User explicitly asks: 'Generate the code, not a plan'",
+            "The task is already fully detailed in an existing workflow doc",
+            "The sub-phase is trivial (<100 lines, single file, no dependencies)"
+        ]
+    },
+    "escalation_templates": {
+        "cannot_proceed_multitenancy": {
+            "pattern": "❌ CANNOT PROCEED — Multi-tenancy gap detected",
+            "issue": "Proposed resource lacks organization_id or FilterByTenant scoping",
+            "reference": "AGENTS.md Section 3.3 — 'Every persistent resource MUST include organization_id'",
+            "impact": "Resources from Org A could leak visibility to Org B users",
+            "solution": "Add `attribute :organization_id, :uuid, allow_nil?: false` and test cross-org denial"
+        },
+        "cannot_proceed_service_layer": {
+            "pattern": "❌ CANNOT PROCEED — Service layer detected",
+            "issue": "Business logic proposed outside Ash (in services, controllers, LiveViews)",
+            "reference": "AGENTS.md Section 3.1 — 'All business logic belongs in Ash. Always. No exceptions.'",
+            "impact": "Bypasses validations, policies, audit logging, workflow orchestration",
+            "solution": "Move all business logic to Ash resource actions, use Phoenix for I/O only"
+        },
+        "cannot_proceed_invalid_path": {
+            "pattern": "❌ CANNOT PROCEED — File path not found",
+            "issue": "Proposed file path is not in /docs/INDEX.md Section 4.1 or /docs/ai/ai_context_map.md",
+            "reference": "GEMINI.md Section 2 (File Path Validation)",
+            "impact": "Module may not compile, violates Standard Ash Layout",
+            "solution": "Verify path against ai_context_map.md; if missing, add to registry first"
+        },
+        "cannot_proceed_wrong_phase": {
+            "pattern": "❌ CANNOT PROCEED — Feature is out of current phase scope",
+            "issue": "Feature requested is in Phase 4+, but Phase 3 is current",
+            "reference": "CLAUDE.md Section 8, VOELGOEDEVENTS_FINAL_ROADMAP.md",
+            "impact": "Creates scope creep, unblocks wrong dependencies",
+            "solution": "Confirm you want Phase 3.X task, or reorder roadmap with architect"
+        },
+        "cannot_proceed_wrong_naming": {
+            "pattern": "❌ CANNOT PROCEED — Module or file name has incorrect casing",
+            "issue": "VoelgoedEvents (wrong), voelgoedevents (wrong), Venue.ex (wrong file casing)",
+            "reference": "AGENTS.md Section 3.5, GEMINI.md Section 2 (Module Naming)",
+            "impact": "Module won't compile, violates canonical naming",
+            "solution": "Use ONLY: Voelgoedevents (module), VoelgoedeventsWeb (web module), snake_case files"
+        },
+        "cannot_proceed_wrapper_macro": {
+            "pattern": "❌ CANNOT PROCEED — Wrapper macro proposed",
+            "issue": "Custom macro to abstract Ash functionality (e.g., defmacro read_tenant_resource)",
+            "reference": "GEMINI.md Section 5 (Reject These Anti-Patterns)",
+            "impact": "Hides Ash structure, breaks GraphQL introspection, creates maintenance burden",
+            "solution": "Use Ash.Preparation (FilterByTenant) or Ash.Extension instead"
+        }
+    },
+    "current_phase_context": {
+        "phase": 3,
+        "name": "Events & Venues",
+        "status": "IN PROGRESS",
+        "domains_in_scope": [
+            "Events (Phase 3.1)",
+            "Venues (Phase 3.2)",
+            "Seating Model (Phase 3.3)",
+            "Event-Venue Relationships (Phase 3.4)"
+        ],
+        "domains_out_of_scope": [
+            "Ticketing (Phase 4)",
+            "Scanning (Phase 5)",
+            "Payments (Phase 6)",
+            "Analytics (Phase 7)"
+        ],
+        "phase_timeline": [
+            {
+                "phase": 1,
+                "name": "Foundation",
+                "status": "✅ COMPLETE",
+                "outputs": [
+                    "Redis",
+                    "ETS",
+                    "Oban",
+                    "Distributed Locking",
+                    "PubSub",
+                    "PostgreSQL"
+                ]
+            },
+            {
+                "phase": 2,
+                "name": "Tenancy & Auth",
+                "status": "✅ COMPLETE",
+                "outputs": [
+                    "Organization",
+                    "User",
+                    "Role",
+                    "Membership",
+                    "Policies",
+                    "RBAC"
+                ]
+            },
+            {
+                "phase": 3,
+                "name": "Events & Venues",
+                "status": "🔧 IN PROGRESS",
+                "outputs": [
+                    "Event",
+                    "Venue",
+                    "TicketType",
+                    "Seating"
+                ]
+            },
+            {
+                "phase": 4,
+                "name": "Ticketing & Pricing",
+                "status": "⏳ NEXT",
+                "outputs": [
+                    "Ticket",
+                    "Pricing",
+                    "Discount",
+                    "Inventory"
+                ]
+            },
+            {
+                "phase": 5,
+                "name": "Scanning & Offline",
+                "status": "📋 PLANNED",
+                "outputs": [
+                    "Scanner Device",
+                    "QR Scanning",
+                    "Offline Sync",
+                    "Mobile Cache"
+                ]
+            },
+            {
+                "phase": 6,
+                "name": "Payments & Ledger",
+                "status": "📋 PLANNED",
+                "outputs": [
+                    "Payment Processor",
+                    "Accounting",
+                    "Ledger",
+                    "Reconciliation"
+                ]
+            },
+            {
+                "phase": 7,
+                "name": "Reports & Analytics",
+                "status": "📋 PLANNED",
+                "outputs": [
+                    "Funnel Analytics",
+                    "Performance Reports",
+                    "Business Intelligence"
+                ]
+            }
+        ]
+    },
+    "error_messages_and_patterns": {
+        "missing_organization_id": "Attribute `:organization_id, :uuid, allow_nil?: false` is MANDATORY on every persistent resource. This is a multi-tenancy safety requirement (AGENTS.md 3.3).",
+        "missing_deny_by_default": "Policy block must include `default_policy :deny` (Ash 3.0 deny-by-default enforcement).",
+        "manual_org_filter_detected": "REMOVE manual `Ash.Query.filter(query, organization_id: actor.org_id)`. FilterByTenant preparation (inherited via Base) already handles this. Manual filtering violates DRY and creates bugs.",
+        "service_layer_detected": "REJECT service layer (Voelgoedevents.Services.*). All business logic MUST live in Ash resources/actions (AGENTS.md 3.1). Phoenix is I/O only.",
+        "wrapper_macro_detected": "REJECT wrapper macros (defmacro read_tenant, defmacro create_tenant, etc.). Use Ash.Preparation or Ash.Extension instead (GEMINI.md Section 5).",
+        "direct_repo_call_detected": "REJECT direct Repo calls (Repo.insert!, Repo.update!, Repo.delete!). Use Ash.create!, Ash.update!, Ash.destroy! instead. Direct Repo bypasses validations, policies, audit logging.",
+        "unscoped_cache_key": "Cache keys MUST include organization_id to prevent cross-tenant data leaks. Pattern: `{namespace}:{org_id}:{resource}:{identifier}`",
+        "wrong_module_casing": "WRONG: VoelgoedEvents, VoelgoedEventsWeb. RIGHT: Voelgoedevents, VoelgoedeventsWeb. This is strict (AGENTS.md 3.5).",
+        "wrong_file_casing": "Files must be snake_case (venue.ex, tenant_policies.ex). NEVER PascalCase files (Venue.ex, TenantPolicies.ex).",
+        "path_not_in_ai_context_map": "This resource/path does not exist in /docs/INDEX.md Section 4.1 or /docs/ai/ai_context_map.md. It must be registered before generating code.",
+        "out_of_phase_feature": "Feature is in Phase X, but Phase 3 is current. Don't code out-of-phase features. Phases are sequential; features unblock each other (VOELGOEDEVENTS_FINAL_ROADMAP.md).",
+        "ambiguous_scope": "Specification is unclear on: X, Y, Z. Cannot proceed without user clarification. Ask specific questions before generating."
+    },
+    "quick_reference_forbidden": [
+        "❌ defmodule Voelgoedevents.Services.X — Service layer forbidden",
+        "❌ defmacro read_tenant(resource, org_id) — Wrapper macros forbidden",
+        "❌ Repo.insert!(%Model{}) — Direct Repo calls forbidden",
+        "❌ Ash.Query.filter(query, organization_id: actor.org_id) — Manual org filtering forbidden (FilterByTenant does it)",
+        "❌ policy do authorize_if expr(actor.role == :admin) end — Hardcoded roles forbidden (use TenantPolicies helpers)",
+        "❌ ets:insert(table, {user_id, value}) — ETS without org_id namespace forbidden (cross-tenant leak)",
+        "❌ Ash.read!(Resource, filter: [event_id: event_id]) — Cross-org queries forbidden (must filter by org)",
+        "❌ VoelgoedEvents.* — Wrong app name casing forbidden",
+        "❌ lib/voelgoedevents/services/* — Custom folder structure forbidden",
+        "❌ lib/voelgoedevents/Venue.ex — PascalCase file names forbidden"
+    ],
+    "quick_reference_required": [
+        "✅ use Voelgoedevents.Ash.Resources.Base — Inherit audit + FilterByTenant + multi-tenancy",
+        "✅ attribute :organization_id, :uuid, allow_nil?: false — Every resource must include",
+        "✅ FilterByTenant automatic (inherited) — Don't manually filter",
+        "✅ policy action_type(:read) do authorize_if always() end default_policy :deny — Ash 3.0 native",
+        "✅ test 'user from org_a cannot read org_b' — Multi-tenancy tests mandatory",
+        "✅ 'tenancy:membership:#{user_id}:#{org_id}' — ETS/Redis keys with org_id",
+        "✅ 'ticketing:holds:#{event_id}:#{org_id}' — Cache namespace includes org_id",
+        "✅ create :reserve_for_user do argument :user_id, :uuid ... end — Ash actions for business logic",
+        "✅ Voelgoedevents.Ash.Resources.Events.Venue — Correct module naming",
+        "✅ lib/voelgoedevents/ash/resources/events/venue.ex — Correct file path and casing"
+    ],
+    "version": "1.1",
+    "last_updated": "December 9, 2025, 2:02 PM SAST",
+    "authority": "/docs/AGENTS.md (this config extends, does NOT override)",
+    "status": "PRODUCTION READY",
+    "changelog": [
+        {
+            "version": "1.0",
+            "date": "December 9, 2025, 1:58 PM SAST",
+            "changes": "Initial release: Supreme authority, 8-step load order, 16 critical rules, validation checklist, TOON template, escalation templates, Ash 3.x best practices"
+        },
+        {
+            "version": "1.1",
+            "date": "December 9, 2025, 2:02 PM SAST",
+            "changes": "Added escalation_rules (5 scenarios for when to STOP and ask), success_criteria (code generation + TOON generation), prompt_examples (bad vs good prompts with corrections)"
+        }
+    ]
+}

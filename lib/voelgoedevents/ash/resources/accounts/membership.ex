@@ -146,14 +146,14 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     # READ: same-org only, viewer and above
     policy action_type(:read) do
       forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(organization_id != actor(:organization_id))
+      forbid_if expr(resource.organization_id != actor(:organization_id))
       OrgRbacPolicy.can?(:viewer)
     end
 
     # MUTATIONS: same-org only, owner and above, with platform staff protection
     policy action([:create, :invite, :update, :remove]) do
       forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(organization_id != actor(:organization_id))
+      forbid_if expr(resource.organization_id != actor(:organization_id))
 
       # Tenants cannot touch memberships for platform staff users;
       # only platform admins may do that.
@@ -168,7 +168,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     # JOIN: invited user in the correct org can accept their own membership
     policy action(:join) do
       forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(user_id != actor(:id) or organization_id != actor(:organization_id))
+      forbid_if expr(resource.user_id != actor(:id) or resource.organization_id != actor(:organization_id))
       authorize_if always()
     end
   end

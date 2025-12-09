@@ -1,4 +1,4 @@
-# docs/architecture/04_pubsub_topics.md
+# docs/architecture/13_pubsub_topics.md
 
 **VoelgoedEvents: Phoenix PubSub Real-Time Communication Architecture**
 

@@ -33,7 +33,8 @@ Before writing, modifying, deleting, or generating any code, the agent must load
 
 This defines all behaviour. It supersedes everything else.
 
-### Step 2 — Load INDEX.md
+### Step 2 — Load INDEX.md 
+[INDEX.md](/docs/INDEX.md)
 
 Provides:
 
@@ -159,7 +160,7 @@ We use **Logical Vertical Slices** mapped to **Standard Ash Folders**.
 Logical slices define conceptual boundaries only; agents must always place files in the standard Ash/Phoenix folder structure shown in Section 4, never in slice-named folders.
 
 - **Mentally**, you work in a slice (e.g., "Ticketing").
-- **Physically**, you place files in the standard Ash/Phoenix locations defined in `INDEX.md`.
+- **Physically**, you place files in the standard Ash/Phoenix locations defined in [INDEX.md](/docs/INDEX.md).
 
 Do **NOT** create custom folder structures like `lib/voelgoedevents/ticketing/ash/`.
 **ALWAYS** use `lib/voelgoedevents/ash/resources/ticketing/`.

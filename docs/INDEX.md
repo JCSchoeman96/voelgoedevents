@@ -51,7 +51,7 @@ Use the links below to find the authoritative source for any topic.
 - [**OTP Architecture**](architecture/10_otp_architecture.md)
 - [**Ash-Native Metaprogramming**](architecture/11_ash-native_metaprogramming.md)
 - [**Type Safety & Contracts**](architecture/12_type_safety_contracts.md)
-- [**PubSub Topics (13_pubsub_topics.md.md)**](architecture/13_pubsub_topics.md.md)
+- [**PubSub Topics (13_pubsub_topics.md)**](architecture/13_pubsub_topics.md)
 - [**Database Index Strategy (14_db_indexes.md)**](architecture/14_db_indexes.md)
 
 ---
@@ -82,6 +82,7 @@ Use the links below to find the authoritative source for any topic.
 - [**Notifications & Delivery (notifications_delivery.md)**](domain/notifications_delivery.md)
 - [**Public API & Access Keys (public_api_access_keys.md)**](domain/public_api_access_keys.md)
 - [**Reporting (reporting.md)**](domain/reporting.md)
+- [**RBAC and Platform Access (rbac_and_platform_access.md)**](domain/rbac_and_platform_access.md)
 
 ---
 
@@ -107,9 +108,9 @@ Use the links below to find the authoritative source for any topic.
 
 | Document                                   | Description                                                            |
 | ------------------------------------------ | ---------------------------------------------------------------------- |
-| [**AGENTS.md**](AGENTS.md)                 | **The Law.** Supreme rulebook for all AI agents. Overrides everything. |
+| [**AGENTS.md**](../AGENTS.md)                 | **The Law.** Supreme rulebook for all AI agents. Overrides everything. |
 | [**AI Context Map**](ai/ai_context_map.md) | **The Brain.** Registry of all verified modules, paths, and atoms.     |
-| [**GEMINI.md**](GEMINI.md)                 | **The Persona.** Specific instructions for Gemini agents.              |
+| [**GEMINI.md**](../GEMINI.md)                 | **The Persona.** Specific instructions for Gemini agents.              |
 
 ---
 
@@ -186,16 +187,16 @@ Use the links below to find the authoritative source for any topic.
 
 ## 8. Coding Style Guidelines
 
-| Document                                       | Purpose                                   |
-| ---------------------------------------------- | ----------------------------------------- |
-| coding_style/elixir_general.md                 | Elixir structure, naming, and conventions |
-| coding_style/ash.md                            | Ash resource & action DSL                 |
-| coding_style/ash_policies.md                   | Ash 3.x policy DSL & authorization rules  |
-| coding_style/phoenix_liveview.md               | LiveView & HTTP conventions               |
-| coding_style/heex.md                           | HEEx component & template rules           |
-| coding_style/tailwind.md                       | UI styling guidelines                     |
-| coding_style/js_guidelines.md                  | JS/TS client guidelines                   |
-| coding_style/svelte.md                         | Svelte component guidelines               |
+| Document                                                         | Purpose                                   |
+| ---------------------------------------------------------------- | ----------------------------------------- |
+| [coding_style/elixir_general.md](coding_style/elixir_general.md) | Elixir structure, naming, and conventions |
+| [coding_style/ash.md](coding_style/ash.md)                      | Ash resource & action DSL                 |
+| [coding_style/ash_policies.md](coding_style/ash_policies.md)    | Ash 3.x policy DSL & authorization rules  |
+| [coding_style/phoenix_liveview.md](coding_style/phoenix_liveview.md) | LiveView & HTTP conventions               |
+| [coding_style/heex.md](coding_style/heex.md)                           | HEEx component & template rules           |
+| [coding_style/tailwind.md](coding_style/tailwind.md)                       | UI styling guidelines                     |
+| [coding_style/js_guidelines.md](coding_style/js_guidelines.md)                  | JS/TS client guidelines                   |
+| [coding_style/svelte.md](coding_style/svelte.md)                         | Svelte component guidelines               |
 
 ---
 

@@ -54,7 +54,7 @@ defmodule Voelgoedevents.MixProject do
       {:ash_state_machine, "~> 0.2"},
       {:ash_paper_trail, "~> 0.5"}, # Auditing
       {:ash_archival, "~> 2.0"},    # Soft Deletes
-      {:ash_money, "~> 0.1"},       # Financial Types
+      {:ash_money, "~> 0.2.5"},       # Financial Types
       {:ex_money_sql, "~> 1.0"},
       {:ash_cloak, "~> 0.1"},       # Encryption
       {:ash_oban, "~> 0.2"},        # Background Jobs Integration

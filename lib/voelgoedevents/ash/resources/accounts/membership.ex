@@ -17,23 +17,28 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
   end
 
   attributes do
+    # Canonical primary key for Membership
     uuid_primary_key :id
 
+    # Foreign key to the user
     attribute :user_id, :uuid do
       allow_nil? false
       public? false
     end
 
+    # Foreign key to the organization
     attribute :organization_id, :uuid do
       allow_nil? false
       public? false
     end
 
+    # Foreign key to the Role
     attribute :role_id, :uuid do
       allow_nil? false
       public? false
     end
 
+    # Membership lifecycle state
     attribute :status, :atom do
       allow_nil? false
       public? true
@@ -73,6 +78,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
   end
 
   identities do
+    # Logical uniqueness: a user can only have one membership per organization
     identity :unique_user_organization, [:user_id, :organization_id]
   end
 
@@ -137,16 +143,20 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
   policies do
     PlatformPolicy.platform_admin_root_access()
 
+    # READ: same-org only, viewer and above
     policy action_type(:read) do
       forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(resource.organization_id != actor(:organization_id))
+      forbid_if expr(organization_id != actor(:organization_id))
       OrgRbacPolicy.can?(:viewer)
     end
 
+    # MUTATIONS: same-org only, owner and above, with platform staff protection
     policy action([:create, :invite, :update, :remove]) do
       forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(resource.organization_id != actor(:organization_id))
+      forbid_if expr(organization_id != actor(:organization_id))
 
+      # Tenants cannot touch memberships for platform staff users;
+      # only platform admins may do that.
       forbid_if expr(
                   user.is_platform_staff == true and
                     actor(:is_platform_admin) != true
@@ -155,9 +165,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
       OrgRbacPolicy.can?(:owner)
     end
 
+    # JOIN: invited user in the correct org can accept their own membership
     policy action(:join) do
       forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(resource.user_id != actor(:id) or resource.organization_id != actor(:organization_id))
+      forbid_if expr(user_id != actor(:id) or organization_id != actor(:organization_id))
       authorize_if always()
     end
   end
@@ -177,8 +188,11 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     joined_at = Changeset.get_attribute(changeset, :joined_at)
 
     cond do
-      status == :active and is_nil(joined_at) -> Changeset.change_attribute(changeset, :joined_at, DateTime.utc_now())
-      true -> changeset
+      status == :active and is_nil(joined_at) ->
+        Changeset.change_attribute(changeset, :joined_at, DateTime.utc_now())
+
+      true ->
+        changeset
     end
   end
 
@@ -192,6 +206,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
 
   def invalidate_membership_cache(_changeset, membership, _context) do
     MembershipCache.invalidate(membership.user_id, membership.organization_id)
-    {:ok, membership} 
+    {:ok, membership}
   end
 end

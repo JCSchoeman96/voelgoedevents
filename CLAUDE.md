@@ -5,21 +5,21 @@
 
 ---
 
-## ⚠️ CRITICAL: Read AGENTS.md First
+## ⚠️ CRITICAL: Read [AGENTS.md](/AGENTS.md) First
 
 **This document EXTENDS `/docs/AGENTS.md`, it does NOT replace it.**
 
 **Mandatory Load Order (DO NOT SKIP):**
 
-1. **`/docs/AGENTS.md`** ← Supreme rulebook, overrides everything
-2. **`/docs/INDEX.md`** ← Folder structure, canonical paths
-3. **`/docs/MASTER_BLUEPRINT.md`** ← Architecture, vision, domain boundaries
-4. **`CLAUDE.md`** ← This file (Claude-specific extensions)
+1. **`/docs/AGENTS.md`** [AGENTS.md](/AGENTS.md) ← Supreme rulebook, overrides everything
+2. **`/docs/INDEX.md`** [INDEX.md](/docs/INDEX.md) ← Folder structure, canonical paths
+3. **`/docs/MASTER_BLUEPRINT.md`** [MASTER_BLUEPRINT.md](/docs/MASTER_BLUEPRINT.md) ← Architecture, vision, domain boundaries
+4. **`CLAUDE.md`** [CLAUDE.md](/CLAUDE.md) ← This file (Claude-specific extensions)
 5. **Relevant architecture docs** ← Per task (multi-tenancy, caching, etc.)
 6. **Domain docs** ← Per slice (if applicable)
 7. **Workflow docs** ← Per feature (if applicable)
 
-**If you are Claude and have NOT loaded `/docs/AGENTS.md` first, STOP and load it now.**
+**If you are a coding agent and have NOT loaded `./AGENTS.md` first, STOP and load it now.**
 
 ---
 

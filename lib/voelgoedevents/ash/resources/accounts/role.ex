@@ -1,6 +1,9 @@
 defmodule Voelgoedevents.Ash.Resources.Accounts.Role do
   @moduledoc "Global role definitions for platform-wide RBAC."
 
+  # Canonical tenant roles
+  @allowed_roles [:owner, :admin, :staff, :viewer, :scanner_only]
+
   alias Voelgoedevents.Ash.Policies.PlatformPolicy
 
   use Ash.Resource,
@@ -20,6 +23,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Role do
 
     attribute :name, :atom do
       allow_nil? false
+      constraints one_of: @allowed_roles
       public? true
     end
 
@@ -36,7 +40,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Role do
   end
 
   actions do
-    defaults [:read, :create, :update, :destroy]
+    # Reads are open; writes are platform-admin only via PlatformPolicy
+    defaults [:read, :create, :update]
 
     create :create do
       primary? true

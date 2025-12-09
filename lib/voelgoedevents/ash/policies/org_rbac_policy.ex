@@ -2,15 +2,15 @@ defmodule Voelgoedevents.Ash.Policies.OrgRbacPolicy do
   @moduledoc """
   Organization-level RBAC helpers for Ash policies.
 
-  Provides a single source of truth for org roles (owner → admin → manager →
-  support → read_only) and exposes macros like `can?(:admin)` to express role
-  gates consistently. The checks are pure: they rely on the actor, resource
-  context, or `conn.assigns` and never hit the database. Platform admins
-  automatically satisfy every role requirement via the platform-admin bypass
-  convention.
+  Provides a single source of truth for org roles (owner → admin → staff →
+  viewer → scanner_only) and exposes macros like `can?(:admin)` to express
+  role gates consistently. The checks are pure: they rely on the actor,
+  resource context, or `conn.assigns` and never hit the database. Platform
+  admins automatically satisfy every role requirement via the platform-admin
+  bypass convention.
   """
 
-  @role_hierarchy [:owner, :admin, :manager, :support, :read_only]
+  @role_hierarchy [:owner, :admin, :staff, :viewer, :scanner_only]
   @role_rank Map.new(Enum.with_index(@role_hierarchy))
 
   @doc """
@@ -25,6 +25,11 @@ defmodule Voelgoedevents.Ash.Policies.OrgRbacPolicy do
       end
   """
   defmacro can?(role) when is_atom(role) do
+    unless role in @role_hierarchy do
+      raise ArgumentError,
+            "Unknown org role #{inspect(role)}. Allowed roles: #{inspect(@role_hierarchy)}"
+    end
+
     quote do
       authorize_if unquote(__MODULE__).OrgRoleCheck, at_least: unquote(role)
     end
@@ -35,6 +40,11 @@ defmodule Voelgoedevents.Ash.Policies.OrgRbacPolicy do
   """
   @spec role_at_least?(map() | nil, map(), atom()) :: boolean()
   def role_at_least?(actor, context, required_role) when is_atom(required_role) do
+    unless required_role in @role_hierarchy do
+      raise ArgumentError,
+            "Unknown org role #{inspect(required_role)}. Allowed roles: #{inspect(@role_hierarchy)}"
+    end
+
     platform_admin?(actor) or role_allowed?(current_role(actor, context), required_role)
   end
 

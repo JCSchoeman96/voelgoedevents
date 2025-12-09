@@ -46,11 +46,11 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
       default :active
     end
 
-    attribute :invited_at, :utc_datetime do
+    attribute :invited_at, :utc_datetime_usec do
       public? true
     end
 
-    attribute :joined_at, :utc_datetime do
+    attribute :joined_at, :utc_datetime_usec do
       public? true
     end
 

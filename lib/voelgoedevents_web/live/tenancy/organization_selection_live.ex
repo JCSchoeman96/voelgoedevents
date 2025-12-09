@@ -46,6 +46,7 @@ defmodule VoelgoedeventsWeb.Live.Tenancy.OrganizationSelectionLive do
           <%= for org <- @organizations do %>
             <div class="p-4 border rounded-lg flex justify-between items-center">
               <span class="font-semibold"><%= org.name %></span>
+              <%!-- TODO: Route "/dashboard/:slug" not yet defined - scaffolded for future dashboard implementation --%>
               <.link
                 navigate={~p"/dashboard/#{org.slug}"}
                 phx-click={JS.push("select_org", value: %{org_id: org.id})}

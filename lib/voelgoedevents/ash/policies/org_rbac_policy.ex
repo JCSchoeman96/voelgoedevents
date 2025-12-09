@@ -31,7 +31,7 @@ defmodule Voelgoedevents.Ash.Policies.OrgRbacPolicy do
     end
 
     quote do
-      authorize_if unquote(__MODULE__).OrgRoleCheck, at_least: unquote(role)
+      authorize_if {unquote(__MODULE__).OrgRoleCheck, [at_least: unquote(role)]}
     end
   end
 

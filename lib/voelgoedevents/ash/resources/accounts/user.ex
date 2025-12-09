@@ -73,7 +73,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
       default :pending
     end
 
-    attribute :confirmed_at, :utc_datetime do
+    attribute :confirmed_at, :utc_datetime_usec do
       public? true
     end
 
@@ -131,6 +131,12 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
       primary? true
 
       accept [:email, :first_name, :last_name, :status, :hashed_password, :confirmed_at]
+
+      # Password argument for PasswordPolicy validation (when setting hashed_password directly)
+      argument :password, :string do
+        allow_nil? true
+        sensitive? true
+      end
 
       argument :is_platform_admin, :boolean do
         allow_nil? true

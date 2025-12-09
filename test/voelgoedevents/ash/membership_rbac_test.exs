@@ -1,34 +1,57 @@
 defmodule Voelgoedevents.Ash.MembershipRbacTest do
-  @moduledoc "Membership RBAC policy coverage."
+  @moduledoc """
+  Membership RBAC policy coverage.
+
+  Tests use direct Repo fixtures to bypass Ash validation complexity,
+  focusing purely on policy enforcement behavior.
+  """
 
   use Voelgoedevents.DataCase, async: true
 
-  alias Voelgoedevents.Ash.Resources.Accounts.{Membership, Organization, Role, User}
+  alias Voelgoedevents.Ash.Resources.Accounts.Membership
+  alias Voelgoedevents.TestFixtures
+
+  require Ash.Query
 
   describe "membership management" do
     setup do
-      roles = create_roles()
+      roles = TestFixtures.ensure_roles()
 
-      {:ok, org} =
-        Ash.create(Organization, :create, %{name: "Main Org", slug: unique_slug()}, authorize?: false)
+      org = TestFixtures.create_organization(%{name: "Main Org"})
+      other_org = TestFixtures.create_organization(%{name: "Other Org"})
 
-      {:ok, other_org} =
-        Ash.create(Organization, :create, %{name: "Other Org", slug: unique_slug()}, authorize?: false)
+      owner = TestFixtures.create_user(
+        %{first_name: "Owner"},
+        organization: org,
+        role: roles.owner
+      )
 
-      {:ok, owner} =
-        create_user("owner", org, roles.owner)
+      admin = TestFixtures.create_user(
+        %{first_name: "Admin"},
+        organization: org,
+        role: roles.admin
+      )
 
-      {:ok, admin} =
-        create_user("admin", org, roles.admin)
+      # Member in other_org (for cross-tenant tests)
+      member = TestFixtures.create_user(
+        %{first_name: "Member"},
+        organization: other_org,
+        role: roles.viewer
+      )
 
-      {:ok, member} =
-        create_user("member", other_org, roles.viewer)
+      platform_staff = TestFixtures.create_user(
+        %{first_name: "PlatformStaff"},
+        organization: org,
+        role: roles.staff,
+        is_platform_staff: true
+      )
 
-      {:ok, platform_staff} =
-        create_user("platform-staff", org, roles.staff, is_platform_staff: true)
-
-      {:ok, platform_admin} =
-        create_user("platform-admin", org, roles.owner, is_platform_admin: true)
+      platform_admin = TestFixtures.create_user(
+        %{first_name: "PlatformAdmin"},
+        organization: org,
+        role: roles.owner,
+        is_platform_admin: true
+      )
 
       {:ok,
        %{
@@ -43,120 +66,102 @@ defmodule Voelgoedevents.Ash.MembershipRbacTest do
        }}
     end
 
-    test "owner can invite, activate, and remove a member", %{roles: roles, org: org, owner: owner, member: member} do
-      owner_actor = actor(owner, org, :owner)
+    test "owner can invite, activate, and remove a member", ctx do
+      %{roles: roles, org: org, owner: owner, member: member} = ctx
+      owner_actor = TestFixtures.build_actor(owner, org, :owner)
 
+      # Invite
       assert {:ok, invitation} =
-               Ash.create(Membership, :invite, %{
+               Membership
+               |> Ash.Changeset.for_create(:invite, %{
                  user_id: member.id,
                  organization_id: org.id,
                  role_id: roles.viewer.id
-               }, actor: owner_actor)
+               })
+               |> Ash.create(actor: owner_actor)
 
+      # Activate
       assert {:ok, activated} =
-               Ash.update(invitation, :update, %{status: :active}, actor: owner_actor)
+               invitation
+               |> Ash.Changeset.for_update(:update, %{status: :active})
+               |> Ash.update(actor: owner_actor)
 
-      assert {:ok, _} = Ash.destroy(activated, :remove, actor: owner_actor)
+      # Remove
+      assert {:ok, _} =
+               activated
+               |> Ash.Changeset.for_destroy(:remove)
+               |> Ash.destroy(actor: owner_actor)
     end
 
-    test "admin cannot manage memberships", %{roles: roles, org: org, admin: admin, member: member} do
-      admin_actor = actor(admin, org, :admin)
+    test "admin cannot manage memberships", ctx do
+      %{roles: roles, org: org, admin: admin, member: member} = ctx
+      admin_actor = TestFixtures.build_actor(admin, org, :admin)
 
       assert {:error, %Ash.Error.Forbidden{}} =
-               Ash.create(Membership, :invite, %{
+               Membership
+               |> Ash.Changeset.for_create(:invite, %{
                  user_id: member.id,
                  organization_id: org.id,
                  role_id: roles.staff.id
-               }, actor: admin_actor)
+               })
+               |> Ash.create(actor: admin_actor)
     end
 
-    test "tenant owners cannot demote platform staff", %{
-      org: org,
-      owner: owner,
-      platform_staff: platform_staff
-    } do
-      owner_actor = actor(owner, org, :owner)
-      {:ok, staff_membership} = membership_for(platform_staff, org)
+    test "tenant owners cannot demote platform staff", ctx do
+      %{org: org, owner: owner, platform_staff: platform_staff} = ctx
+      owner_actor = TestFixtures.build_actor(owner, org, :owner)
+
+      {:ok, staff_membership} = get_membership(platform_staff, org)
 
       assert {:error, %Ash.Error.Forbidden{}} =
-               Ash.destroy(staff_membership, :remove, actor: owner_actor)
+               staff_membership
+               |> Ash.Changeset.for_destroy(:remove)
+               |> Ash.destroy(actor: owner_actor)
     end
 
-    test "platform admins can manage platform staff", %{
-      org: org,
-      platform_admin: platform_admin,
-      platform_staff: platform_staff
-    } do
-      platform_admin_actor = actor(platform_admin, org, :owner)
-      {:ok, staff_membership} = membership_for(platform_staff, org)
+    test "platform admins can manage platform staff", ctx do
+      %{org: org, platform_admin: platform_admin, platform_staff: platform_staff} = ctx
 
-      assert {:ok, _} = Ash.destroy(staff_membership, :remove, actor: platform_admin_actor)
+      platform_admin_actor =
+        TestFixtures.build_actor(platform_admin, org, :owner, is_platform_admin: true)
+
+      {:ok, staff_membership} = get_membership(platform_staff, org)
+
+      assert {:ok, _} =
+               staff_membership
+               |> Ash.Changeset.for_destroy(:remove)
+               |> Ash.destroy(actor: platform_admin_actor)
     end
 
-    test "cross-tenant actors cannot read or change memberships", %{
-      org: org,
-      other_org: other_org,
-      owner: owner,
-      member: member
-    } do
-      {:ok, owner_membership} = membership_for(owner, org)
-      other_actor = actor(member, other_org, :owner)
+    test "cross-tenant actors cannot read or change memberships", ctx do
+      %{org: org, other_org: other_org, owner: owner, member: member} = ctx
 
+      {:ok, owner_membership} = get_membership(owner, org)
+
+      # Actor from other_org trying to access org's memberships
+      other_actor = TestFixtures.build_actor(member, other_org, :owner)
+
+      # Cannot read
       assert {:error, %Ash.Error.Forbidden{}} =
-               Ash.read_one(Membership, filter: [id: owner_membership.id], actor: other_actor)
+               Membership
+               |> Ash.Query.filter(id == ^owner_membership.id)
+               |> Ash.read_one(actor: other_actor)
 
+      # Cannot update
       assert {:error, %Ash.Error.Forbidden{}} =
-               Ash.update(owner_membership, :update, %{status: :inactive}, actor: other_actor)
+               owner_membership
+               |> Ash.Changeset.for_update(:update, %{status: :inactive})
+               |> Ash.update(actor: other_actor)
     end
   end
 
-  defp create_roles do
-    [:owner, :admin, :staff, :viewer, :scanner_only]
-    |> Enum.map(fn name ->
-      {:ok, role} =
-        Ash.create(Role, :create, %{name: name, description: "#{name} role"}, authorize?: false)
+  # Helper to get membership via Repo (bypasses policies)
+  defp get_membership(user, organization) do
+    membership =
+      Membership
+      |> Ash.Query.filter(user_id == ^user.id and organization_id == ^organization.id)
+      |> Ash.read_one!(authorize?: false)
 
-      {name, role}
-    end)
-    |> Map.new()
-  end
-
-  defp create_user(prefix, organization, role, opts \\ []) do
-    is_platform_admin = Keyword.get(opts, :is_platform_admin, false)
-    is_platform_staff = Keyword.get(opts, :is_platform_staff, false)
-
-    Ash.create(User, :create, %{
-      email: "#{prefix}+#{System.unique_integer([:positive])}@example.com",
-      first_name: String.capitalize(prefix),
-      last_name: "User",
-      status: :active,
-      hashed_password: "hashed",
-      confirmed_at: DateTime.utc_now(),
-      organization_id: organization.id,
-      role_id: role.id,
-      is_platform_admin: is_platform_admin,
-      is_platform_staff: is_platform_staff
-    }, authorize?: false)
-  end
-
-  defp membership_for(user, organization) do
-    Ash.read_one(Membership,
-      filter: [user_id: user.id, organization_id: organization.id],
-      authorize?: false
-    )
-  end
-
-  defp actor(user, organization, role) do
-    %{
-      id: user.id,
-      organization_id: organization.id,
-      organization_role: role,
-      is_platform_admin: Map.get(user, :is_platform_admin, false),
-      is_platform_staff: Map.get(user, :is_platform_staff, false)
-    }
-  end
-
-  defp unique_slug do
-    "org-#{System.unique_integer([:positive])}"
+    {:ok, membership}
   end
 end

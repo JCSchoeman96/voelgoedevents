@@ -56,7 +56,9 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
 
       accept [:currency, :timezone, :primary_color, :logo_url, :organization_id]
 
-      change relate_actor(:organization)
+      # TODO: relate_actor(:organization) was removed - it incorrectly tried to
+      # look up the actor as an Organization. The organization_id is set via
+      # manage_relationship from the parent Organization.create action.
     end
 
     update :update do
@@ -72,11 +74,10 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
 
       authorize_if expr(actor(:is_platform_admin) == true)
 
-      authorize_if
-        expr(
-          organization_id == actor(:organization_id) and
-            actor(:role) in [:owner, :admin]
-        )
+      authorize_if expr(
+                     organization_id == actor(:organization_id) and
+                       actor(:role) in [:owner, :admin]
+                   )
     end
 
     policy action_type(:read) do
@@ -84,11 +85,10 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
 
       authorize_if expr(actor(:is_platform_admin) == true)
 
-      authorize_if
-        expr(
-          organization_id == actor(:organization_id) and
-            actor(:role) in [:owner, :admin, :staff, :viewer]
-        )
+      authorize_if expr(
+                     organization_id == actor(:organization_id) and
+                       actor(:role) in [:owner, :admin, :staff, :viewer]
+                   )
     end
   end
 end

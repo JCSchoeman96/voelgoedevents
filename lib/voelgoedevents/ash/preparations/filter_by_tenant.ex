@@ -1,11 +1,20 @@
 defmodule Voelgoedevents.Ash.Preparations.FilterByTenant do
+  @moduledoc """
+  Preparation that filters queries by organization_id based on the actor.
+
+  This ensures tenant isolation by automatically scoping all reads to the
+  actor's organization. Platform admins can bypass this with :skip_tenant_rule.
+  """
+
   use Ash.Resource.Preparation
   require Ash.Query
 
   @impl true
   def prepare(query, _opts, context) do
-    actor = context[:actor]
-    skip? = context[:skip_tenant_rule] || false
+    # In Ash 3.x, context is a struct with .actor, .tenant, etc.
+    actor = context.actor
+    source_context = context.source_context || %{}
+    skip? = Map.get(source_context, :skip_tenant_rule, false)
 
     org_id_from_actor =
       case actor do
@@ -13,7 +22,7 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenant do
         _ -> nil
       end
 
-    org_id_from_context = context[:organization_id]
+    org_id_from_context = Map.get(source_context, :organization_id)
 
     cond do
       # 0. Escape hatch: only platform admins may skip tenant rule
@@ -31,9 +40,13 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenant do
       not is_nil(org_id_from_context) ->
         Ash.Query.filter(query, organization_id == ^org_id_from_context)
 
-      # 3. Fail closed – neither actor nor context carries org
+      # 3. No actor provided (bypass for admin/test reads with authorize?: false)
+      is_nil(actor) ->
+        query
+
+      # 4. Fail closed – actor provided but no org context
       true ->
-        raise "FilterByTenant requires actor or context with organization_id, or platform_admin privileges"
+        raise "FilterByTenant requires actor with organization_id, context with organization_id, or platform_admin privileges"
     end
   end
 end

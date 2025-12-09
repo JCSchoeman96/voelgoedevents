@@ -126,11 +126,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
 
       authorize_if expr(actor(:is_platform_admin) == true)
 
-      authorize_if
-        expr(
-          actor(:organization_id) == resource.id and
-            actor(:role) in [:owner, :admin]
-        )
+      authorize_if expr(
+                     actor(:organization_id) == resource.id and
+                       actor(:role) in [:owner, :admin]
+                   )
     end
 
     policy action_type(:read) do
@@ -144,11 +143,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
 
       authorize_if expr(actor(:is_platform_admin) == true)
 
-      authorize_if
-        expr(
-          actor(:organization_id) == resource.id and
-            actor(:role) in [:owner, :admin]
-        )
+      authorize_if expr(
+                     actor(:organization_id) == resource.id and
+                       actor(:role) in [:owner, :admin]
+                   )
     end
 
     # Public registration action - no actor required

@@ -76,7 +76,7 @@ use Voelgoedevents.Ash.Resources.Base,
       description "Ticket lifecycle state."
     end
 
-    attribute :scanned_at, :utc_datetime do
+    attribute :scanned_at, :utc_datetime_usec do
       description "Timestamp of the latest scan."
     end
 

@@ -45,6 +45,9 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Role do
   # Canonical tenant roles
   @allowed_roles Map.keys(@role_definitions)
 
+  @doc "Returns the list of allowed role atoms."
+  def allowed_roles, do: @allowed_roles
+
   alias Voelgoedevents.Ash.Policies.PlatformPolicy
 
   use Ash.Resource,
@@ -88,7 +91,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Role do
 
   actions do
     # Reads are open; writes are platform-admin only via PlatformPolicy
-    defaults [:read, :create, :update]
+    defaults [:read]
 
     create :create do
       primary? true
@@ -98,6 +101,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Role do
     end
 
     update :update do
+      require_atomic? false
       accept [:name, :display_name, :permissions]
 
       change &apply_canonical_role_metadata/2

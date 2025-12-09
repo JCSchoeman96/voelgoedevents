@@ -43,11 +43,11 @@ defmodule Voelgoedevents.Ash.Resources.Events.Event do
       default :draft
     end
 
-    attribute :start_at, :utc_datetime do
+    attribute :start_at, :utc_datetime_usec do
       allow_nil? false
     end
 
-    attribute :end_at, :utc_datetime do
+    attribute :end_at, :utc_datetime_usec do
       allow_nil? false
     end
 

@@ -8,7 +8,7 @@
 - `/docs/architecture/02_multi_tenancy.md` — Tenant isolation model
 - `/docs/architecture/07_security_and_auth.md` — Authentication & identity types
 - `/docs/VOELGOEDEVENTS_FINAL_ROADMAP.md` — Phase 2, Phase 4, Phase 6, Phase 7
-- `/docs/ai_context_map.md` — Module naming conventions
+- `/docs/ai/ai_context_map.md` — Module registry & AI routing
 - `/docs/AGENTS.md` — Ash 3.x policy semantics
 
 ---
@@ -158,6 +158,19 @@ actor: %{
 
 - **Global flags** (`is_platform_admin`, `is_platform_staff`)
 - **Per-tenant role** (from `Membership`)
+
+### 2.5 Canonical Role Catalog
+
+System-defined roles are immutable and seeded with human-friendly names and explicit permission sets to keep capabilities
+consistent across tenants and platform tooling.
+
+| Role atom | Display name | Permissions |
+|-----------|--------------|-------------|
+| `:owner` | Owner | `manage_tenant_users`, `manage_events_and_venues`, `manage_ticketing_and_pricing`, `manage_financials`, `manage_devices`, `view_full_analytics` |
+| `:admin` | Admin | `manage_tenant_users`, `manage_events_and_venues`, `manage_ticketing_and_pricing`, `view_financials`, `manage_devices`, `view_full_analytics` |
+| `:staff` | Staff | `manage_ticketing_and_pricing`, `view_orders`, `view_limited_analytics` |
+| `:viewer` | Viewer | `view_read_only` |
+| `:scanner_only` | Scanner Only | `perform_scans` |
 
 **Examples:**
 
@@ -1666,7 +1679,7 @@ When implementing Phase 2, verify ALL of the following:
 - `/docs/architecture/02_multi_tenancy.md` — Multi-tenant isolation model (Rule 3.1+)
 - `/docs/architecture/07_security_and_auth.md` — Identity types (Section 3) and authentication flows
 - `/docs/VOELGOEDEVENTS_FINAL_ROADMAP.md` — Phase 2, Phase 4, Phase 6, Phase 7 specifications
-- `/docs/ai_context_map.md` — Module naming & file paths
+- `/docs/ai/ai_context_map.md` — Module registry & AI routing
 - `/docs/AGENTS.md` — Agent behavior, Ash 3.x policy patterns, mandatory load order
 
 ---

@@ -121,7 +121,13 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
 
     policy action(:update) do
       forbid_if expr(is_nil(actor(:id)))
-      authorize_if always()
+      authorize_if expr(actor(:is_platform_admin) == true or actor(:is_platform_admin?) == true)
+
+      authorize_if
+        expr(
+          actor(:organization_id) == resource.id and
+            actor(:role) in [:owner, :admin]
+        )
     end
 
     policy action_type(:read) do
@@ -130,7 +136,13 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
 
     policy action(:archive) do
       forbid_if expr(is_nil(actor(:id)))
-      authorize_if always()
+      authorize_if expr(actor(:is_platform_admin) == true or actor(:is_platform_admin?) == true)
+
+      authorize_if
+        expr(
+          actor(:organization_id) == resource.id and
+            actor(:role) in [:owner, :admin]
+        )
     end
 
     # Public registration action - no actor required

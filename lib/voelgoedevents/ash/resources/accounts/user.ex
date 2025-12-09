@@ -89,6 +89,13 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
       description "Marks a user as a platform-wide administrator."
     end
 
+    attribute :is_platform_staff, :boolean do
+      allow_nil? false
+      default false
+      public? false
+      description "Marks a user as platform staff assigned to assist tenants."
+    end
+
     timestamps()
   end
 
@@ -129,6 +136,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
         allow_nil? true
       end
 
+      argument :is_platform_staff, :boolean do
+        allow_nil? true
+      end
+
       argument :organization_id, :uuid do
         allow_nil? false
       end
@@ -139,6 +150,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
       # FIX: Use __MODULE__ references for changes
       change &__MODULE__.set_platform_admin_from_argument/2
+      change &__MODULE__.set_platform_staff_from_argument/2
       change &__MODULE__.audit_platform_admin_change/2
       change &__MODULE__.setup_new_user_membership/2
     end
@@ -151,8 +163,13 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
         allow_nil? true
       end
 
+      argument :is_platform_staff, :boolean do
+        allow_nil? true
+      end
+
       # FIX: Use __MODULE__ references for changes
       change &__MODULE__.set_platform_admin_from_argument/2
+      change &__MODULE__.set_platform_staff_from_argument/2
       change &__MODULE__.audit_platform_admin_change/2
       change after_action(&__MODULE__.invalidate_membership_cache_on_deactivate/3)
     end
@@ -177,11 +194,26 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
     policy action(:create) do
       forbid_if expr(arg(:organization_id) != actor(:organization_id))
+
+      forbid_if expr(
+                   (not is_nil(arg(:is_platform_staff)) or not is_nil(arg(:is_platform_admin))) and
+                     actor(:is_platform_admin) != true
+                 )
+
       authorize_if always()
     end
 
     policy action_type([:read, :update]) do
       forbid_if expr(not exists(memberships, organization_id == actor(:organization_id)))
+      authorize_if always()
+    end
+
+    policy action(:update) do
+      forbid_if expr(
+                   (not is_nil(arg(:is_platform_staff)) or not is_nil(arg(:is_platform_admin))) and
+                     actor(:is_platform_admin) != true
+                 )
+
       authorize_if always()
     end
 
@@ -255,6 +287,13 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
   def set_platform_admin_from_argument(changeset, _context) do
     case Changeset.fetch_argument(changeset, :is_platform_admin) do
       {:ok, value} -> Changeset.force_change_attribute(changeset, :is_platform_admin, value)
+      :error -> changeset
+    end
+  end
+
+  def set_platform_staff_from_argument(changeset, _context) do
+    case Changeset.fetch_argument(changeset, :is_platform_staff) do
+      {:ok, value} -> Changeset.force_change_attribute(changeset, :is_platform_staff, value)
       :error -> changeset
     end
   end

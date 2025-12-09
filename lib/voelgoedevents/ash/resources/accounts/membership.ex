@@ -2,12 +2,13 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
   @moduledoc "Ash resource: Membership linking users to organizations."
 
   alias Ash.Changeset
+  alias Voelgoedevents.Ash.Policies.{OrgRbacPolicy, PlatformPolicy}
   alias Voelgoedevents.Caching.MembershipCache
-  alias Voelgoedevents.Ash.Policies.PlatformPolicy
 
   use Voelgoedevents.Ash.Resources.Base,
     domain: Voelgoedevents.Ash.Domains.AccountsDomain
 
+  require OrgRbacPolicy
   require PlatformPolicy
 
   postgres do
@@ -17,6 +18,21 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
 
   attributes do
     uuid_primary_key :id
+
+    attribute :user_id, :uuid do
+      allow_nil? false
+      public? false
+    end
+
+    attribute :organization_id, :uuid do
+      allow_nil? false
+      public? false
+    end
+
+    attribute :role_id, :uuid do
+      allow_nil? false
+      public? false
+    end
 
     attribute :status, :atom do
       allow_nil? false
@@ -40,16 +56,19 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     belongs_to :role, Voelgoedevents.Ash.Resources.Accounts.Role do
       allow_nil? false
       attribute_writable? true
+      define_attribute? false
     end
 
     belongs_to :user, Voelgoedevents.Ash.Resources.Accounts.User do
       allow_nil? false
       attribute_writable? true
+      define_attribute? false
     end
 
     belongs_to :organization, Voelgoedevents.Ash.Resources.Accounts.Organization do
       allow_nil? false
       attribute_writable? true
+      define_attribute? false
     end
   end
 
@@ -118,30 +137,27 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
   policies do
     PlatformPolicy.platform_admin_root_access()
 
-    policy action_type([:read, :create, :update, :destroy, :action]) do
-      forbid_if expr(is_nil(actor(:id)))
-    end
-
     policy action_type(:read) do
-      forbid_if expr(organization_id != actor(:organization_id))
-      authorize_if always()
+      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(resource.organization_id != actor(:organization_id))
+      OrgRbacPolicy.can?(:viewer)
     end
 
     policy action([:create, :invite, :update, :remove]) do
-      forbid_if expr(organization_id != actor(:organization_id))
+      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(resource.organization_id != actor(:organization_id))
 
       forbid_if expr(
-                    not exists(
-                      organization.memberships,
-                      user_id == actor(:id) and role.name == :owner
-                    )
-                  )
+                  user.is_platform_staff == true and
+                    actor(:is_platform_admin) != true
+                )
 
-      authorize_if always()
+      OrgRbacPolicy.can?(:owner)
     end
 
     policy action(:join) do
-      forbid_if expr(user_id != actor(:id) or organization_id != actor(:organization_id))
+      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(resource.user_id != actor(:id) or resource.organization_id != actor(:organization_id))
       authorize_if always()
     end
   end

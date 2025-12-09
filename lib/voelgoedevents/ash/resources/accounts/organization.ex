@@ -131,7 +131,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     end
 
     policy action_type(:read) do
-      authorize_if always()
+      forbid_if expr(is_nil(actor(:id)))
+      authorize_if expr(actor(:organization_id) == resource.id)
     end
 
     policy action(:archive) do

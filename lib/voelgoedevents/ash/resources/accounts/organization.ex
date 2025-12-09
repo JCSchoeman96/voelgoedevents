@@ -116,12 +116,15 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     PlatformPolicy.platform_admin_root_access()
 
     policy action(:create) do
-      forbid_if expr(not actor(:is_platform_admin) and not actor(:is_platform_admin?))
+      forbid_if expr(is_nil(actor(:id)))
+
+      authorize_if expr(actor(:is_platform_admin) == true)
     end
 
     policy action(:update) do
       forbid_if expr(is_nil(actor(:id)))
-      authorize_if expr(actor(:is_platform_admin) == true or actor(:is_platform_admin?) == true)
+
+      authorize_if expr(actor(:is_platform_admin) == true)
 
       authorize_if
         expr(
@@ -132,12 +135,14 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
 
     policy action_type(:read) do
       forbid_if expr(is_nil(actor(:id)))
-      authorize_if expr(actor(:organization_id) == resource.id)
+
+      authorize_if expr(resource.id == actor(:organization_id))
     end
 
     policy action(:archive) do
       forbid_if expr(is_nil(actor(:id)))
-      authorize_if expr(actor(:is_platform_admin) == true or actor(:is_platform_admin?) == true)
+
+      authorize_if expr(actor(:is_platform_admin) == true)
 
       authorize_if
         expr(

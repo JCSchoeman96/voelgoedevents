@@ -56,9 +56,7 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentUserPlug do
   end
 
   defp load_user(user_id) do
-    # Use Ash.get to load the user, ensuring we bypass policies if needed for initial load (actor: nil)
-    # or rely on a policy that allows reading self.
-    case Ash.get(User, user_id, actor: nil) do
+    case Ash.get(User, user_id, actor: nil, load: [:memberships]) do
       {:ok, user} -> {:ok, user}
       {:error, _} -> {:error, :not_found}
     end

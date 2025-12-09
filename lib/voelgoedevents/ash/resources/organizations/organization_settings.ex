@@ -51,35 +51,44 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
   actions do
     read :read
 
-  create :create do
-    primary? true
+    create :create do
+      primary? true
 
-    accept [:currency, :timezone, :primary_color, :logo_url, :organization_id]
+      accept [:currency, :timezone, :primary_color, :logo_url, :organization_id]
 
-    change relate_actor(:organization)
+      change relate_actor(:organization)
+    end
+
+    update :update do
+      accept [:currency, :timezone, :primary_color, :logo_url]
+    end
   end
-
-  update :update do
-    accept [:currency, :timezone, :primary_color, :logo_url]
-  end
-end
-
 
   policies do
     PlatformPolicy.platform_admin_root_access()
 
-    policy action_type([:read, :create, :update]) do
+    policy action_type([:create, :update]) do
       forbid_if expr(is_nil(actor(:id)))
+
+      authorize_if expr(actor(:is_platform_admin) == true)
+
+      authorize_if
+        expr(
+          organization_id == actor(:organization_id) and
+            actor(:role) in [:owner, :admin]
+        )
     end
 
-    policy action_type(:create) do
-      forbid_if expr(actor(:role) != :super_admin and organization_id != actor(:organization_id))
-      authorize_if always()
-    end
+    policy action_type(:read) do
+      forbid_if expr(is_nil(actor(:id)))
 
-    policy action_type([:read, :update]) do
-      forbid_if expr(not (organization_id == actor(:organization_id) or actor(:role) == :super_admin))
-      authorize_if always()
+      authorize_if expr(actor(:is_platform_admin) == true)
+
+      authorize_if
+        expr(
+          organization_id == actor(:organization_id) and
+            actor(:role) in [:owner, :admin, :staff, :viewer]
+        )
     end
   end
 end

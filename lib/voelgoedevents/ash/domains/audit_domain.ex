@@ -6,4 +6,8 @@ defmodule Voelgoedevents.Ash.Domains.AuditDomain do
   resources do
     resource Voelgoedevents.Ash.Resources.Audit.AuditLog
   end
+
+  authorization do
+    authorizers [Ash.Policy.Authorizer]
+  end
 end

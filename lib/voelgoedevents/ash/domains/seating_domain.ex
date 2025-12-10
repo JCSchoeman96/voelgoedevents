@@ -9,5 +9,9 @@ defmodule Voelgoedevents.Ash.Domains.SeatingDomain do
     resource Voelgoedevents.Ash.Resources.Seating.Seat
   end
 
+  authorization do
+    authorizers [Ash.Policy.Authorizer]
+  end
+
   # See docs/domain/*.md for the domain rules.
 end

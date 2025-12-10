@@ -8,5 +8,7 @@ defmodule Voelgoedevents.Ash.Domains.VenuesDomain do
     resource Voelgoedevents.Ash.Resources.Venues.Gate
   end
 
-
+  authorization do
+    authorizers [Ash.Policy.Authorizer]
+  end
 end

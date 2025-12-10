@@ -73,18 +73,18 @@ defmodule Voelgoedevents.Ash.MembershipRbacTest do
                  user_id: member.id,
                  organization_id: org.id,
                  role_id: roles.viewer.id
-               }, actor: owner_actor)
-               |> Ash.create()
+               })
+               |> Ash.create(actor: owner_actor)
 
       assert {:ok, activated} =
                invitation
-               |> Ash.Changeset.for_update(:update, %{status: :active}, actor: owner_actor)
-               |> Ash.update()
+               |> Ash.Changeset.for_update(:update, %{status: :active})
+               |> Ash.update(actor: owner_actor)
 
       assert {:ok, _} =
                activated
-               |> Ash.Changeset.for_destroy(:remove, actor: owner_actor)
-               |> Ash.destroy()
+               |> Ash.Changeset.for_destroy(:remove, %{})
+               |> Ash.destroy(actor: owner_actor)
     end
 
     test "admin cannot manage memberships", ctx do
@@ -97,8 +97,8 @@ defmodule Voelgoedevents.Ash.MembershipRbacTest do
                  user_id: member.id,
                  organization_id: org.id,
                  role_id: roles.staff.id
-               }, actor: admin_actor)
-               |> Ash.create()
+               })
+               |> Ash.create(actor: admin_actor)
     end
 
     test "tenant owners cannot demote platform staff", ctx do
@@ -109,8 +109,8 @@ defmodule Voelgoedevents.Ash.MembershipRbacTest do
 
       assert {:error, %Ash.Error.Forbidden{}} =
                staff_membership
-               |> Ash.Changeset.for_destroy(:remove, actor: owner_actor)
-               |> Ash.destroy()
+               |> Ash.Changeset.for_destroy(:remove, %{})
+               |> Ash.destroy(actor: owner_actor)
     end
 
     test "platform admins can manage platform staff", ctx do
@@ -123,8 +123,8 @@ defmodule Voelgoedevents.Ash.MembershipRbacTest do
 
       assert {:ok, _} =
                staff_membership
-               |> Ash.Changeset.for_destroy(:remove, actor: platform_admin_actor)
-               |> Ash.destroy()
+               |> Ash.Changeset.for_destroy(:remove, %{})
+               |> Ash.destroy(actor: platform_admin_actor)
     end
 
     test "cross-tenant actors cannot read or change memberships", ctx do
@@ -141,8 +141,8 @@ defmodule Voelgoedevents.Ash.MembershipRbacTest do
 
       assert {:error, %Ash.Error.Forbidden{}} =
                owner_membership
-               |> Ash.Changeset.for_update(:update, %{status: :inactive}, actor: other_actor)
-               |> Ash.update()
+               |> Ash.Changeset.for_update(:update, %{status: :inactive})
+               |> Ash.update(actor: other_actor)
     end
   end
 

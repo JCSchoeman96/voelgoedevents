@@ -22,12 +22,13 @@ defmodule Voelgoedevents.Ash.Policies.PlatformPolicy do
   """
   defmacro platform_admin_root_access do
     quote do
-      policy [
-               action_type([:read, :create, :update, :destroy, :action]),
-               expr(actor(:is_platform_admin) == true or actor(:is_platform_admin?) == true)
-             ] do
+      policy action_type([:read, :create, :update, :destroy, :action]) do
         description "Platform admin root access (authorization only; audit/rate limits still apply)"
-        authorize_if always()
+
+        authorize_if expr(
+                       actor(:is_platform_admin) == true or
+                         actor(:is_platform_admin?) == true
+                     )
       end
     end
   end

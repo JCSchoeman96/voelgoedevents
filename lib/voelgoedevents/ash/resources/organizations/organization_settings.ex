@@ -67,28 +67,27 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
   end
 
   policies do
+    # Global override: platform admins always pass authorization checks
     PlatformPolicy.platform_admin_root_access()
 
+    # CREATE/UPDATE: Only owner can modify organization settings
+    # Settings include financial configuration (currency) which is owner-only per RBAC spec
     policy action_type([:create, :update]) do
       forbid_if expr(is_nil(actor(:id)))
 
-      authorize_if expr(actor(:is_platform_admin) == true)
-
       authorize_if expr(
                      organization_id == actor(:organization_id) and
-                       actor(:role) in [:owner, :admin]
+                       actor(:role) == :owner
                    )
     end
 
+    # READ: Any authenticated member of the organization can read its settings
+    # Cross-tenant reads are forbidden by the organization_id check
     policy action_type(:read) do
       forbid_if expr(is_nil(actor(:id)))
 
-      authorize_if expr(actor(:is_platform_admin) == true)
-
-      authorize_if expr(
-                     organization_id == actor(:organization_id) and
-                       actor(:role) in [:owner, :admin, :staff, :viewer]
-                   )
+      # Tenant isolation: only members of the same org can see its settings
+      authorize_if expr(organization_id == actor(:organization_id))
     end
   end
 end

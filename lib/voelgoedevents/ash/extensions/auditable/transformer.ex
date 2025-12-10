@@ -75,7 +75,8 @@ defmodule Voelgoedevents.Ash.Extensions.Auditable.Transformer do
   end
 
   defp log_audit(changeset, result, context, strategy, excluded_fields, async?) do
-    actor = context[:actor]
+    # Ash 3.x: context is a struct, use Map.get/2 for safe access
+    actor = Map.get(context, :actor)
 
     if actor do
       # Build changes_data based on strategy
@@ -88,9 +89,18 @@ defmodule Voelgoedevents.Ash.Extensions.Auditable.Transformer do
           %{changed: true}
       end
 
+      # Extract actor_id based on actor type (user, device, system)
+      actor_id =
+        case actor do
+          %{user_id: uid} when not is_nil(uid) -> uid
+          %{device_id: did} when not is_nil(did) -> did
+          %{type: :system} -> "system"
+          _ -> Map.get(actor, :id)
+        end
+
       # Build audit log parameters
       audit_params = %{
-        actor_id: actor.id,
+        actor_id: actor_id,
         action: to_string(context.action.name),
         resource: to_string(changeset.resource),
         resource_id: result.id,

@@ -90,9 +90,9 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
       joined_at = Changeset.get_attribute(changeset, :joined_at)
 
       if status == :active and is_nil(joined_at) do
-        Changeset.add_error(changeset, :joined_at, "must be set when activating membership")
+        {:error, "joined_at must be set when activating membership"}
       else
-        changeset
+        :ok
       end
     end
   end

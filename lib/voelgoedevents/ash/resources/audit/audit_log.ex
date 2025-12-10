@@ -74,9 +74,15 @@ defmodule Voelgoedevents.Ash.Resources.Audit.AuditLog do
   end
   
   def set_organization_from_actor(changeset, context) do
-    case context[:actor] do
-      %{organization_id: org_id} ->
+    # Ash 3.x: context is a struct, use Map.get/2 for safe access
+    actor = Map.get(context, :actor)
+
+    case actor do
+      # Extract org_id from actor (works for user, device, system actors)
+      %{organization_id: org_id} when not is_nil(org_id) ->
         Ash.Changeset.change_attribute(changeset, :organization_id, org_id)
+
+      # No actor or no org context
       _ ->
         changeset
     end

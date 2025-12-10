@@ -8,7 +8,7 @@
     "supreme_authority": {
         "description": "These documents are IMMUTABLE. They override all other guidance.",
         "documents": [
-            "/docs/AGENTS.md",
+            "./AGENTS.md",
             "/docs/INDEX.md",
             "/docs/MASTER_BLUEPRINT.md"
         ]
@@ -16,7 +16,7 @@
     "mandatory_load_order": [
         {
             "step": 1,
-            "file": "/docs/AGENTS.md",
+            "file": "./AGENTS.md",
             "purpose": "Supreme rulebook — defines all agent behavior, coding standards, multi-tenancy, PETAL boundaries",
             "critical": true
         },

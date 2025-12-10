@@ -1,11 +1,4 @@
 defmodule Voelgoedevents.Ash.MembershipRbacTest do
-  @moduledoc """
-  Membership RBAC policy coverage.
-
-  Tests use direct Repo fixtures to bypass Ash validation complexity,
-  focusing purely on policy enforcement behavior.
-  """
-
   use Voelgoedevents.DataCase, async: true
 
   alias Voelgoedevents.Ash.Resources.Accounts.Membership
@@ -20,38 +13,42 @@ defmodule Voelgoedevents.Ash.MembershipRbacTest do
       org = TestFixtures.create_organization(%{name: "Main Org"})
       other_org = TestFixtures.create_organization(%{name: "Other Org"})
 
-      owner = TestFixtures.create_user(
-        %{first_name: "Owner"},
-        organization: org,
-        role: roles.owner
-      )
+      owner =
+        TestFixtures.create_user(
+          %{first_name: "Owner"},
+          organization: org,
+          role: roles.owner
+        )
 
-      admin = TestFixtures.create_user(
-        %{first_name: "Admin"},
-        organization: org,
-        role: roles.admin
-      )
+      admin =
+        TestFixtures.create_user(
+          %{first_name: "Admin"},
+          organization: org,
+          role: roles.admin
+        )
 
-      # Member in other_org (for cross-tenant tests)
-      member = TestFixtures.create_user(
-        %{first_name: "Member"},
-        organization: other_org,
-        role: roles.viewer
-      )
+      member =
+        TestFixtures.create_user(
+          %{first_name: "Member"},
+          organization: other_org,
+          role: roles.viewer
+        )
 
-      platform_staff = TestFixtures.create_user(
-        %{first_name: "PlatformStaff"},
-        organization: org,
-        role: roles.staff,
-        is_platform_staff: true
-      )
+      platform_staff =
+        TestFixtures.create_user(
+          %{first_name: "PlatformStaff"},
+          organization: org,
+          role: roles.staff,
+          is_platform_staff: true
+        )
 
-      platform_admin = TestFixtures.create_user(
-        %{first_name: "PlatformAdmin"},
-        organization: org,
-        role: roles.owner,
-        is_platform_admin: true
-      )
+      platform_admin =
+        TestFixtures.create_user(
+          %{first_name: "PlatformAdmin"},
+          organization: org,
+          role: roles.owner,
+          is_platform_admin: true
+        )
 
       {:ok,
        %{
@@ -70,27 +67,24 @@ defmodule Voelgoedevents.Ash.MembershipRbacTest do
       %{roles: roles, org: org, owner: owner, member: member} = ctx
       owner_actor = TestFixtures.build_actor(owner, org, :owner)
 
-      # Invite
       assert {:ok, invitation} =
                Membership
                |> Ash.Changeset.for_create(:invite, %{
                  user_id: member.id,
                  organization_id: org.id,
                  role_id: roles.viewer.id
-               })
-               |> Ash.create(actor: owner_actor)
+               }, actor: owner_actor)
+               |> Ash.create()
 
-      # Activate
       assert {:ok, activated} =
                invitation
-               |> Ash.Changeset.for_update(:update, %{status: :active})
-               |> Ash.update(actor: owner_actor)
+               |> Ash.Changeset.for_update(:update, %{status: :active}, actor: owner_actor)
+               |> Ash.update()
 
-      # Remove
       assert {:ok, _} =
                activated
-               |> Ash.Changeset.for_destroy(:remove)
-               |> Ash.destroy(actor: owner_actor)
+               |> Ash.Changeset.for_destroy(:remove, actor: owner_actor)
+               |> Ash.destroy()
     end
 
     test "admin cannot manage memberships", ctx do
@@ -103,8 +97,8 @@ defmodule Voelgoedevents.Ash.MembershipRbacTest do
                  user_id: member.id,
                  organization_id: org.id,
                  role_id: roles.staff.id
-               })
-               |> Ash.create(actor: admin_actor)
+               }, actor: admin_actor)
+               |> Ash.create()
     end
 
     test "tenant owners cannot demote platform staff", ctx do
@@ -115,8 +109,8 @@ defmodule Voelgoedevents.Ash.MembershipRbacTest do
 
       assert {:error, %Ash.Error.Forbidden{}} =
                staff_membership
-               |> Ash.Changeset.for_destroy(:remove)
-               |> Ash.destroy(actor: owner_actor)
+               |> Ash.Changeset.for_destroy(:remove, actor: owner_actor)
+               |> Ash.destroy()
     end
 
     test "platform admins can manage platform staff", ctx do
@@ -129,8 +123,8 @@ defmodule Voelgoedevents.Ash.MembershipRbacTest do
 
       assert {:ok, _} =
                staff_membership
-               |> Ash.Changeset.for_destroy(:remove)
-               |> Ash.destroy(actor: platform_admin_actor)
+               |> Ash.Changeset.for_destroy(:remove, actor: platform_admin_actor)
+               |> Ash.destroy()
     end
 
     test "cross-tenant actors cannot read or change memberships", ctx do
@@ -138,24 +132,20 @@ defmodule Voelgoedevents.Ash.MembershipRbacTest do
 
       {:ok, owner_membership} = get_membership(owner, org)
 
-      # Actor from other_org trying to access org's memberships
       other_actor = TestFixtures.build_actor(member, other_org, :owner)
 
-      # Cannot read
       assert {:error, %Ash.Error.Forbidden{}} =
                Membership
                |> Ash.Query.filter(id == ^owner_membership.id)
-               |> Ash.read_one(actor: other_actor)
+               |> Ash.read_one(context: %{actor: other_actor})
 
-      # Cannot update
       assert {:error, %Ash.Error.Forbidden{}} =
                owner_membership
-               |> Ash.Changeset.for_update(:update, %{status: :inactive})
-               |> Ash.update(actor: other_actor)
+               |> Ash.Changeset.for_update(:update, %{status: :inactive}, actor: other_actor)
+               |> Ash.update()
     end
   end
 
-  # Helper to get membership via Repo (bypasses policies)
   defp get_membership(user, organization) do
     membership =
       Membership

@@ -62,13 +62,16 @@ defmodule Voelgoedevents.Ash.Policies.TenantPolicies do
   @doc """
   Authorize a READ action.
 
-  FilterByTenant already filters by organization_id automatically.
-  No additional check needed here unless we want to restrict internal roles.
+  Enforces authenticated, tenant-scoped reads. FilterByTenant handles data
+  scoping; this macro ensures anonymous actors are denied and org alignment is
+  enforced at the policy layer.
   """
   defmacro authorize_read do
     quote do
       policy action_type(:read) do
-        authorize_if always()
+        forbid_if expr(is_nil(actor(:id)))
+
+        authorize_if expr(organization_id == actor(:organization_id))
       end
     end
   end
@@ -82,6 +85,8 @@ defmodule Voelgoedevents.Ash.Policies.TenantPolicies do
   defmacro authorize_write(required_roles) when is_list(required_roles) do
     quote do
       policy action_type([:create, :update]) do
+        forbid_if expr(is_nil(actor(:id)))
+
         authorize_if expr(
           actor(:organization_id) == organization_id and
           actor(:role) in unquote(required_roles)
@@ -98,6 +103,8 @@ defmodule Voelgoedevents.Ash.Policies.TenantPolicies do
   defmacro authorize_destroy(required_roles) when is_list(required_roles) do
     quote do
       policy action_type(:destroy) do
+        forbid_if expr(is_nil(actor(:id)))
+
         authorize_if expr(
           actor(:organization_id) == organization_id and
           actor(:role) in unquote(required_roles)

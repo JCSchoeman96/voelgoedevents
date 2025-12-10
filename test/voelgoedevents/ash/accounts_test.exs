@@ -15,7 +15,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
   defp platform_admin_actor(overrides \\ %{}) do
     Map.merge(
       %{
-        user_id: Ecto.UUID.generate(),
+        id: Ecto.UUID.generate(),
         organization_id: nil,
         role: nil,
         is_platform_admin: true,
@@ -28,7 +28,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
 
   defp tenant_actor(org_id, role) do
     %{
-      user_id: Ecto.UUID.generate(),
+      id: Ecto.UUID.generate(),
       organization_id: org_id,
       role: role,
       is_platform_admin: false,

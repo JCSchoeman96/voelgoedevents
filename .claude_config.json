@@ -34,32 +34,38 @@
         },
         {
             "step": 4,
-            "file": "/docs/ai/CLAUDE.md",
+            "file": "./CLAUDE.md",
             "purpose": "Claude-specific extensions, reasoning patterns, escalation templates",
             "critical": true
         },
         {
             "step": 5,
+            "file": "./GEMINI.md",
+            "purpose": "Gemini-specific extensions, reasoning patterns, escalation templates",
+            "critical": true
+        },
+        {
+            "step": 6,
             "file": "/docs/ai/ai_context_map.md",
             "purpose": "Authoritative module registry, canonical paths, domain-to-module mapping",
             "critical": true
         },
         {
-            "step": 6,
-            "file": "/docs/architecture/*.md",
-            "purpose": "Specific to task: multi-tenancy, caching, security, workflows, scaling",
-            "critical": false,
-            "conditional": "Load only if task touches this domain"
+            "step": 7,
+            "file": "/docs/ash/ASH_3_AI_STRICT_RULES.md",
+            "purpose": "Ash 3 spesific rules and best practices to ALWAYS follow",
+            "critical": true,
+            "conditional": "Load for EVERYTHING Ash related"
         },
         {
-            "step": 7,
+            "step": 8,
             "file": "/docs/domain/*.md",
             "purpose": "Domain-specific models, contracts, invariants",
             "critical": false,
             "conditional": "Load only if task modifies this slice"
         },
         {
-            "step": 8,
+            "step": 9,
             "file": "/docs/coding_style/*.md",
             "purpose": "Language/framework-specific patterns: Elixir, Ash, Phoenix, HEEx, etc.",
             "critical": false,
@@ -176,7 +182,7 @@
                 "scenario": "Documentation contradicts AGENTS.md",
                 "example": "MASTER_BLUEPRINT says X, but AGENTS.md says Y",
                 "action": "STOP. Say: 'AGENTS.md Rule (cite rule) contradicts MASTER_BLUEPRINT (cite section). AGENTS.md is supreme. Which approach aligns with your intent?'",
-                "reference": "/docs/AGENTS.md is ALWAYS supreme",
+                "reference": "./AGENTS.md is ALWAYS supreme",
                 "principle": "Never guess when docs conflict"
             },
             {
@@ -202,7 +208,7 @@
     },
     "success_criteria": {
         "code_generation": {
-            "all_critical_rules_followed": "No violations of /docs/AGENTS.md 16 critical rules",
+            "all_critical_rules_followed": "No violations of ./AGENTS.md 16 critical rules",
             "multi_tenancy_tested": "Cross-org denial test included: test 'user from org_a cannot read org_b'",
             "no_todos_or_placeholders": "Zero TODOs, [TBD], stub functions, or partial implementations",
             "compilation_success": "Code compiles without warnings: `mix compile`",
@@ -414,7 +420,7 @@
     "validation_checklist": {
         "before_generating_any_code": [
             {
-                "check": "Have I loaded /docs/AGENTS.md first?",
+                "check": "Have I loaded ./AGENTS.md first?",
                 "critical": true,
                 "action": "If NO: STOP. Load AGENTS.md and re-read."
             },
@@ -494,13 +500,14 @@
     },
     "documentation_paths": {
         "supreme_rulebooks": {
-            "agents": "/docs/AGENTS.md",
+            "agents": "./AGENTS.md",
             "index": "/docs/INDEX.md",
-            "blueprint": "/docs/MASTER_BLUEPRINT.md"
+            "blueprint": "/docs/MASTER_BLUEPRINT.md",
+            "ash_3_strict_rules": "/docs/Ash/ASH_3_AI_STRICT_RULES.md"
         },
         "agent_specific": {
-            "claude": "/docs/ai/CLAUDE.md",
-            "gemini": "/docs/ai/GEMINI.md",
+            "claude": "./CLAUDE.md",
+            "gemini": "./GEMINI.md",
             "ai_context_map": "/docs/ai/ai_context_map.md"
         },
         "architecture": {
@@ -512,7 +519,12 @@
             "jobs_async": "/docs/architecture/06_jobs_and_async.md",
             "security_auth": "/docs/architecture/07_security_and_auth.md",
             "cicd_deployment": "/docs/architecture/08_cicd_and_deployment.md",
-            "scaling_resilience": "/docs/architecture/09_scaling_and_resilience.md"
+            "scaling_resilience": "/docs/architecture/09_scaling_and_resilience.md",
+            "OTP_architecture": "/docs/architecture/10_otp_architecture.md",
+            "ash_native_metaprogramming": "/docs/architecture/11_ash-native_metaprogramming.md",
+            "type_safety_contracts": "/docs/architecture/12_type_safety_contracts.md",
+            "pubsub_topics": "/docs/architecture/13_pubsub_topics.md",
+            "db_indexes": "/docs/architecture/14_db_indexes.md"
         },
         "domain_models": {
             "accounts": "/docs/domain/accounts.md",
@@ -520,7 +532,11 @@
             "seating": "/docs/domain/seating.md",
             "ticketing_pricing": "/docs/domain/ticketing_pricing.md",
             "scanning_devices": "/docs/domain/scanning_devices.md",
-            "payments_ledger": "/docs/domain/payments_ledger.md"
+            "payments_ledger": "/docs/domain/payments_ledger.md",
+            "reporting": "/docs/domain/reporting.md",
+            "analytics": "/docs/domain/analytics.md",
+            "tenancy_accounts": "/docs/domain/tenancy_accounts.md",
+            "rbac_and_platform_access": "/docs/domain/rbac_and_platform_access.md"
         },
         "workflows": {
             "reserve_seat": "/docs/workflows/reserve_seat.md",
@@ -529,7 +545,10 @@
             "process_scan": "/docs/workflows/process_scan.md",
             "offline_sync": "/docs/workflows/offline_sync.md",
             "start_checkout": "/docs/workflows/start_checkout.md",
-            "funnel_builder": "/docs/workflows/funnel_builder.md"
+            "funnel_builder": "/docs/workflows/funnel_builder.md",
+            "scanner_offline_sync": "/docs/workflows/scanner_offline_sync.md",
+            "seat_hold_lifecycle": "/docs/workflows/seat_hold_lifecycle.md",
+            "seat_hold_registry": "/docs/workflows/seat_hold_registry.md"
         },
         "coding_style": {
             "ash": "/docs/coding_style/ash.md",
@@ -777,7 +796,7 @@
     ],
     "version": "1.1",
     "last_updated": "December 9, 2025, 2:02 PM SAST",
-    "authority": "/docs/AGENTS.md (this config extends, does NOT override)",
+    "authority": "./AGENTS.md (this config extends, does NOT override)",
     "status": "PRODUCTION READY",
     "changelog": [
         {

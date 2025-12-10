@@ -11,5 +11,9 @@ defmodule Voelgoedevents.Ash.Domains.TicketingDomain do
     # resource Voelgoedevents.Ash.Resources.Ticketing.OrderState
   end
 
+  authorization do
+    authorizers [Ash.Policy.Authorizer]
+  end
+
   # See docs/domain/*.md for the domain rules.
 end

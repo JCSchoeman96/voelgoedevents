@@ -8,4 +8,8 @@ defmodule Voelgoedevents.Ash.Domains.AccessControlDomain do
   resources do
     resource Voelgoedevents.Ash.Resources.AccessControl.ApiKey
   end
+
+  authorization do
+    authorizers [Ash.Policy.Authorizer]
+  end
 end

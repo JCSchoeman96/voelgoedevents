@@ -8,4 +8,8 @@ defmodule Voelgoedevents.Ash.Domains.FinanceDomain do
   resources do
     resource Voelgoedevents.Ash.Resources.Finance.Ledger
   end
+
+  authorization do
+    authorizers [Ash.Policy.Authorizer]
+  end
 end

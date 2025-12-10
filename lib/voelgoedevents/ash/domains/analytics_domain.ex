@@ -8,5 +8,9 @@ defmodule Voelgoedevents.Ash.Domains.AnalyticsDomain do
     resource Voelgoedevents.Ash.Resources.Analytics.FunnelSnapshot
   end
 
+  authorization do
+    authorizers [Ash.Policy.Authorizer]
+  end
+
   # See docs/domain/*.md for the domain rules.
 end

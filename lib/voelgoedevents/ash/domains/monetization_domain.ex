@@ -8,4 +8,8 @@ defmodule Voelgoedevents.Ash.Domains.MonetizationDomain do
     resource Voelgoedevents.Ash.Resources.Monetization.FeeModel
     resource Voelgoedevents.Ash.Resources.Monetization.FeePolicy
   end
+
+  authorization do
+    authorizers [Ash.Policy.Authorizer]
+  end
 end

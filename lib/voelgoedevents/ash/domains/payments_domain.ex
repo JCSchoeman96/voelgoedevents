@@ -10,5 +10,9 @@ defmodule Voelgoedevents.Ash.Domains.PaymentsDomain do
     resource Voelgoedevents.Ash.Resources.Payments.JournalEntry
   end
 
+  authorization do
+    authorizers [Ash.Policy.Authorizer]
+  end
+
   # See docs/domain/*.md for the domain rules.
 end

@@ -13,5 +13,9 @@ defmodule Voelgoedevents.Ash.Domains.AccountsDomain do
     resource Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings
   end
 
+  authorization do
+    authorizers [Ash.Policy.Authorizer]
+  end
+
   # See docs/domain/*.md for the domain rules.
 end

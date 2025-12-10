@@ -8,5 +8,9 @@ defmodule Voelgoedevents.Ash.Domains.EventsDomain do
     resource Voelgoedevents.Ash.Resources.Events.OccupancySnapshot
   end
 
+  authorization do
+    authorizers [Ash.Policy.Authorizer]
+  end
+
   # See docs/domain/*.md for the domain rules.
 end

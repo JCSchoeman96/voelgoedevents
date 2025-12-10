@@ -1,22 +1,40 @@
 defmodule VoelgoedeventsWeb.Plugs.SetAshActorPlug do
   @moduledoc """
-  Final plug in the authentication chain that constructs a fully-hydrated Ash actor.
+  Final plug in the authentication chain that constructs the canonical Ash actor.
+
+  ## Single Responsibility
+
+  This plug is THE ONLY place where the Ash actor is constructed.
+  It uses `ActorUtils.normalize/1` as the single canonical constructor.
 
   ## Hydration Pipeline
 
-  1. `CurrentUserPlug` - Loads authenticated user, sets initial context
-  2. `CurrentOrgPlug` - Determines active organization
-  3. `SetAshActorPlug` - **Hydrates actor with organization_id and role** ← YOU ARE HERE
+  1. `CurrentUserPlug` - Loads authenticated user, sets identity assigns
+  2. `CurrentOrgPlug` - Determines org + role, validates membership
+  3. `SetAshActorPlug` ← YOU ARE HERE - Constructs canonical actor via ActorUtils
 
-  ## Actor Structure
+  ## Actor Shape (from ActorUtils)
 
-  The actor passed to Ash MUST contain:
-  - `:id` - User ID
+  The actor passed to Ash contains:
+  - `:type` - Actor type (:user, :device, :api_key, :system)
+  - `:user_id` - User ID (for :user type)
   - `:organization_id` - Active organization ID
-  - `:role` - User's role in the active organization (`:owner`, `:admin`, `:staff`, `:viewer`, `:scanner`)
-  - `:is_platform_admin` - Boolean indicating platform admin status
+  - `:role` - User's role in the organization
+  - `:is_platform_admin` - Platform admin flag
+  - `:is_platform_staff` - Platform staff flag
+  - `:device_id` - Device ID (for :device type, nil for users)
+  - `:api_key_id` - API Key ID (for :api_key type, nil for users)
+  - `:scopes` - Permission scopes (empty for users)
+  - `:device_token` - Device token (nil for users)
+  - `:gate_id` - Gate ID (nil for users)
 
-  This ensures all Ash policies have access to the complete authorization context.
+  ## Reads From Assigns
+
+  - `current_user` - The authenticated user (from CurrentUserPlug)
+  - `current_organization_id` - Validated org ID (from CurrentOrgPlug)
+  - `current_role` - User's role in org (from CurrentOrgPlug)
+  - `current_platform_admin?` - Platform admin flag (from CurrentOrgPlug)
+  - `current_platform_staff?` - Platform staff flag (from CurrentOrgPlug)
 
   ## Usage
 
@@ -27,80 +45,57 @@ defmodule VoelgoedeventsWeb.Plugs.SetAshActorPlug do
     plug :fetch_session
     plug VoelgoedeventsWeb.Plugs.CurrentUserPlug
     plug VoelgoedeventsWeb.Plugs.CurrentOrgPlug
-    plug VoelgoedeventsWeb.Plugs.SetAshActorPlug  # ← Hydrates actor
+    plug VoelgoedeventsWeb.Plugs.SetAshActorPlug  # ← Constructs canonical actor
   end
   ```
-
-  ## Implementation Notes
-
-  - If no user is authenticated, actor remains `nil`
-  - If user has no organization, actor includes user ID only
-  - Role is fetched from Membership for the current organization
-  - Platform admins get `is_platform_admin: true` flag
   """
 
-  # TODO: Scaffolding - will be used for future session management
-  # import Plug.Conn
-  require Ash.Query
-
-  # TODO: Scaffolding - will be used when Domain-based reads are needed
-  # alias Voelgoedevents.Ash.Domains.AccountsDomain
-  alias Voelgoedevents.Ash.Resources.Accounts.Membership
-  # TODO: Scaffolding - will be used for organization context switching
-  # alias Voelgoedevents.Ash.Resources.Accounts.Organization
+  alias Voelgoedevents.Ash.Support.ActorUtils
 
   def init(opts), do: opts
 
   def call(conn, _opts) do
-    user = conn.assigns[:current_user]
-    org_id = conn.assigns[:current_organization_id]
-
-    actor = build_actor(user, org_id)
+    actor = build_canonical_actor(conn)
 
     conn
     |> Ash.PlugHelpers.set_actor(actor)
   end
 
-  defp build_actor(nil, _org_id), do: nil
+  # Build the canonical actor from conn assigns using ActorUtils
+  defp build_canonical_actor(conn) do
+    user = conn.assigns[:current_user]
 
-  defp build_actor(user, nil) do
-    # User authenticated but no organization selected
-    %{
-      id: user.id,
-      organization_id: nil,
-      role: nil,
-      is_platform_admin: is_platform_admin?(user)
-    }
-  end
+    case user do
+      nil ->
+        # No authenticated user = no actor
+        nil
 
-  defp build_actor(user, org_id) do
-    # Full hydration: fetch role for this org
-    role = fetch_user_role(user.id, org_id)
+      %{id: user_id} ->
+        # Read all context from assigns (set by CurrentUserPlug and CurrentOrgPlug)
+        org_id = conn.assigns[:current_organization_id]
+        role = conn.assigns[:current_role]
+        is_platform_admin = conn.assigns[:current_platform_admin?] || false
+        is_platform_staff = conn.assigns[:current_platform_staff?] || false
 
-    %{
-      id: user.id,
-      organization_id: org_id,
-      role: role,
-      is_platform_admin: is_platform_admin?(user)
-    }
-  end
+        # Build canonical actor input for ActorUtils
+        actor_input = %{
+          type: :user,
+          user_id: user_id,
+          organization_id: org_id,
+          role: role,
+          is_platform_admin: is_platform_admin,
+          is_platform_staff: is_platform_staff,
+          # User actors don't have device/api_key context
+          device_id: nil,
+          api_key_id: nil,
+          scopes: [],
+          device_token: nil,
+          gate_id: nil
+        }
 
-  defp fetch_user_role(user_id, org_id) do
-    # Fetch user's role from Membership resource for the current organization
-    query =
-      Membership
-      |> Ash.Query.filter(user_id == ^user_id and organization_id == ^org_id and status == :active)
-      # NOTE: Membership has a belongs_to :role, which is automatically loaded
-      # and the full record is returned by Ash.read_one.
-      |> Ash.Query.select([:role])
-
-    # We read the Membership resource to get the role
-    case Ash.read_one(query, actor: nil) do
-      {:ok, %{role: %{name: role}}} -> role
-      _ -> nil  # No active membership found
+        # ActorUtils.normalize/1 is the SINGLE canonical constructor
+        # It validates shape, enforces multi-tenancy rules, and returns nil if invalid
+        ActorUtils.normalize(actor_input)
     end
   end
-
-  defp is_platform_admin?(%{is_platform_admin: true}), do: true
-  defp is_platform_admin?(_), do: false
 end

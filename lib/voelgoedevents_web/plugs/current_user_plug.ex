@@ -1,11 +1,34 @@
 defmodule VoelgoedeventsWeb.Plugs.CurrentUserPlug do
-  @moduledoc "Plug to load the authenticated user and active organization from the session."
+  @moduledoc """
+  Plug to load the authenticated user from the session.
+
+  ## Responsibilities (Identity Only)
+
+  This plug ONLY handles user identity loading:
+  - Load user from session (with impersonation support)
+  - Validate session integrity (version, IP binding)
+  - Assign `current_user` to conn
+  - Assign `is_platform_admin` and `is_platform_staff` from user struct
+  - Assign `current_organization_id` as fallback for CurrentOrgPlug
+
+  ## What This Plug Does NOT Do
+
+  - Does NOT set Ash context (no `Ash.PlugHelpers.set_context`)
+  - Does NOT determine role
+  - Does NOT build the Ash actor
+  - Does NOT call Ash.PlugHelpers.set_actor
+
+  ## Pipeline Position
+
+  This plug runs FIRST in the auth chain:
+  1. `CurrentUserPlug` ← YOU ARE HERE (identity only)
+  2. `CurrentOrgPlug` (org + role determination)
+  3. `SetAshActorPlug` (actor construction via ActorUtils)
+  """
 
   import Plug.Conn
   require Ash.Query
 
-  # TODO: Scaffolding - will be used when Domain-based reads are needed
-  # alias Voelgoedevents.Ash.Domains.AccountsDomain
   alias Voelgoedevents.Ash.Resources.Accounts.User
 
   def init(opts), do: opts
@@ -100,9 +123,11 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentUserPlug do
     |> put_session(:session_version, computed_session_version)
     |> maybe_store_ip(session)
     |> assign(:current_user, user)
+    # Fallback org_id for CurrentOrgPlug (NOT Ash context, just assign)
     |> assign(:current_organization_id, active_org_id)
-    # NOTE: Actor hydration moved to SetAshActorPlug for proper role inclusion
-    |> Ash.PlugHelpers.set_context(%{organization_id: active_org_id})
+    # Platform privileges from user struct (identity only, not authorization)
+    |> assign(:is_platform_admin, Map.get(user, :is_platform_admin, false))
+    |> assign(:is_platform_staff, Map.get(user, :is_platform_staff, false))
     |> maybe_assign_impersonator(session)
   end
 

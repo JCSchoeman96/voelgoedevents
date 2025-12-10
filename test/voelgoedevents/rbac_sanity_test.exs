@@ -102,9 +102,10 @@ defmodule Voelgoedevents.RbacSanityTest do
     %{
       id: user.id,
       organization_id: organization.id,
-      organization_role: role,
+      role: role,
       is_platform_admin: Map.get(user, :is_platform_admin, false),
-      is_platform_staff: Map.get(user, :is_platform_staff, false)
+      is_platform_staff: Map.get(user, :is_platform_staff, false),
+      type: :user
     }
   end
 

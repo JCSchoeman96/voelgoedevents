@@ -102,7 +102,7 @@ defmodule Voelgoedevents.Ash.Changes.AuditChangeTest do
   @actor_id "22222222-2222-2222-2222-222222222222"
 
   test "successful action writes an audit log" do
-    actor = %{id: @actor_id, organization_id: @org_id}
+    actor = actor()
 
     {:ok, resource} =
        Voelgoedevents.Ash.Changes.AuditChangeTest.TestResource
@@ -121,12 +121,23 @@ defmodule Voelgoedevents.Ash.Changes.AuditChangeTest do
   end
 
   test "failed audit log creation rolls back transaction (raises)" do
-    actor = %{id: @actor_id, organization_id: @org_id}
+    actor = actor()
 
     assert_raise RuntimeError, ~r/Audit logging failed/, fn ->
        Voelgoedevents.Ash.Changes.AuditChangeTest.TestResource
        |> Ash.Changeset.for_create(:create_with_fail, %{name: "Test", organization_id: @org_id})
        |> Ash.create(actor: actor, domain: TestDomain)
     end
+  end
+
+  defp actor do
+    %{
+      id: @actor_id,
+      organization_id: @org_id,
+      role: nil,
+      is_platform_admin: false,
+      is_platform_staff: false,
+      type: :user
+    }
   end
 end

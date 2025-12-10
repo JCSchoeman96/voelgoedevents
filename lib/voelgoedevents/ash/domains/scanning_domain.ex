@@ -9,7 +9,8 @@ defmodule Voelgoedevents.Ash.Domains.ScanningDomain do
   end
 
   authorization do
-    authorizers [Ash.Policy.Authorizer]
+    authorize :by_default
+    require_actor? true
   end
 
   # See docs/domain/*.md for the domain rules.

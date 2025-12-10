@@ -8,6 +8,7 @@ defmodule Voelgoedevents.Ash.Domains.AuditDomain do
   end
 
   authorization do
-    authorizers [Ash.Policy.Authorizer]
+    authorize :by_default
+    require_actor? true
   end
 end

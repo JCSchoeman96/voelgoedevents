@@ -10,7 +10,7 @@ defmodule Voelgoedevents.Ash.Domains.SeatingDomain do
   end
 
   authorization do
-    authorizers [Ash.Policy.Authorizer]
+    authorize :by_default
   end
 
   # See docs/domain/*.md for the domain rules.

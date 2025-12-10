@@ -9,6 +9,6 @@ defmodule Voelgoedevents.Ash.Domains.VenuesDomain do
   end
 
   authorization do
-    authorizers [Ash.Policy.Authorizer]
+    authorize :by_default
   end
 end

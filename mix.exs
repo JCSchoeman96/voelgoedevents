@@ -127,7 +127,9 @@ defmodule Voelgoedevents.MixProject do
         "esbuild voelgoedevents --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warning-as-errors", "deps.unlock --unused", "format", "test"]
+      precommit: ["compile --warning-as-errors", "deps.unlock --unused", "format", "test"],
+      "ash.audit": ["ash.audit"],
+      "check": ["format", "ash.audit", "test"]
     ]
   end
 end

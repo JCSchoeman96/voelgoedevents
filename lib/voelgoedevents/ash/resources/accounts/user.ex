@@ -36,6 +36,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
       password :password do
         identity_field :email
         hashed_password_field :hashed_password
+        hash_provider AshAuthentication.BcryptProvider
       end
     end
 
@@ -228,10 +229,20 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     end
 
     policy action(:read) do
-      forbid_if actor_attribute_equals(:id, nil)
+  # 1. Allow anonymous reads – needed for AshAuthentication to
+  #    look up users by email during sign-in and registration.
+  #    (These lookups are always constrained by identities / query filters,
+  #     not "list all users".)
+      authorize_if actor_attribute_equals(:id, nil)
+
+      # 2. For logged-in users, enforce tenancy: they must have a membership
+      #    in the organization they’re trying to read from.
       forbid_if expr(not exists(memberships, organization_id == actor(:organization_id)))
+
+      # 3. If they weren’t forbidden by the tenancy check, allow.
       authorize_if always()
     end
+
 
     policy action(:update) do
       forbid_if actor_attribute_equals(:id, nil)

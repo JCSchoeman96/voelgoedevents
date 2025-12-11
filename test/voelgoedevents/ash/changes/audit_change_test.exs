@@ -26,17 +26,18 @@ defmodule Voelgoedevents.Ash.Changes.AuditChangeTest do
       data_layer: Ash.DataLayer.Ets
 
     attributes do
-        uuid_primary_key :id
-        attribute :actor_id, :uuid, allow_nil?: false
-        attribute :action, :string
-        attribute :resource, :string
-        attribute :resource_id, :string
-        attribute :changes, :map
-        attribute :organization_id, :uuid
+      uuid_primary_key :id
+      attribute :actor_id, :uuid, allow_nil?: false
+      attribute :action, :string
+      attribute :resource, :string
+      attribute :resource_id, :string
+      attribute :changes, :map
+      attribute :organization_id, :uuid
     end
 
     actions do
       defaults [:read]
+
       create :create do
         accept [:actor_id, :action, :resource, :resource_id, :changes, :organization_id]
       end
@@ -50,13 +51,14 @@ defmodule Voelgoedevents.Ash.Changes.AuditChangeTest do
       data_layer: Ash.DataLayer.Ets
 
     attributes do
-        number_primary_key :id  # Wrong type maybe? Or just validation fail.
+      # Wrong type maybe? Or just validation fail.
+      number_primary_key(:id)
     end
 
     actions do
       create :create do
-         # Force strict failure
-         validate fn _changeset, _context -> {:error, "Forced Audit Failure"} end
+        # Force strict failure
+        validate fn _changeset, _context -> {:error, "Forced Audit Failure"} end
       end
     end
   end
@@ -80,20 +82,20 @@ defmodule Voelgoedevents.Ash.Changes.AuditChangeTest do
         accept [:name, :organization_id]
         # Inject the change targeting SuccessAuditLog
         change {Voelgoedevents.Ash.Changes.AuditChange,
-          [
-            audit_resource: Voelgoedevents.Ash.Changes.AuditChangeTest.SuccessAuditLog,
-            audit_domain: Voelgoedevents.Ash.Changes.AuditChangeTest.TestDomain
-          ]}
+                [
+                  audit_resource: Voelgoedevents.Ash.Changes.AuditChangeTest.SuccessAuditLog,
+                  audit_domain: Voelgoedevents.Ash.Changes.AuditChangeTest.TestDomain
+                ]}
       end
 
       create :create_with_fail do
         accept [:name, :organization_id]
         # Inject the change targeting FailingAuditLog
         change {Voelgoedevents.Ash.Changes.AuditChange,
-          [
-            audit_resource: Voelgoedevents.Ash.Changes.AuditChangeTest.FailingAuditLog,
-            audit_domain: Voelgoedevents.Ash.Changes.AuditChangeTest.TestDomain
-          ]}
+                [
+                  audit_resource: Voelgoedevents.Ash.Changes.AuditChangeTest.FailingAuditLog,
+                  audit_domain: Voelgoedevents.Ash.Changes.AuditChangeTest.TestDomain
+                ]}
       end
     end
   end
@@ -105,9 +107,9 @@ defmodule Voelgoedevents.Ash.Changes.AuditChangeTest do
     actor = actor()
 
     {:ok, resource} =
-       Voelgoedevents.Ash.Changes.AuditChangeTest.TestResource
-       |> Ash.Changeset.for_create(:create, %{name: "Test", organization_id: @org_id})
-       |> Ash.create(actor: actor, domain: TestDomain)
+      Voelgoedevents.Ash.Changes.AuditChangeTest.TestResource
+      |> Ash.Changeset.for_create(:create, %{name: "Test", organization_id: @org_id})
+      |> Ash.create(actor: actor, domain: TestDomain)
 
     # Check that SuccessAuditLog has an entry
     logs = Ash.read!(SuccessAuditLog, domain: TestDomain)
@@ -124,9 +126,9 @@ defmodule Voelgoedevents.Ash.Changes.AuditChangeTest do
     actor = actor()
 
     assert_raise RuntimeError, ~r/Audit logging failed/, fn ->
-       Voelgoedevents.Ash.Changes.AuditChangeTest.TestResource
-       |> Ash.Changeset.for_create(:create_with_fail, %{name: "Test", organization_id: @org_id})
-       |> Ash.create(actor: actor, domain: TestDomain)
+      Voelgoedevents.Ash.Changes.AuditChangeTest.TestResource
+      |> Ash.Changeset.for_create(:create_with_fail, %{name: "Test", organization_id: @org_id})
+      |> Ash.create(actor: actor, domain: TestDomain)
     end
   end
 

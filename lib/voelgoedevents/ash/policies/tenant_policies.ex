@@ -17,19 +17,25 @@ defmodule Voelgoedevents.Ash.Policies.TenantPolicies do
   @doc "Check if user belongs to an organization (has membership)"
   def user_belongs_to_org?(actor, org_id) do
     case actor do
-      nil -> false
+      nil ->
+        false
+
       actor when is_map(actor) ->
         # actor.organization_id already filtered by FilterByTenant
         # Just check if it exists
         Map.get(actor, :organization_id) == org_id
-      _ -> false
+
+      _ ->
+        false
     end
   end
 
   @doc "Check if user has a specific role in an organization"
   def user_has_role?(actor, org_id, required_role) when is_atom(required_role) do
     case actor do
-      nil -> false
+      nil ->
+        false
+
       actor when is_map(actor) ->
         user_id = Map.get(actor, :id)
 
@@ -51,7 +57,9 @@ defmodule Voelgoedevents.Ash.Policies.TenantPolicies do
           _ ->
             false
         end
-      _ -> false
+
+      _ ->
+        false
     end
   end
 
@@ -88,9 +96,9 @@ defmodule Voelgoedevents.Ash.Policies.TenantPolicies do
         forbid_if expr(is_nil(actor(:id)))
 
         authorize_if expr(
-          actor(:organization_id) == organization_id and
-          actor(:role) in unquote(required_roles)
-        )
+                       actor(:organization_id) == organization_id and
+                         actor(:role) in unquote(required_roles)
+                     )
       end
     end
   end
@@ -106,9 +114,9 @@ defmodule Voelgoedevents.Ash.Policies.TenantPolicies do
         forbid_if expr(is_nil(actor(:id)))
 
         authorize_if expr(
-          actor(:organization_id) == organization_id and
-          actor(:role) in unquote(required_roles)
-        )
+                       actor(:organization_id) == organization_id and
+                         actor(:role) in unquote(required_roles)
+                     )
       end
     end
   end

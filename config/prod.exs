@@ -8,6 +8,8 @@ import Config
 config :voelgoedevents, VoelgoedeventsWeb.Endpoint,
   cache_static_manifest: "priv/static/cache_manifest.json"
 
+config :voelgoedevents, :bind_session_ip, true
+
 # Configures Swoosh API Client
 config :swoosh, api_client: Swoosh.ApiClient.Req
 

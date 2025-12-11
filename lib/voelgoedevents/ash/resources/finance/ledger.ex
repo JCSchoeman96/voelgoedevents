@@ -9,7 +9,8 @@ defmodule Voelgoedevents.Ash.Resources.Finance.Ledger do
     extensions: [AshPaperTrail]
 
   postgres do
-    table "financial_ledgers" # ✅ Renamed to avoid conflicts with 'payments' domain
+    # ✅ Renamed to avoid conflicts with 'payments' domain
+    table "financial_ledgers"
     repo Voelgoedevents.Repo
   end
 

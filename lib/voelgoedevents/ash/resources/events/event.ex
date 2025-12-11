@@ -85,7 +85,18 @@ defmodule Voelgoedevents.Ash.Resources.Events.Event do
 
     create :create do
       primary? true
-      accept [:organization_id, :venue_id, :name, :slug, :description, :status, :start_at, :end_at, :settings]
+
+      accept [
+        :organization_id,
+        :venue_id,
+        :name,
+        :slug,
+        :description,
+        :status,
+        :start_at,
+        :end_at,
+        :settings
+      ]
     end
 
     update :update do

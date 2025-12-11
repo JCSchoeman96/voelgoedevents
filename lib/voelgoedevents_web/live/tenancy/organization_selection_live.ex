@@ -27,6 +27,7 @@ defmodule VoelgoedeventsWeb.Live.Tenancy.OrganizationSelectionLive do
       {:ok, memberships} ->
         organizations = Enum.map(memberships, & &1.organization) |> Enum.reject(&is_nil/1)
         {:ok, assign(socket, :organizations, organizations)}
+
       {:error, _} ->
         {:ok, assign(socket, :organizations, [])}
     end
@@ -38,14 +39,14 @@ defmodule VoelgoedeventsWeb.Live.Tenancy.OrganizationSelectionLive do
     <div class="container mx-auto mt-10">
       <h1 class="text-3xl font-bold">Select an Organization</h1>
       <p class="text-gray-600">You must choose an organization to access the dashboard.</p>
-      
+
       <div class="space-y-4 mt-6">
         <%= if Enum.empty?(@organizations) do %>
           <p class="text-red-500">You do not belong to any active organizations.</p>
         <% else %>
           <%= for org <- @organizations do %>
             <div class="p-4 border rounded-lg flex justify-between items-center">
-              <span class="font-semibold"><%= org.name %></span>
+              <span class="font-semibold">{org.name}</span>
               <%!-- TODO: Route "/dashboard/:slug" not yet defined - scaffolded for future dashboard implementation --%>
               <.link
                 navigate={~p"/dashboard/#{org.slug}"}
@@ -61,7 +62,7 @@ defmodule VoelgoedeventsWeb.Live.Tenancy.OrganizationSelectionLive do
     </div>
     """
   end
-  
+
   # Handles the selection of an organization
   # In LiveView, we use push_navigate to change routes with session handling
   @impl true

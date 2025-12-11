@@ -19,7 +19,7 @@ defmodule Voelgoedevents.Ash.Changes.AuditChange do
   @impl true
   def change(changeset, opts, context) do
     audit_resource = Keyword.get(opts, :audit_resource, AuditLog)
-    audit_domain   = Keyword.get(opts, :audit_domain, AuditDomain)
+    audit_domain = Keyword.get(opts, :audit_domain, AuditDomain)
 
     Ash.Changeset.after_action(changeset, fn changeset, result ->
       actor = context[:actor]
@@ -36,7 +36,7 @@ defmodule Voelgoedevents.Ash.Changes.AuditChange do
 
         case audit_domain.create(audit_resource, audit_params, actor: actor) do
           {:ok, _audit_log} ->
-             :ok
+            :ok
 
           {:error, reason} ->
             raise "Audit logging failed for #{inspect(context.resource)}##{inspect(result.id)}: #{inspect(reason)}"

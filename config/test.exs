@@ -45,4 +45,6 @@ config :phoenix_live_view,
   enable_expensive_runtime_checks: true
 
 # AshAuthentication token signing secret (test only)
-config :voelgoedevents, :token_signing_secret, "test_only_token_signing_secret_for_testing_purposes_only_xyz789"
+config :voelgoedevents,
+       :token_signing_secret,
+       "test_only_token_signing_secret_for_testing_purposes_only_xyz789"

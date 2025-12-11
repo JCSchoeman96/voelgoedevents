@@ -19,7 +19,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
   alias Ash.Query, as: Query
   require Query
 
-
   postgres do
     table "organizations"
     repo Voelgoedevents.Repo

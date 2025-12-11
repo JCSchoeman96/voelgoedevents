@@ -20,7 +20,8 @@ defmodule Voelgoedevents.Infrastructure.EtsRegistry do
     :rbac_cache
   ]
 
-  @doc "Starts the registry under a supervisor." # credo:disable-for-next-line Credo.Check.Readability.Specs
+  # credo:disable-for-next-line Credo.Check.Readability.Specs
+  @doc "Starts the registry under a supervisor."
   def start_link(opts \\ []) do
     Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end
@@ -35,12 +36,27 @@ defmodule Voelgoedevents.Infrastructure.EtsRegistry do
   defp create_table(name) do
     case :ets.whereis(name) do
       :undefined ->
-        :ets.new(name, [:set, :public, :named_table, read_concurrency: true, write_concurrency: true])
+        :ets.new(name, [
+          :set,
+          :public,
+          :named_table,
+          read_concurrency: true,
+          write_concurrency: true
+        ])
+
         :ok
 
       table when is_reference(table) ->
         :ets.delete(table)
-        :ets.new(name, [:set, :public, :named_table, read_concurrency: true, write_concurrency: true])
+
+        :ets.new(name, [
+          :set,
+          :public,
+          :named_table,
+          read_concurrency: true,
+          write_concurrency: true
+        ])
+
         :ok
     end
   end

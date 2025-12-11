@@ -14,7 +14,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
   use Ash.Resource,
     domain: Voelgoedevents.Ash.Domains.AccountsDomain,
     data_layer: AshPostgres.DataLayer,
-    extensions: [AshAuthentication],
+    extensions: [AshAuthentication, AshRateLimiter],
     authorizers: [Ash.Policy.Authorizer]
 
   postgres do
@@ -223,18 +223,18 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
       forbid_if expr(arg(:organization_id) != actor(:organization_id))
 
       forbid_if expr(
-                   (not is_nil(arg(:is_platform_staff)) or not is_nil(arg(:is_platform_admin))) and
-                     actor(:is_platform_admin) != true
-                 )
+                  (not is_nil(arg(:is_platform_staff)) or not is_nil(arg(:is_platform_admin))) and
+                    actor(:is_platform_admin) != true
+                )
 
       authorize_if always()
     end
 
     policy action(:read) do
-  # 1. Allow anonymous reads – needed for AshAuthentication to
-  #    look up users by email during sign-in and registration.
-  #    (These lookups are always constrained by identities / query filters,
-  #     not "list all users".)
+      # 1. Allow anonymous reads – needed for AshAuthentication to
+      #    look up users by email during sign-in and registration.
+      #    (These lookups are always constrained by identities / query filters,
+      #     not "list all users".)
       authorize_if actor_attribute_equals(:id, nil)
 
       # 2. For logged-in users, enforce tenancy: they must have a membership
@@ -245,18 +245,40 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
       authorize_if always()
     end
 
-
     policy action(:update) do
       forbid_if actor_attribute_equals(:id, nil)
       forbid_if expr(not exists(memberships, organization_id == actor(:organization_id)))
 
       forbid_if expr(
-                   (not is_nil(arg(:is_platform_staff)) or not is_nil(arg(:is_platform_admin))) and
-                     actor(:is_platform_admin) != true
-                 )
+                  (not is_nil(arg(:is_platform_staff)) or not is_nil(arg(:is_platform_admin))) and
+                    actor(:is_platform_admin) != true
+                )
 
       authorize_if always()
     end
+  end
+
+  rate_limit do
+    # Use our Redis-backed Hammer module
+    hammer Voelgoedevents.RateLimit
+
+    # Limit password sign-in per IP
+    action :sign_in_with_password,
+      limit: 10,
+      per: :timer.minutes(5),
+      key: fn _changeset, context ->
+        ip = context[:ip_address] || "unknown"
+        "auth:user:sign_in:ip:#{ip}"
+      end
+
+    # Limit registration per IP
+    action :register_with_password,
+      limit: 5,
+      per: :timer.hours(1),
+      key: fn _changeset, context ->
+        ip = context[:ip_address] || "unknown"
+        "auth:user:register:ip:#{ip}"
+      end
   end
 
   # ===========================================================================
@@ -281,7 +303,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
         Query.filter(query, exists(memberships, organization_id == ^organization_id))
     end
   end
-
 
   def setup_new_user_membership(changeset, _context) do
     organization_id = Changeset.get_argument(changeset, :organization_id)

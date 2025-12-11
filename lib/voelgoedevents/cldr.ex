@@ -3,5 +3,6 @@ defmodule Voelgoedevents.Cldr do
     locales: ["en", "af"],
     default_locale: "en",
     providers: [Cldr.Number, Money]
-    # Removed Cldr.Unit, Cldr.List, Cldr.Calendar because the deps are not installed.
+
+  # Removed Cldr.Unit, Cldr.List, Cldr.Calendar because the deps are not installed.
 end

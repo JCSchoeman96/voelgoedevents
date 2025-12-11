@@ -31,45 +31,41 @@
     </script>
   </head>
   <body>
-    <%
-      conn_assigns =
-        case Map.get(assigns, :conn) do
-          %Plug.Conn{} = conn -> conn.assigns
-          _ -> %{}
-        end
+    <% conn_assigns =
+      case Map.get(assigns, :conn) do
+        %Plug.Conn{} = conn -> conn.assigns
+        _ -> %{}
+      end
 
-      impersonator_id = Map.get(conn_assigns, :impersonator_id)
-      impersonated_user = Map.get(conn_assigns, :current_user)
+    impersonator_id = Map.get(conn_assigns, :impersonator_id)
+    impersonated_user = Map.get(conn_assigns, :current_user)
 
-      impersonator_name =
-        case Map.get(conn_assigns, :impersonator) do
-          %{name: name} when is_binary(name) and name != "" -> name
-          %{email: email} when is_binary(email) and email != "" -> email
-          _ when impersonator_id -> "User ##{impersonator_id}"
-          _ -> nil
-        end
+    impersonator_name =
+      case Map.get(conn_assigns, :impersonator) do
+        %{name: name} when is_binary(name) and name != "" -> name
+        %{email: email} when is_binary(email) and email != "" -> email
+        _ when impersonator_id -> "User ##{impersonator_id}"
+        _ -> nil
+      end
 
-      impersonated_label =
-        case impersonated_user do
-          %{name: name} when is_binary(name) and name != "" -> name
-          %{email: email} when is_binary(email) and email != "" -> email
-          _ -> nil
-        end
+    impersonated_label =
+      case impersonated_user do
+        %{name: name} when is_binary(name) and name != "" -> name
+        %{email: email} when is_binary(email) and email != "" -> email
+        _ -> nil
+      end
 
-      impersonation_path =
-        case Map.get(conn_assigns, :current_organization) do
-          %{slug: slug} when is_binary(slug) -> ~p"/t/#{slug}/impersonation"
-          _ -> "/impersonation"
-        end
-    %>
+    impersonation_path =
+      case Map.get(conn_assigns, :current_organization) do
+        %{slug: slug} when is_binary(slug) -> ~p"/t/#{slug}/impersonation"
+        _ -> "/impersonation"
+      end %>
 
     <section
       :if={impersonator_id && impersonated_user}
       class="border-b border-warning/40 bg-warning text-warning-content"
     >
-      <div
-        class="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8"
-      >
+      <div class="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
         <div class="space-y-1">
           <p class="text-xs font-semibold uppercase tracking-wide text-warning-content/90">
             Impersonation active

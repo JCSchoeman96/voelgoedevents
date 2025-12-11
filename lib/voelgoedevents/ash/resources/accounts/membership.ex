@@ -168,7 +168,12 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Membership do
     # JOIN: invited user in the correct org can accept their own membership
     policy action(:join) do
       forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(resource.user_id != actor(:id) or resource.organization_id != actor(:organization_id))
+
+      forbid_if expr(
+                  resource.user_id != actor(:id) or
+                    resource.organization_id != actor(:organization_id)
+                )
+
       authorize_if always()
     end
   end

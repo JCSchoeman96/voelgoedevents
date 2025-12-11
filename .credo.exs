@@ -16,10 +16,8 @@
         {Credo.Check.Consistency.ParameterPatternMatching, []},
         {Credo.Check.Consistency.SpaceAroundOperators, []},
         {Credo.Check.Consistency.TabsOrSpaces, []},
-
         {Credo.Check.Design.AliasUsage, []},
         {Credo.Check.Design.TagTODO, []},
-
         {Credo.Check.Readability.AliasOrder, []},
         {Credo.Check.Readability.FunctionDocs,
          [enabled: true, only: [:public_functions, :private_functions]]},
@@ -32,7 +30,6 @@
         {Credo.Check.Readability.StringSigils, []},
         {Credo.Check.Readability.TrailingBlankLine, []},
         {Credo.Check.Readability.TrailingWhiteSpace, []},
-
         {Credo.Check.Refactor.ABCSize, [max_size: 40]},
         {Credo.Check.Refactor.CaseTrivialMatches, []},
         {Credo.Check.Refactor.CondStatements, []},
@@ -44,7 +41,6 @@
         {Credo.Check.Refactor.Nesting, []},
         {Credo.Check.Refactor.PipeChainStart, []},
         {Credo.Check.Refactor.UnlessWithElse, []},
-
         {Credo.Check.Warning.BoolOperationOnSameValues, []},
         {Credo.Check.Warning.ExpensiveEmptyEnumCheck, []},
         {Credo.Check.Warning.IExPry, []},

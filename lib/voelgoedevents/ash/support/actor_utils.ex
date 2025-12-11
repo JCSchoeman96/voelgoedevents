@@ -96,7 +96,10 @@ defmodule Voelgoedevents.Ash.Support.ActorUtils do
 
   # Only allow the roles from RBAC spec
   defp normalize_role(nil), do: nil
-  defp normalize_role(role) when role in [:owner, :admin, :staff, :viewer, :scanner_only], do: role
+
+  defp normalize_role(role) when role in [:owner, :admin, :staff, :viewer, :scanner_only],
+    do: role
+
   defp normalize_role(_), do: nil
 
   # ------------------------------------------------------------
@@ -191,11 +194,15 @@ defmodule Voelgoedevents.Ash.Support.ActorUtils do
   """
   def get_organization_id(actor) do
     case normalize(actor) do
-      nil -> :error
+      nil ->
+        :error
 
       # These must always have org_id
-      %{type: :system, organization_id: nil} -> :error
-      %{type: t, organization_id: nil} when t in [:device, :api_key] -> :error
+      %{type: :system, organization_id: nil} ->
+        :error
+
+      %{type: t, organization_id: nil} when t in [:device, :api_key] ->
+        :error
 
       # Super admin special case
       %{type: :user, is_platform_admin: true, organization_id: nil} ->

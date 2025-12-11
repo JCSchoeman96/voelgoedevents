@@ -92,7 +92,8 @@ defmodule Voelgoedevents.Caching.MembershipCache do
     now_ms = System.monotonic_time(:millisecond)
 
     case :ets.lookup(@ets_table, {user_id, organization_id}) do
-      [{{^user_id, ^organization_id}, role, expires_at}] when is_integer(expires_at) and expires_at > now_ms ->
+      [{{^user_id, ^organization_id}, role, expires_at}]
+      when is_integer(expires_at) and expires_at > now_ms ->
         cache_ets(user_id, organization_id, role, ttl_ms, now_ms)
         {:ok, role}
 
@@ -118,12 +119,23 @@ defmodule Voelgoedevents.Caching.MembershipCache do
     :ok
   end
 
-  defp cache_ets(user_id, organization_id, role, ttl_ms, now_ms \\ System.monotonic_time(:millisecond)) do
+  defp cache_ets(
+         user_id,
+         organization_id,
+         role,
+         ttl_ms,
+         now_ms \\ System.monotonic_time(:millisecond)
+       ) do
     :ets.insert(@ets_table, {{user_id, organization_id}, role, now_ms + ttl_ms})
   end
 
   defp cache_redis(user_id, organization_id, role) do
-    Redis.command(["SETEX", redis_key(user_id, organization_id), @redis_ttl_seconds, encode_value(role)])
+    Redis.command([
+      "SETEX",
+      redis_key(user_id, organization_id),
+      @redis_ttl_seconds,
+      encode_value(role)
+    ])
   end
 
   defp decode_value(binary) when is_binary(binary) do
@@ -136,7 +148,8 @@ defmodule Voelgoedevents.Caching.MembershipCache do
 
   defp encode_value(role), do: :erlang.term_to_binary(role)
 
-  defp role_from_membership(%Membership{status: :active, role: %{name: role}}) when is_atom(role) do
+  defp role_from_membership(%Membership{status: :active, role: %{name: role}})
+       when is_atom(role) do
     {:ok, role}
   end
 
@@ -152,7 +165,14 @@ defmodule Voelgoedevents.Caching.MembershipCache do
   defp ensure_table! do
     case :ets.whereis(@ets_table) do
       :undefined ->
-        :ets.new(@ets_table, [:set, :public, :named_table, read_concurrency: true, write_concurrency: true])
+        :ets.new(@ets_table, [
+          :set,
+          :public,
+          :named_table,
+          read_concurrency: true,
+          write_concurrency: true
+        ])
+
         :ok
 
       _ ->

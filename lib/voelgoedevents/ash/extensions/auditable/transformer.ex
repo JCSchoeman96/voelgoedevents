@@ -41,9 +41,10 @@ defmodule Voelgoedevents.Ash.Extensions.Auditable.Transformer do
     actions = Transformer.get_entities(dsl_state, [:actions])
 
     # Filter to mutation actions only (create/update/destroy)
-    mutation_actions = Enum.filter(actions, fn action ->
-      action.type in [:create, :update, :destroy]
-    end)
+    mutation_actions =
+      Enum.filter(actions, fn action ->
+        action.type in [:create, :update, :destroy]
+      end)
 
     # Inject after_action hook for each mutation action
     Enum.reduce_while(mutation_actions, {:ok, dsl_state}, fn action, {:ok, state} ->
@@ -57,7 +58,13 @@ defmodule Voelgoedevents.Ash.Extensions.Auditable.Transformer do
     callback_fn = build_audit_callback(strategy, excluded_fields, async?)
 
     # Add the callback to the action's changes
-    {:ok, Transformer.add_entity(dsl_state, [:actions, action.name], :change, {:after_action, callback_fn})}
+    {:ok,
+     Transformer.add_entity(
+       dsl_state,
+       [:actions, action.name],
+       :change,
+       {:after_action, callback_fn}
+     )}
   end
 
   defp build_audit_callback(strategy, excluded_fields, async?) do
@@ -80,14 +87,16 @@ defmodule Voelgoedevents.Ash.Extensions.Auditable.Transformer do
 
     if actor do
       # Build changes_data based on strategy
-      changes_data = case strategy do
-        :full_diff ->
-          # Use changeset.changes (differential changes only), not changeset.attributes (final state)
-          changeset.changes
-          |> Map.drop(excluded_fields)
-        :minimal ->
-          %{changed: true}
-      end
+      changes_data =
+        case strategy do
+          :full_diff ->
+            # Use changeset.changes (differential changes only), not changeset.attributes (final state)
+            changeset.changes
+            |> Map.drop(excluded_fields)
+
+          :minimal ->
+            %{changed: true}
+        end
 
       # Extract actor_id based on actor type (user, device, system)
       actor_id =
@@ -110,10 +119,10 @@ defmodule Voelgoedevents.Ash.Extensions.Auditable.Transformer do
 
       # Create audit log entry
       case Ash.create(
-        Voelgoedevents.Ash.Resources.Audit.AuditLog,
-        audit_params,
-        actor: actor
-      ) do
+             Voelgoedevents.Ash.Resources.Audit.AuditLog,
+             audit_params,
+             actor: actor
+           ) do
         {:ok, _audit_log} ->
           :ok
 

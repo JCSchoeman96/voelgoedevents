@@ -81,7 +81,8 @@ defmodule Voelgoedevents.Infrastructure.DistributedLock do
       iex> DistributedLock.lock("resource:123", "another-id")
       {:error, :lock_unavailable}
   """
-  @spec lock(String.t(), String.t(), pos_integer()) :: {:ok, String.t()} | {:error, :lock_unavailable}
+  @spec lock(String.t(), String.t(), pos_integer()) ::
+          {:ok, String.t()} | {:error, :lock_unavailable}
   def lock(key, value, ttl_ms \\ @default_ttl_ms) when is_binary(key) and is_binary(value) do
     start_time = System.monotonic_time()
 
@@ -204,7 +205,7 @@ defmodule Voelgoedevents.Infrastructure.DistributedLock do
       ...> end)
       {:error, :lock_unavailable}
   """
-  @spec with_lock(String.t(), pos_integer(), (() -> any())) ::
+  @spec with_lock(String.t(), pos_integer(), (-> any())) ::
           {:ok, any()} | {:error, :lock_unavailable}
   def with_lock(key, ttl_ms \\ @default_ttl_ms, fun) when is_function(fun, 0) do
     # Generate unique lock value

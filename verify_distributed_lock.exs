@@ -60,9 +60,9 @@ IO.puts("\n4. Testing with_lock Convenience Function")
 lock_key4 = "test:resource:4"
 
 case DistributedLock.with_lock(lock_key4, 5000, fn ->
-  IO.puts("   ✓ Executing critical section")
-  :success
-end) do
+       IO.puts("   ✓ Executing critical section")
+       :success
+     end) do
   {:ok, :success} -> IO.puts("   ✓ with_lock executed successfully")
   {:error, reason} -> IO.puts("   ✗ with_lock failed: #{inspect(reason)}")
 end
@@ -72,20 +72,21 @@ IO.puts("\n5. Testing Concurrent with_lock")
 lock_key5 = "test:resource:5"
 
 # Start async task to hold lock
-task = Task.async(fn ->
-  DistributedLock.with_lock(lock_key5, 2000, fn ->
-    Process.sleep(1000)
-    :task_completed
+task =
+  Task.async(fn ->
+    DistributedLock.with_lock(lock_key5, 2000, fn ->
+      Process.sleep(1000)
+      :task_completed
+    end)
   end)
-end)
 
 # Give task time to acquire lock
 Process.sleep(100)
 
 # Try to acquire same lock (should fail)
 case DistributedLock.with_lock(lock_key5, 500, fn ->
-  :should_not_execute
-end) do
+       :should_not_execute
+     end) do
   {:error, :lock_unavailable} -> IO.puts("   ✓ Concurrent with_lock correctly rejected")
   {:ok, _} -> IO.puts("   ✗ ERROR: Should not have acquired lock!")
   {:error, reason} -> IO.puts("   ✗ Unexpected error: #{inspect(reason)}")
@@ -99,7 +100,8 @@ IO.puts("\n6. Testing TTL Expiration (1 second lock)")
 lock_key6 = "test:resource:6"
 lock_value6 = "ttl-test"
 
-DistributedLock.lock(lock_key6, lock_value6, 1000) # 1 second TTL
+# 1 second TTL
+DistributedLock.lock(lock_key6, lock_value6, 1000)
 IO.puts("   ✓ Lock acquired with 1s TTL")
 IO.puts("   → Waiting 1.5 seconds for expiration...")
 Process.sleep(1500)

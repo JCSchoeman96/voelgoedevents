@@ -72,7 +72,7 @@ defmodule Voelgoedevents.Ash.Resources.Audit.AuditLog do
       authorize_if always()
     end
   end
-  
+
   def set_organization_from_actor(changeset, context) do
     # Ash 3.x: context is a struct, use Map.get/2 for safe access
     actor = Map.get(context, :actor)

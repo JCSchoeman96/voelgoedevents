@@ -19,7 +19,7 @@ config :voelgoedevents,
     Voelgoedevents.Ash.Domains.AuditDomain
   ]
 
-  # --- OBAN CONFIG ---
+# --- OBAN CONFIG ---
 config :voelgoedevents, Oban,
   repo: Voelgoedevents.ObanRepo,
   plugins: [Oban.Plugins.Pruner],
@@ -30,6 +30,8 @@ config :voelgoedevents,
   redis_url: "redis://localhost:6379",
   redis_pool_size: 10
 
+config :voelgoedevents, :ash_rate_limiter, hammer: Voelgoedevents.RateLimit
+
 # --- SESSION SECURITY ---
 config :voelgoedevents,
   bind_session_ip: false
@@ -38,7 +40,6 @@ config :voelgoedevents,
 config :voelgoedevents, Voelgoedevents.Infrastructure.CircuitBreaker,
   open_failure_count: 5,
   reset_timeout_ms: 60_000
-
 
 # --- WEB ENDPOINT ---
 config :voelgoedevents, VoelgoedeventsWeb.Endpoint,
@@ -58,13 +59,15 @@ config :voelgoedevents, Voelgoedevents.Mailer, adapter: Swoosh.Adapters.Local
 config :esbuild,
   version: "0.25.4",
   voelgoedevents: [
-    args: ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
+    args:
+      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]
 
 config :tailwind,
-  version: "3.4.0", # Note: 4.x is bleeding edge; stick to 3.x if unsure, or keep 4.x if it works.
+  # Note: 4.x is bleeding edge; stick to 3.x if unsure, or keep 4.x if it works.
+  version: "3.4.0",
   voelgoedevents: [
     args: ~w(
       --input=assets/css/app.css
@@ -95,8 +98,7 @@ config :ex_money,
 config :ash, :known_types, [AshMoney.Types.Money]
 
 # This tells Postgres how to store the Money type
-config :voelgoedevents, Voelgoedevents.Repo,
-  migration_types: [AshMoney.AshPostgresExtension]
+config :voelgoedevents, Voelgoedevents.Repo, migration_types: [AshMoney.AshPostgresExtension]
 
 # --- ENVIRONMENT OVERRIDES ---
 import_config "#{config_env()}.exs"

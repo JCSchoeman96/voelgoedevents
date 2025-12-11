@@ -37,14 +37,19 @@ defmodule Voelgoedevents.Application do
       Voelgoedevents.Observability.SLOTracker,
 
       # 4. Process Registries (For GenServer Actors)
-      {Registry, keys: :unique, name: Voelgoedevents.Registry},         # For Actors
-      {Registry, keys: :duplicate, name: Voelgoedevents.BroadcastRegistry}, # For PubSub topics
+      # For Actors
+      {Registry, keys: :unique, name: Voelgoedevents.Registry},
+      # For PubSub topics
+      {Registry, keys: :duplicate, name: Voelgoedevents.BroadcastRegistry},
 
       # 5. Background Jobs
       {Oban, Application.fetch_env!(:voelgoedevents, Oban)},
 
       # 6. Authentication Supervisor (must be before web endpoint)
       {AshAuthentication.Supervisor, otp_app: :voelgoedevents},
+
+      # Hammer Redis rate limiter
+      {Voelgoedevents.RateLimit, url: System.get_env("REDIS_URL", "redis://localhost:6379")},
 
       # 7. Web Endpoint (Start LAST)
       VoelgoedeventsWeb.Endpoint

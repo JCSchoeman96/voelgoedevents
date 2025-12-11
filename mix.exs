@@ -52,19 +52,32 @@ defmodule Voelgoedevents.MixProject do
       {:ash_authentication_phoenix, "~> 2.0"},
       {:ash_admin, "~> 0.13"},
       {:ash_state_machine, "~> 0.2"},
-      {:ash_paper_trail, "~> 0.5"}, # Auditing
-      {:ash_archival, "~> 2.0"},    # Soft Deletes
-      {:ash_money, "~> 0.2.5"},       # Financial Types
+      # Auditing
+      {:ash_paper_trail, "~> 0.5"},
+      # Soft Deletes
+      {:ash_archival, "~> 2.0"},
+      # Financial Types
+      {:ash_money, "~> 0.2.5"},
       {:ex_money_sql, "~> 1.0"},
-      {:ash_cloak, "~> 0.1"},       # Encryption
-      {:ash_oban, "~> 0.2"},        # Background Jobs Integration
-      {:picosat_elixir, "~> 0.2"},  # SAT solver for Ash policy analysis
+      # Encryption
+      {:ash_cloak, "~> 0.1"},
+      # Background Jobs Integration
+      {:ash_oban, "~> 0.2"},
+      # SAT solver for Ash policy analysis
+      {:picosat_elixir, "~> 0.2"},
 
       # --- INFRASTRUCTURE (The "Tank" Armor) ---
       {:redix, "~> 1.0"},
       {:castore, ">= 0.0.0"},
       {:elixir_uuid, "~> 1.2"},
       {:oban, "~> 2.17"},
+
+      # Core rate limiter
+      {:hammer, "~> 7.0"},
+      # Redis backend for Hammer
+      {:hammer_backend_redis, "~> 7.0"},
+      # Ash integration
+      {:ash_rate_limiter, "~> 0.2.0"},
 
       # --- PHOENIX & WEB ---
       {:phoenix, "~> 1.7"},
@@ -73,7 +86,8 @@ defmodule Voelgoedevents.MixProject do
       {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
-      {:phoenix_live_view, "~> 1.1.18", override: true}, # Ensure latest LiveView
+      # Ensure latest LiveView
+      {:phoenix_live_view, "~> 1.1.18", override: true},
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.2", runtime: Mix.env() == :dev},
@@ -82,19 +96,30 @@ defmodule Voelgoedevents.MixProject do
       {:dns_cluster, "~> 0.1.1"},
 
       # --- ENTERPRISE FEATURES (Added) ---
-      {:chromic_pdf, "~> 1.15"},    # PDF Ticket Generation
-      {:ex_aws, "~> 2.5"},          # S3/Wasabi Adapter
-      {:ex_aws_s3, "~> 2.5"},       # S3 Specifics
-      {:hackney, "~> 1.20"},        # HTTP Client for AWS
-      {:image, "~> 0.37"},          # High-performance Image Processing (Vix)
-      {:honeybadger, "~> 0.7"},     # Error Tracking
-      {:req, "~> 0.5"},           # Modern HTTP Client (for Webhooks)
-      {:geo_postgis, "~> 3.4"},     # Location Search
+      # PDF Ticket Generation
+      {:chromic_pdf, "~> 1.15"},
+      # S3/Wasabi Adapter
+      {:ex_aws, "~> 2.5"},
+      # S3 Specifics
+      {:ex_aws_s3, "~> 2.5"},
+      # HTTP Client for AWS
+      {:hackney, "~> 1.20"},
+      # High-performance Image Processing (Vix)
+      {:image, "~> 0.37"},
+      # Error Tracking
+      {:honeybadger, "~> 0.7"},
+      # Modern HTTP Client (for Webhooks)
+      {:req, "~> 0.5"},
+      # Location Search
+      {:geo_postgis, "~> 3.4"},
 
       # --- SECURITY & UTILS ---
-      {:cloak, "~> 1.1"},           # Core Encryption (used by AshCloak)
-      {:jason, "~> 1.2"},           # JSON
-      {:gettext, "~> 0.26"},        # Translations
+      # Core Encryption (used by AshCloak)
+      {:cloak, "~> 1.1"},
+      # JSON
+      {:jason, "~> 1.2"},
+      # Translations
+      {:gettext, "~> 0.26"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
 
@@ -104,9 +129,10 @@ defmodule Voelgoedevents.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
-      {:mishka_chelekom, "~> 0.0", only: [:dev]}, # Component Library
+      # Component Library
+      {:mishka_chelekom, "~> 0.0", only: [:dev]},
       {:live_debugger, "~> 0.2", only: [:dev]},
-      {:lazy_html, ">= 0.1.0", only: :test},
+      {:lazy_html, ">= 0.1.0", only: :test}
 
       # --- OPTIONAL / PAID ---
       # {:oban_web, "~> 2.10"} # UNCOMMENT ONLY IF YOU HAVE A LICENSE

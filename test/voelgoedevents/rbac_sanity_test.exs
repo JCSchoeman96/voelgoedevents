@@ -12,7 +12,9 @@ defmodule Voelgoedevents.RbacSanityTest do
       roles = seed_roles()
 
       {:ok, org} =
-        Ash.create(Organization, :create, %{name: "RBAC Org", slug: unique_slug()}, authorize?: false)
+        Ash.create(Organization, :create, %{name: "RBAC Org", slug: unique_slug()},
+          authorize?: false
+        )
 
       {:ok, tenant_admin} = create_user("tenant-admin", org, roles.admin)
 
@@ -44,7 +46,10 @@ defmodule Voelgoedevents.RbacSanityTest do
       assert role_names == @expected_roles
     end
 
-    test "platform flags gate membership management", %{actors: actors, staff_membership: membership} do
+    test "platform flags gate membership management", %{
+      actors: actors,
+      staff_membership: membership
+    } do
       assert actors.super_admin.is_platform_admin
       refute actors.platform_staff_admin.is_platform_admin
       assert actors.platform_staff_admin.is_platform_staff
@@ -58,9 +63,15 @@ defmodule Voelgoedevents.RbacSanityTest do
       assert {:ok, _} = Ash.destroy(membership, :remove, actor: actors.super_admin)
     end
 
-    test "platform staff admins still read within their org", %{actors: actors, staff_membership: membership} do
+    test "platform staff admins still read within their org", %{
+      actors: actors,
+      staff_membership: membership
+    } do
       assert {:ok, _} =
-               Ash.read_one(Membership, filter: [id: membership.id], actor: actors.platform_staff_admin)
+               Ash.read_one(Membership,
+                 filter: [id: membership.id],
+                 actor: actors.platform_staff_admin
+               )
     end
   end
 
@@ -77,18 +88,23 @@ defmodule Voelgoedevents.RbacSanityTest do
     is_platform_admin = Keyword.get(opts, :is_platform_admin, false)
     is_platform_staff = Keyword.get(opts, :is_platform_staff, false)
 
-    Ash.create(User, :create, %{
-      email: "#{prefix}+#{System.unique_integer([:positive])}@example.com",
-      first_name: String.capitalize(prefix),
-      last_name: "User",
-      status: :active,
-      hashed_password: "hashed",
-      confirmed_at: DateTime.utc_now(),
-      organization_id: organization.id,
-      role_id: role.id,
-      is_platform_admin: is_platform_admin,
-      is_platform_staff: is_platform_staff
-    }, authorize?: false)
+    Ash.create(
+      User,
+      :create,
+      %{
+        email: "#{prefix}+#{System.unique_integer([:positive])}@example.com",
+        first_name: String.capitalize(prefix),
+        last_name: "User",
+        status: :active,
+        hashed_password: "hashed",
+        confirmed_at: DateTime.utc_now(),
+        organization_id: organization.id,
+        role_id: role.id,
+        is_platform_admin: is_platform_admin,
+        is_platform_staff: is_platform_staff
+      },
+      authorize?: false
+    )
   end
 
   defp membership_for(user, organization) do

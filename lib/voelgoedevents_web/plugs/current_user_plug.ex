@@ -134,7 +134,9 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentUserPlug do
   defp active_organization_id(%User{memberships: memberships}) do
     case memberships do
       # If memberships are not loaded, we can't determine active org
-      %Ash.NotLoaded{} -> nil
+      %Ash.NotLoaded{} ->
+        nil
+
       _list ->
         memberships
         |> Enum.find(&(&1.status == :active))
@@ -149,7 +151,11 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentUserPlug do
 
   defp maybe_assign_impersonator(
          conn,
-         %{impersonator_id: impersonator_id, target_user_id: target_user_id, fallback_user_id: fallback_user_id}
+         %{
+           impersonator_id: impersonator_id,
+           target_user_id: target_user_id,
+           fallback_user_id: fallback_user_id
+         }
        )
        when target_user_id != fallback_user_id do
     assign(conn, :impersonator_id, impersonator_id)
@@ -188,8 +194,11 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentUserPlug do
 
   defp maybe_store_ip(conn, session) do
     case {bind_session_ip?(), client_ip(conn)} do
-      {true, ip} when not is_nil(ip) and session.session_ip != ip -> put_session(conn, :session_ip, ip)
-      _ -> conn
+      {true, ip} when not is_nil(ip) and session.session_ip != ip ->
+        put_session(conn, :session_ip, ip)
+
+      _ ->
+        conn
     end
   end
 

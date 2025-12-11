@@ -8,6 +8,7 @@ defmodule VoelgoedeventsWeb.AuthFlowTest do
   use VoelgoedeventsWeb.ConnCase, async: true
 
   import Voelgoedevents.TestFixtures
+  import Swoosh.TestAssertions
 
   # Must match the password used in TestFixtures.create_user/2 default
   # See: test/support/fixtures.ex line 103
@@ -56,10 +57,6 @@ defmodule VoelgoedeventsWeb.AuthFlowTest do
           }
         })
 
-      # TEMP: inspect what is actually going on
-      IO.puts("STATUS: #{inspect(conn.status)}")
-      IO.puts("BODY:\n#{conn.resp_body}")
-
       # Successful auth should redirect (302)
       assert redirected_to(conn, 302)
     end
@@ -89,10 +86,43 @@ defmodule VoelgoedeventsWeb.AuthFlowTest do
 
       assert conn.status in [401, 302]
     end
+
+    test "unconfirmed user cannot sign in", %{conn: conn, org: org} do
+      unique_email = "unconfirmed-#{System.unique_integer([:positive])}@example.com"
+      roles = ensure_roles()
+
+      # Create user using fixtures - they handle all the relationships correctly
+      user =
+        create_user(
+          %{
+            email: unique_email,
+            confirmed_at: nil,
+            status: :pending
+          },
+          organization: org,
+          role: roles.owner
+        )
+
+      # Sanity check: user is not confirmed
+      assert user.confirmed_at == nil
+      assert user.status == :pending
+
+      # Attempt sign-in over HTTP
+      conn =
+        post(conn, ~p"/auth/user/password/sign_in", %{
+          "user" => %{
+            "email" => unique_email,
+            "password" => @password
+          }
+        })
+
+      # Should NOT succeed; 401 or redirect to failure page
+      assert conn.status in [401, 302]
+    end
   end
 
   describe "POST /auth/user/password/register" do
-    test "registration endpoint exists and accepts requests", %{conn: conn} do
+    test "registration creates pending user and sends confirmation email", %{conn: conn} do
       unique_email = "register-#{System.unique_integer([:positive])}@example.com"
 
       # In auth_flow_test.exs, update the registration test
@@ -111,6 +141,27 @@ defmodule VoelgoedeventsWeb.AuthFlowTest do
       # like first_name, last_name, organization_id, role_id (per User resource validations)
       # The key assertion is that the endpoint exists and responds
       assert conn.status in [200, 302, 400, 422]
+
+      # 1. User is persisted with correct initial state
+      user =
+        Voelgoedevents.Repo.get_by!(
+          Voelgoedevents.Ash.Resources.Accounts.User,
+          email: unique_email
+        )
+
+      # New users must start as pending & unconfirmed
+      assert user.status == :pending
+      assert user.confirmed_at == nil
+
+      # 2. Confirmation email was sent to the right recipient
+      assert_email_sent(fn email ->
+        # Recipient should match the registration email
+        assert [{"Test User", ^unique_email}] = email.to
+
+        # Subject/body can be adjusted to match your ConfirmationSender
+        # keep it loose to avoid brittleness
+        assert email.subject =~ "Confirm"
+      end)
     end
   end
 

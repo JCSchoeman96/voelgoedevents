@@ -92,11 +92,11 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
       forbid_if expr(organization_id != actor(:organization_id))
 
       forbid_if expr(
-        not exists(
-          organization.memberships,
-          user_id == actor(:id) and role.name == :owner
-        )
-      )
+                  not exists(
+                    organization.memberships,
+                    user_id == actor(:id) and role.name == :owner
+                  )
+                )
 
       authorize_if always()
     end
@@ -123,6 +123,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
     case context[:actor] do
       %{organization_id: org_id} ->
         Ash.Changeset.change_attribute(changeset, :organization_id, org_id)
+
       _ ->
         changeset
     end
@@ -226,6 +227,9 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
   end
 
   defp normalize_email(email) when is_binary(email), do: String.downcase(email)
-  defp normalize_email(email) when is_atom(email), do: email |> Atom.to_string() |> String.downcase()
+
+  defp normalize_email(email) when is_atom(email),
+    do: email |> Atom.to_string() |> String.downcase()
+
   defp normalize_email(other), do: other
 end

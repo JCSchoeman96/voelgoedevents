@@ -30,14 +30,12 @@ defmodule Voelgoedevents.Repo.Migrations.CreateOrgSettings do
 
     create unique_index(:organization_settings, [:organization_id])
 
-    execute(
-      """
-      INSERT INTO organization_settings (id, organization_id, currency, inserted_at, updated_at)
-      SELECT gen_random_uuid(), id, 'ZAR', (now() AT TIME ZONE 'utc'), (now() AT TIME ZONE 'utc')
-      FROM organizations
-      ON CONFLICT (organization_id) DO NOTHING
-      """
-    )
+    execute("""
+    INSERT INTO organization_settings (id, organization_id, currency, inserted_at, updated_at)
+    SELECT gen_random_uuid(), id, 'ZAR', (now() AT TIME ZONE 'utc'), (now() AT TIME ZONE 'utc')
+    FROM organizations
+    ON CONFLICT (organization_id) DO NOTHING
+    """)
   end
 
   def down do

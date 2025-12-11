@@ -34,8 +34,11 @@ defmodule VoelgoedeventsWeb.ImpersonationController do
     |> send_resp(:no_content, "")
   end
 
-  defp ensure_platform_admin(%{assigns: %{current_user: %{is_platform_admin: true}}} = conn, _opts),
-    do: conn
+  defp ensure_platform_admin(
+         %{assigns: %{current_user: %{is_platform_admin: true}}} = conn,
+         _opts
+       ),
+       do: conn
 
   defp ensure_platform_admin(conn, _opts) do
     conn
@@ -44,7 +47,10 @@ defmodule VoelgoedeventsWeb.ImpersonationController do
   end
 
   defp audit(conn, action, target_user_id) do
-    actor = %{id: conn.assigns.current_user.id, organization_id: Map.get(conn.assigns, :organization_id)}
+    actor = %{
+      id: conn.assigns.current_user.id,
+      organization_id: Map.get(conn.assigns, :organization_id)
+    }
 
     attrs = %{
       actor_id: actor.id,
@@ -58,8 +64,11 @@ defmodule VoelgoedeventsWeb.ImpersonationController do
     }
 
     case Ash.create(AuditLog, attrs, domain: AuditDomain, actor: actor) do
-      {:ok, _audit_log} -> :ok
-      {:error, reason} -> Logger.warning("failed_impersonation_audit", action: action, reason: reason)
+      {:ok, _audit_log} ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning("failed_impersonation_audit", action: action, reason: reason)
     end
 
     conn

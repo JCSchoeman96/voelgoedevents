@@ -102,7 +102,8 @@ defmodule Voelgoedevents.Observability.SLOTracker do
       iex> SLOTracker.report(:api_latency, :ok, 100)
       :ok
   """
-  @spec report(atom() | String.t(), :success | :failure | :ok | :error, non_neg_integer() | nil) :: :ok
+  @spec report(atom() | String.t(), :success | :failure | :ok | :error, non_neg_integer() | nil) ::
+          :ok
   def report(metric, status, duration \\ nil) do
     metric_key = normalize_metric(metric)
 
@@ -116,7 +117,9 @@ defmodule Voelgoedevents.Observability.SLOTracker do
 
       :failure ->
         increment_counter(domain, metric_key, :failure)
-        if duration, do: Logger.warning("Metric reported: #{metric_key} failed after #{duration}ms")
+
+        if duration,
+          do: Logger.warning("Metric reported: #{metric_key} failed after #{duration}ms")
     end
 
     :ok
@@ -173,7 +176,8 @@ defmodule Voelgoedevents.Observability.SLOTracker do
           budget_consumed: float(),
           slo_target: float()
         }
-  def calculate_error_budget(domain, metric, slo_target) when is_atom(domain) and is_float(slo_target) do
+  def calculate_error_budget(domain, metric, slo_target)
+      when is_atom(domain) and is_float(slo_target) do
     metrics = get_metrics(domain, metric)
 
     success_rate =

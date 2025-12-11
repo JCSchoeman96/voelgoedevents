@@ -14,7 +14,10 @@ alias Voelgoedevents.Ash.Resources.Accounts.Role
 
 roles = [
   %{name: :owner, description: "Organization owner with full control."},
-  %{name: :admin, description: "Tenant administrator with broad management powers (non-financial)."},
+  %{
+    name: :admin,
+    description: "Tenant administrator with broad management powers (non-financial)."
+  },
   %{name: :staff, description: "Operational staff with limited event/scanning capabilities."},
   %{name: :viewer, description: "Read-only user with access to dashboards and reports."},
   %{name: :scanner_only, description: "User restricted to scanning operations only."}
@@ -33,7 +36,9 @@ Enum.each(roles, fn attrs ->
     {:ok, [existing | _]} ->
       if Map.get(existing, :description) != attrs.description do
         case Ash.update(existing, :update, attrs, authorize?: false) do
-          {:ok, _role} -> IO.puts("Updated description for role #{attrs.name}")
+          {:ok, _role} ->
+            IO.puts("Updated description for role #{attrs.name}")
+
           {:error, reason} ->
             IO.warn("Failed to update role #{attrs.name}: #{inspect(reason)}")
         end

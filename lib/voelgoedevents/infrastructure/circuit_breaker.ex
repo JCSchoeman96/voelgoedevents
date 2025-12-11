@@ -101,14 +101,18 @@ defmodule Voelgoedevents.Infrastructure.CircuitBreaker do
 
   defp report_success(service_name) do
     case get_state(service_name) do
-      :half_open -> GenServer.cast(__MODULE__, {:success, service_name})
+      :half_open ->
+        GenServer.cast(__MODULE__, {:success, service_name})
+
       :closed ->
         case :ets.lookup(@table, {service_name, :failures}) do
           [{_, 0}] -> :ok
           [] -> :ok
           _ -> GenServer.cast(__MODULE__, {:success, service_name})
         end
-      _ -> :ok
+
+      _ ->
+        :ok
     end
   end
 
@@ -139,6 +143,7 @@ defmodule Voelgoedevents.Infrastructure.CircuitBreaker do
       failures: get_failures(service_name),
       last_failure: get_last_failure(service_name)
     }
+
     {:reply, status, state}
   end
 
@@ -193,6 +198,7 @@ defmodule Voelgoedevents.Infrastructure.CircuitBreaker do
       Logger.info("Circuit breaker for #{service_name} entering half-open state.")
       :ets.insert(@table, {{service_name, :state}, :half_open})
     end
+
     {:noreply, state}
   end
 

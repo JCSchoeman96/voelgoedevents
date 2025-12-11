@@ -93,7 +93,9 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentOrgPlug do
   defp fetch_membership_role(user_id, org_id) do
     query =
       Membership
-      |> Ash.Query.filter(user_id == ^user_id and organization_id == ^org_id and status == :active)
+      |> Ash.Query.filter(
+        user_id == ^user_id and organization_id == ^org_id and status == :active
+      )
       |> Ash.Query.load(:role)
 
     case Ash.read_one(query, actor: nil) do

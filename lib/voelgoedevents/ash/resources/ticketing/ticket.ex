@@ -5,8 +5,8 @@ defmodule Voelgoedevents.Ash.Resources.Ticketing.Ticket do
   alias Voelgoedevents.Ash.Policies.PlatformPolicy
 
   require PlatformPolicy
-  
-use Voelgoedevents.Ash.Resources.Base,
+
+  use Voelgoedevents.Ash.Resources.Base,
     domain: Voelgoedevents.Ash.Domains.TicketingDomain,
     extensions: [AshStateMachine]
 
@@ -27,7 +27,7 @@ use Voelgoedevents.Ash.Resources.Base,
     # :used     -> "Ticket fully consumed for the event."
     # :voided   -> "Ticket invalidated (fraud/ops action)."
     # :refunded -> "Ticket refunded after purchase."
-    
+
     transitions do
       transition(:scan, from: [:active, :scanned], to: :scanned)
       transition(:mark_used, from: [:active, :scanned], to: :used)
@@ -116,13 +116,13 @@ use Voelgoedevents.Ash.Resources.Base,
 
   validations do
     validate present([
-                :organization_id,
-                :event_id,
-                :seat_id,
-                :checkout_id,
-                :ticket_code,
-                :status
-              ])
+               :organization_id,
+               :event_id,
+               :seat_id,
+               :checkout_id,
+               :ticket_code,
+               :status
+             ])
 
     validate compare(:scan_count, greater_than_or_equal_to: 0)
   end

@@ -95,3 +95,7 @@ config :phoenix_live_view,
 
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
+
+# AshAuthentication token signing secret (dev only - DO NOT use in production)
+# Generate a new secret for production with: mix phx.gen.secret
+config :voelgoedevents, :token_signing_secret, "dev_only_token_signing_secret_do_not_use_in_production_abcdef123456"

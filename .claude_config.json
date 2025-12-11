@@ -561,7 +561,7 @@
             "javascript": "/docs/coding_style/js_guidelines.md"
         },
         "roadmap_and_planning": {
-            "final_roadmap": "/VOELGOEDEVENTS_FINAL_ROADMAP.md",
+            "final_roadmap": "docs/phases_and_roadmap/VOELGOEDEVENTS_FINAL_ROADMAP.md",
             "master_guide": "/PROJECT_GUIDE.md",
             "product_vision": "/PRODUCT_VISION.md"
         }

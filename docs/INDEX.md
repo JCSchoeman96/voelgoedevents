@@ -144,6 +144,11 @@ Use the links below to find the authoritative source for any topic.
 
 ## 8. Technical & Style Guides
 
+### Ash 3.x System Rules (Canonical)
+- [**Ash 3 Strict AI Rules**](/docs/ash/ASH_3_AI_STRICT_RULES.md) — Mandatory syntax & actor rules for Ash 3.x  
+- [**Ash 3 RBAC Matrix**](/docs/ash/ASH_3_RBAC_MATRIX.md) — Permission matrix, actor shape, policy templates, CI checks  
+
+
 **Purpose:** Defines the quality standard for all code submissions.
 
 | Document                                          | Description                                                    |
@@ -154,6 +159,7 @@ Use the links below to find the authoritative source for any topic.
 
 - [**Elixir General**](coding_style/elixir_general.md)
 - [**Ash Framework**](coding_style/ash.md)
+- [**Ash Policies**](coding_style/ash_policies.md)
 - [**Phoenix & LiveView**](coding_style/phoenix_liveview.md)
 - [**HEEx Templates**](coding_style/heex.md)
 - [**JavaScript/TypeScript**](coding_style/js_guidelines.md)
@@ -185,20 +191,5 @@ Use the links below to find the authoritative source for any topic.
 
 ---
 
-## 8. Coding Style Guidelines
-
-| Document                                                         | Purpose                                   |
-| ---------------------------------------------------------------- | ----------------------------------------- |
-| [coding_style/elixir_general.md](coding_style/elixir_general.md) | Elixir structure, naming, and conventions |
-| [coding_style/ash.md](coding_style/ash.md)                      | Ash resource & action DSL                 |
-| [coding_style/ash_policies.md](coding_style/ash_policies.md)    | Ash 3.x policy DSL & authorization rules  |
-| [coding_style/phoenix_liveview.md](coding_style/phoenix_liveview.md) | LiveView & HTTP conventions               |
-| [coding_style/heex.md](coding_style/heex.md)                           | HEEx component & template rules           |
-| [coding_style/tailwind.md](coding_style/tailwind.md)                       | UI styling guidelines                     |
-| [coding_style/js_guidelines.md](coding_style/js_guidelines.md)                  | JS/TS client guidelines                   |
-| [coding_style/svelte.md](coding_style/svelte.md)                         | Svelte component guidelines               |
-
----
-
-**Last Updated:** 2025-12-03
+**Last Updated:** 2025-12-11
 **Status:** Canonical & Verified

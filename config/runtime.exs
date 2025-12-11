@@ -49,6 +49,20 @@ config :honeybadger,
   environment_name: System.get_env("PHX_HOST") || "development",
   insights_enabled: true
 
+# AshAuthentication token signing secret
+# In prod, this MUST be set via environment variable
+# In dev/test, a default is provided via config/dev.exs and config/test.exs
+if config_env() == :prod do
+  token_signing_secret =
+    System.get_env("VOELGOEDEVENTS_TOKEN_SIGNING_SECRET") ||
+      raise """
+      environment variable VOELGOEDEVENTS_TOKEN_SIGNING_SECRET is missing.
+      You can generate one by calling: mix phx.gen.secret
+      """
+
+  config :voelgoedevents, :token_signing_secret, token_signing_secret
+end
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

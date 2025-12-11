@@ -10,12 +10,20 @@ defmodule VoelgoedeventsWeb.Router do
     plug :put_root_layout, html: {VoelgoedeventsWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+
+    # AshAuthentication: Load user from session (must come after fetch_session)
+    plug :load_from_session
+
+    # Project plugs: CurrentUserPlug augments the loaded user with impersonation, validation
     plug VoelgoedeventsWeb.Plugs.CurrentUserPlug
     # NOTE: Actor hydration moved to :ash_actor pipeline (runs after tenant resolution)
   end
 
   pipeline :api do
     plug :accepts, ["json"]
+
+    # AshAuthentication: Load user from bearer token for API requests
+    plug :load_from_bearer
   end
 
   pipeline :org_scoped do
@@ -33,20 +41,52 @@ defmodule VoelgoedeventsWeb.Router do
     plug VoelgoedeventsWeb.Plugs.SetAshActorPlug
   end
 
+  # ==========================================================================
+  # Authentication Routes
+  # UX entrypoints in root scope, strategy routes under /auth
+  # ==========================================================================
+
+  # Root scope - UX entrypoints (sign-in, register, reset, logout LiveViews)
+  scope "/", VoelgoedeventsWeb do
+    pipe_through [:browser]
+
+    # Shared sign-in/register/reset UI (LiveView)
+    sign_in_route(
+      path: "/auth/log_in",
+      register_path: "/auth/register",
+      reset_path: "/auth/reset",
+      auth_routes_prefix: "/auth"
+    )
+
+    # Separate reset LiveView entrypoint (for token-based reset)
+    reset_route(
+      path: "/auth/reset",
+      auth_routes_prefix: "/auth"
+    )
+
+    # Sign-out route (clears session & tokens)
+    sign_out_route AuthController, "/auth/log_out"
+  end
+
+  # Strategy routes under /auth (no namespace - use fully-qualified module names)
   scope "/auth" do
-    pipe_through [:browser, :ash_actor]
+    pipe_through [:browser]
 
-    auth_routes Voelgoedevents.Ash.Domains.AccountsDomain, []
+    # Strategy routes (password sign_in, register, etc.)
+    auth_routes VoelgoedeventsWeb.AuthController,
+                Voelgoedevents.Ash.Resources.Accounts.User,
+                path: "/"
 
+    # Email confirmation route
     confirm_route Voelgoedevents.Ash.Resources.Accounts.User, :confirm,
       live_view: VoelgoedeventsWeb.Auth.ConfirmationLive
   end
 
+  # ==========================================================================
+  # Public Routes
+  # ==========================================================================
   scope "/", VoelgoedeventsWeb do
     pipe_through [:browser, :ash_actor]
-
-
-    auth_routes Voelgoedevents.Ash.Domains.AccountsDomain, []
 
     get "/", PageController, :home
     live "/select-organization", Live.Tenancy.OrganizationSelectionLive, :index

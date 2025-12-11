@@ -384,117 +384,139 @@ VoelgoedEvents has **exactly five tenant-scoped roles**. These are system-define
 
 ---
 
-## 5. Platform Staff (Modelled as Flag + Existing Role)
+<!-- docs/domain/rbac_and_platform_access.md - EXCERPT: Section 5 Platform Roles -->
 
-**Platform staff are NOT a new role.** They are represented as:
+## 5. Platform-Level Roles
 
-- `User.is_platform_staff = true` (global flag)
-- A regular `Membership` with role `:admin` (or occasionally `:staff`, but NEVER `:owner`) in the organizations they support
+VoelgoedEvents has **two global-level user flags** that grant platform-wide authority or organizational support:
 
-### 5.1 Platform Staff in Organizations
+### 5.1 Super Admin (`is_platform_admin: true`)
 
-When a platform staff user joins an organization:
+**Role:** VoelgoedEvents executive/owner with platform-wide authority.
 
-1. They appear in the team list **with a "Voelgoed Support" badge** (UI responsibility)
-2. They have **exactly the authority of their assigned role** (`:admin`, `:staff`, etc.)
-   - **Critical:** Platform staff do NOT have elevated powers beyond their role inside the tenant
-   - If platform staff need to perform actions their role forbids, only Super Admin can grant those exceptions via override
-3. **Tenants cannot remove or demote them** while `is_platform_staff: true` — policy enforces this
-4. All their actions are audit-logged with `is_platform_staff=true` marker for attribution
-5. **Platform staff MUST NEVER hold `:owner` role** — only Super Admin may grant or revoke organization ownership
+**Capabilities:**
 
-### 5.2 Platform Staff vs Admin: Quick Reference
+- View any organization's data in platform dashboards (read-only, no membership required)
+- Override any organizational RBAC rule for compliance, safety, or legal reasons
+- Cancel, postpone, or modify any event in any organization (with full audit logging)
+- Adjust TicketTypes and Coupons for any organization (with reason and audit logging)
+- Issue refunds in any organization
+- Modify financial configurations (payout destinations, settlement rules)
+- Manage platform staff assignments (`is_platform_staff` flag)
+- Access platform configuration and feature flags
 
-This table clarifies the distinction between platform staff and tenant admins:
+**Constraints:**
 
-| Capability | Tenant Admin | Platform Staff (Admin Role) |
-|------------|--------------|------------------------------|
-| **Inside tenant: Admin authority** | ✅ Full | ✅ Full |
-| **Removable by tenant** | ✅ Yes | ❌ No (while flag is true) |
-| **Financial operations** | ❌ No | ❌ No |
-| **Refund override** | ❌ No | ❌ No |
-| **Settlement override** | ❌ No | ❌ No |
-| **Event override** | ❌ No | ❌ No |
-| **Platform dashboard access** | ❌ No | ✅ Yes |
-| **Cross-tenant viewing** | ❌ No | ❌ No |
-| **Super Admin override** | ❌ No | ❌ No |
-| **Can become :owner** | ✅ Yes (tenant choice) | ❌ No (forbidden) |
+- Super Admin overrides are **always auditable** with reason, timestamp, and actor reference
+- Super Admin cannot void billing agreements or settlements without legal process (Phase 6 constraint)
+- Super Admin actions logged with `:super_admin_override` refund origin if applicable
+
+**In Ash:** `actor(:is_platform_admin) == true`
 
 ---
 
-### 5.3 Platform Staff Membership Protection Logic
+### 5.2 Platform Staff (`is_platform_staff: true`)
 
-**Who can manage platform staff memberships:**
+**Role:** VoelgoedEvents employee assigned to specific organizations to provide support.
 
-```elixir
-# Membership resource — create action
-policies do
-  # Tenant admins can invite regular users
-  policy action_type(:create) do
-    authorize_if expr(
-      actor(:organization_id) == resource.organization_id and
-      actor(:role) in [:owner, :admin] and
-      resource.user.is_platform_staff == false
-    )
-  end
+**Model:**
 
-  # Only Super Admin can assign platform staff
-  policy action_type(:create) do
-    authorize_if expr(actor(:is_platform_admin) == true)
-  end
-end
+- User has `is_platform_staff: true` flag + assigned a **tenant role** (`:admin` or `:staff`, never `:owner`) in the organization
+- Cannot be removed/demoted by the tenant while flag is true
+- Appears in tenant UIs with a "Support" badge to indicate VoelgoedEvents affiliation
+- De-protection rule: Once flag becomes false, tenants regain full control immediately
 
-# Membership resource — update & destroy actions
-policies do
-  # Cannot modify platform staff memberships (while flag is true)
-  forbid_if expr(
-    resource.user.is_platform_staff == true and
-    actor(:is_platform_admin) == false
-  )
+**Base Capabilities (as Admin or Staff):**
 
-  # Cannot assign :owner role to platform staff
-  forbid_if expr(
-    resource.user.is_platform_staff == true and
-    resource.role == :owner
-  )
+Platform staff operate under their assigned tenant role, so they inherit all capabilities of that role:
 
-  # Tenants can manage regular staff
-  policy action_type([:update, :destroy]) do
-    authorize_if expr(
-      actor(:organization_id) == resource.organization_id and
-      actor(:role) in [:owner, :admin] and
-      resource.user.is_platform_staff == false
-    )
-  end
-end
+- If assigned `:admin` role: Full event/ticketing/scanning management (but no refunds/settlement)
+- If assigned `:staff` role: Ticketing/pricing management and support functions (but no user management)
+
+**Platform Staff Support Role: Tenant Manager Capabilities**
+
+When platform staff are fulfilling a **tenant manager / support** function, they may:
+
+- **Cancel or postpone events** for a tenant (with documented tenant consent)
+  - Must provide: `reason`, `tenant_approval_reference` (ticket ID, email, signed agreement, etc.)
+  - Logged to AuditLog with `:platform_support` origin and tenant_approval_reference
+  - See `/docs/domain/events_venues.md` for event cancel/postpone RBAC
+  
+- **Adjust TicketTypes and Coupons** (change prices, enable/disable types, adjust discounts) for a tenant (with documented tenant consent)
+  - **ONLY** with explicit tenant approval
+  - Must provide:
+    - `reason` (text: why the adjustment is needed)
+    - `tenant_approval_reference` (email, ticket ID, signed agreement, etc.)
+  - All changes **MUST** be logged to AuditLog with `:platform_support` origin and tenant_approval_reference
+  - Cannot adjust without documented approval (policy-enforced)
+
+- **Access limited financial reports** for support investigation (read-only)
+  - View orders, hold history, coupon usage
+  - Cannot view settlement or payout details
+
+**Platform Staff Support Role: Forbidden Capabilities**
+
+Platform staff with support responsibilities **may NOT**:
+
+- Issue refunds (tenant owner/Super Admin only)
+- Trigger settlements or change payout destinations
+- Modify financial configurations or PSP settings
+- Change other tenant users' roles (except removing non-staff)
+- Disable or override 2FA, reset passwords without user consent
+
+**In Ash:** `actor(:is_platform_staff) == true and actor(:organization_id) == resource.organization_id`
+
+---
+
+### 5.3 Global Flags vs Tenant Roles: Interaction
+
+| Scenario | User Flags | Org Role | Capabilities | Example |
+|----------|-----------|----------|--------------|---------|
+| Organization owner | none | `:owner` | Full control + refunds + settlements | Business founder |
+| Organization admin | none | `:admin` | Event/ticketing/scanning, no financials | Event coordinator |
+| Platform super admin | `is_platform_admin: true` | (not required) | Override any org, no membership needed | VoelgoedEvents exec |
+| Platform support (admin-level) | `is_platform_staff: true` | `:admin` | Event/ticket mgmt + support functions (with consent) | Support engineer helping tenant |
+| Platform support (staff-level) | `is_platform_staff: true` | `:staff` | Ticketing/pricing + support (with consent, no user mgmt) | Support agent handling refunds/prices |
+
+---
+
+### 5.4 Audit Pattern for Platform Support Actions
+
+**All platform support actions with tenant consent must:**
+
+1. **Be initiated via logged workflow** (not direct API calls)
+2. **Require tenant_approval_reference** as a parameter
+3. **Be recorded in AuditLog** with:
+   - `actor_id`, `actor_type` (`:user`)
+   - `resource_type` (e.g., `:event`, `:ticket_type`, `:coupon`)
+   - `action` (e.g., `:cancel_event`, `:adjust_price`)
+   - `reason` (the support justification)
+   - `tenant_approval_reference` (email, ticket, agreement)
+   - `origin: :platform_support` (to distinguish from owner-initiated actions)
+   - `organization_id` (always scoped)
+
+**Example AuditLog entry:**
+
+```
+actor_id: uuid-of-support-staff
+actor_type: :user
+is_platform_staff: true
+resource_type: :ticket_type
+action: :adjust_price
+changes: { price: 100 -> 90 }
+reason: "Customer request: price error correction per support ticket #12345"
+tenant_approval_reference: "support-ticket-12345@voelgoed.com"
+origin: :platform_support
+organization_id: org-uuid
 ```
 
-### 5.4 De-Protection Rule: When `is_platform_staff: false`
+---
 
-**Critical operational rule:**
+## [Rest of existing RBAC content continues below...]
 
-When a user's `is_platform_staff` flag changes from `true` → `false` (e.g., employee leaves):
+### 6.4 Super Admin vs Tenant Owner: Conflict Resolution
 
-1. **Membership protection evaporates immediately**
-   - Tenants may now remove, demote, or manage that user's membership
-   - This is NOT a special policy; it flows from the forbid condition: `is_platform_staff == true` no longer applies
-2. **Audit logging:** The flag change MUST be logged as a sensitive action
-3. **Notification:** Ideally, the tenant should be notified that a platform staff member has been converted to regular staff (operational decision)
-
-**In policy terms:**
-
-```elixir
-forbid_if expr(resource.user.is_platform_staff == true and ...)
-# When is_platform_staff becomes false, this condition is no longer true
-# → Tenants regain control over the membership
-```
-
-### 5.5 Platform Staff Visibility & Protection
-
-- **Visible:** Platform staff appear in tenant dashboards with a visual "Support" badge
-- **Protected:** Tenants see them but have no "Remove", "Demote", or "Edit Role" buttons in the UI for platform staff
-- **Protected by policy:** Even if a tenant tries to call the API to remove/change platform staff, policies forbid it (as long as `is_platform_staff == true`)
-- **Immutable by tenant (with exceptions):** Only Super Admin can modify platform staff memberships, except when flag is false
+[existing content]
 
 ---
 

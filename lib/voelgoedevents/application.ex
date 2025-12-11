@@ -43,7 +43,10 @@ defmodule Voelgoedevents.Application do
       # 5. Background Jobs
       {Oban, Application.fetch_env!(:voelgoedevents, Oban)},
 
-      # 6. Web Endpoint (Start LAST)
+      # 6. Authentication Supervisor (must be before web endpoint)
+      {AshAuthentication.Supervisor, otp_app: :voelgoedevents},
+
+      # 7. Web Endpoint (Start LAST)
       VoelgoedeventsWeb.Endpoint
     ]
 

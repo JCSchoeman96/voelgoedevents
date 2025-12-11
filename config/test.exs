@@ -43,3 +43,6 @@ config :phoenix, :plug_init_mode, :runtime
 # Enable helpful, but potentially expensive runtime checks
 config :phoenix_live_view,
   enable_expensive_runtime_checks: true
+
+# AshAuthentication token signing secret (test only)
+config :voelgoedevents, :token_signing_secret, "test_only_token_signing_secret_for_testing_purposes_only_xyz789"

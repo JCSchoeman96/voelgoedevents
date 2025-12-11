@@ -377,67 +377,213 @@ users = Ash.read!(User, actor: system_actor)
 
 ---
 
-## 8. ACTOR SHAPE (REQUIRED FIELDS)
+## 8. ACTOR SHAPE (REQUIRED 6 FIELDS)
 
-❌ WRONG:
+All actors in VoelgoedEvents must have **exactly 6 fields**. Incomplete actors are treated as bugs.
+
+**Canonical Actor Shape:**
+
 ```elixir
-# Incomplete actor
-actor = %{id: user.id, organization_id: org.id}
-# Missing: role, is_platform_admin, is_platform_staff
-# Result: Policy checks fail or behave unpredictably
+actor = %{
+  user_id: uuid | "system",
+  organization_id: uuid | nil,
+  role: :owner | :admin | :staff | :viewer | :scanner_only | :system,
+  is_platform_admin: false | true,
+  is_platform_staff: false | true,
+  type: :user | :system | :device | :api_key
+}
 ```
 
-✅ RIGHT:
-```elixir
-# Complete actor shape
-actor = %{
-  id: user.id,
-  organization_id: user.organization_id,
-  role: :owner | :admin | :staff | :viewer | :scanner,
-  is_platform_admin: user.is_platform_admin,
-  is_platform_staff: user.is_platform_staff
-}
+**Field Descriptions:**
 
-# In HTTP context
-defp load_user(conn, user) do
+- **`user_id`** (uuid or "system"): Unique identifier for the actor. For system/background actors, use "system".
+- **`organization_id`** (uuid or nil): The organization context. Must be present for all actions except Super Admin platform dashboards.
+- **`role`** (:owner | :admin | :staff | :viewer | :scanner_only | :system): Tenant role. See rbac_and_platform_access.md §4 for tenant roles. The `:system` role is for background jobs and maintenance.
+- **`is_platform_admin`** (boolean): True if actor is a Super Admin with platform-wide override authority.
+- **`is_platform_staff`** (boolean): True if actor is platform staff assigned to tenant organizations.
+- **`type`** (:user | :system | :device | :api_key): Actor type determining authorization semantics (see below).
+
+**Actor Type Matrix** (from rbac_and_platform_access.md §3):
+
+| Type | Use Case | Requirements | Restrictions |
+|------|----------|--------------|--------------|
+| `:user` | Human users logging in | `user_id`, `organization_id`, `role` | Must have org context; tenant-scoped actions |
+| `:system` | Background jobs, maintenance, migrations | MUST have `organization_id`; MUST NOT switch mid-execution | Cannot perform user-facing actions; must not change org_id |
+| `:device` | Scanner hardware, kiosk | `device_id` + `device_token` | Scanning domain only; no cross-domain access |
+| `:api_key` | Public API clients | `api_key_id`, `organization_id`, `scopes` | Scoped by key; cannot exceed declared scopes |
+
+**Critical Invariants:**
+
+1. **All 6 fields are required.** Missing any field = bug. No partial actors.
+2. **System/Device Actors:** If `actor(:type)` is `:system` or `:device` and the action is not explicitly permitted in the domain RBAC spec, policies **must deny**.
+3. **System Actor Org Scoping:** `:system` actors must never switch `organization_id` mid-execution. Workflows must be instantiated per organization.
+4. **Role Consistency:** The role atom must match the canonical list exactly (no inventing new roles). Platform staff are assigned a tenant role (:admin, :staff, etc.), never `:owner`.
+
+**HTTP Context Example** (type = `:user`):
+
+```elixir
+# In load_user/2 plug:
+def call(conn, _opts) do\n  user = Voelgoedevents.Repo.get(User, conn.assigns.user_id)
+  
   actor = %{
-    id: user.id,
-    organization_id: user.organization_id,
+    user_id: user.id,
+    organization_id: user.current_organization_id,
     role: user.role,
     is_platform_admin: user.is_platform_admin,
-    is_platform_staff: user.is_platform_staff
+    is_platform_staff: user.is_platform_staff,
+    type: :user
   }
+  
   assign(conn, :current_user, actor)
 end
+```
 
-# In Oban job
-defmodule SendNotificationJob do
-  def perform(%Oban.Job{args: %{"user_id" => uid, "org_id" => org_id}}) do
-    actor = %{
-      id: uid,
-      organization_id: org_id,
+**System/Job Example** (type = `:system`):
+
+```elixir
+# In background job:
+defmodule Voelgoedevents.Queues.WorkerCleanupHolds do
+  def perform(%Oban.Job{args: %{\"organization_id\" => org_id}}) do
+    system_actor = %{
+      user_id: "system",
+      organization_id: org_id,  # MUST be set per job
       role: :system,
-      is_platform_admin: false,
-      is_platform_staff: false
+      is_platform_admin: true,
+      is_platform_staff: true,
+      type: :system
     }
+    
+    # Ash operations
+    Ash.read(SeatHold, actor: system_actor)
+  end
+end
+```
+
+**Device Example** (type = `:device`):
+
+```elixir
+# In scanner authentication:
+device_actor = %{
+  user_id: device_id,  # or device token identifier
+  organization_id: org_id,
+  role: :scanner_only,
+  is_platform_admin: false,
+  is_platform_staff: false,
+  type: :device
+}
+
+Ash.create(Scan, params, actor: device_actor)
+```
+
+**Cross-Reference to Canonical Docs:**
+
+- **Role → Permission Mappings:** See `/docs/domain/rbac_and_platform_access.md` §4 (Tenant Roles) and §5 (Platform-Level Roles).
+- **Actor Type Semantics:** See `/docs/domain/rbac_and_platform_access.md` §3 (Actor Type Matrix).
+- **Policy Examples & CI Checks:** See `/docs/ash/ASH_3_RBAC_MATRIX_VGE.md`.
+
+---
+
+## 9. OBAN BACKGROUND JOBS (SYSTEM ACTOR, PER-ORGANIZATION)
+
+❌ WRONG:
+
+```elixir
+defmodule Voelgoedevents.Queues.SendNotificationJob do
+  def perform(job) do
+    # WRONG: missing type field
+    actor = %{
+      id: "system",
+      organization_id: nil,  # WRONG: system must have org_id
+      role: :system,
+      is_platform_admin: true,
+      is_platform_staff: true
+    }
+    
     Ash.read(Notification, actor: actor)
   end
 end
-
-# In CLI/Mix task (system actor for maintenance)
-system_actor = %{
-  id: "system",
-  organization_id: nil,
-  role: :system,
-  is_platform_admin: true,
-  is_platform_staff: true
-}
-Ash.read(Resource, actor: system_actor, context: %{skip_tenant_rule: true})
 ```
 
-**REQUIRED:** All 5 fields: id, organization_id, role, is_platform_admin, is_platform_staff.
+✅ RIGHT:
+
+```elixir
+defmodule Voelgoedevents.Queues.SendNotificationJob do
+  def perform(%Oban.Job{args: %{"organization_id" => org_id}}) do
+    system_actor = %{
+      user_id: "system",  # Changed from id: to user_id:
+      organization_id: org_id,  # Always set for system actors
+      role: :system,
+      is_platform_admin: true,
+      is_platform_staff: true,
+      type: :system  # ADDED required type field
+    }
+    
+    Ash.read(Notification, actor: system_actor)
+  end
+end
+```
+
+**REQUIRED:**
+- System actors MUST have `type: :system`.
+- System actors MUST have `organization_id` set (not nil).
+- Jobs MUST include `organization_id` in their args.
+- Use `user_id: "system"`, not `id: "system"`.
 
 ---
+
+## 10. MIX TASKS / MAINTENANCE (SYSTEM ACTOR)
+
+❌ WRONG:
+
+```elixir\ndefmodule Mix.Tasks.Cleanup do
+  def run(_args) do
+    actor = %{
+      id: "cli",
+      organization_id: nil,
+      role: :system,
+      is_platform_admin: true,
+      is_platform_staff: true
+    }
+    
+    # Process all orgs at once (missing type, org_id = nil)
+    Ash.read(SeatHold, actor: actor)
+  end
+end
+```
+
+✅ RIGHT:
+
+```elixir
+defmodule Mix.Tasks.Cleanup do
+  def run(_args) do
+    # Load all orgs and process per-org
+    orgs = Voelgoedevents.Repo.all(Organization)
+    
+    for org <- orgs do
+      system_actor = %{
+        user_id: "system",
+        organization_id: org.id,  # Per-org instantiation
+        role: :system,
+        is_platform_admin: true,
+        is_platform_staff: true,
+        type: :system  # REQUIRED
+      }
+      
+      Ash.read(SeatHold, actor: system_actor, context: %{skip_tenant_rule: true})
+    end
+  end
+end
+```
+
+**REQUIRED:**
+- System/CLI actors MUST have `type: :system`.
+- **NEVER** instantiate system actors with `organization_id: nil` for multi-tenant operations.
+- Workflows must loop per organization and instantiate a new system actor for each.
+
+---
+
+**Summary: All actors must include all 6 fields, with type field distinguishing :user, :system, :device, :api_key, and roles limited to :owner, :admin, :staff, :viewer, :scanner_only, or :system.**
+
 
 ## 9. MULTITENANCY LAYERS (DECLARATION + FILTERBYTENANT + POLICIES)
 

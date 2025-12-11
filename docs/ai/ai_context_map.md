@@ -33,6 +33,14 @@ Only use paths/modules listed in this document.
 
 ---
 
+### 📘 Ash 3.x Canonical Guidance (System-Level)
+
+| Purpose | File |
+|--------|------|
+| Hard syntax rules, banned patterns, required resource structure | `/docs/ash/ASH_3_AI_STRICT_RULES.md` |
+| RBAC matrix, actor shape, policy templates, CI rules | `/docs/ash/ASH_3_RBAC_MATRIX.md` |
+
+
 ## 🏗️ 1. High-Level Application Architecture (Confirmed from Project Code)
 
 | Component | Module                         | File Path                            | Notes                     |
@@ -110,14 +118,16 @@ lib/voelgoedevents/ash/domains/audit_domain.ex
 
 ---
 
-### 🎟️ TICKETING DOMAIN (`:ticketing`)
+### 🎟️ TICKETING DOMAIN (`:ticketing`) — UPDATED FOR PHASE 3
 
-| Resource        | Module                                                 | Atom             | File                                                |
-| --------------- | ------------------------------------------------------ | ---------------- | --------------------------------------------------- |
-| **Ticket**      | `Voelgoedevents.Ash.Resources.Ticketing.Ticket`        | `:ticket`        | `lib/voelgoedevents/ash/resources/ticketing/ticket.ex`        |
-| **PricingRule** | `Voelgoedevents.Ash.Resources.Ticketing.PricingRule`   | `:pricing_rule`  | `lib/voelgoedevents/ash/resources/ticketing/pricing_rule.ex` |
-| **Coupon**      | `Voelgoedevents.Ash.Resources.Ticketing.Coupon`        | `:coupon`        | `lib/voelgoedevents/ash/resources/ticketing/coupon.ex`        |
-| **OrderState**  | `Voelgoedevents.Ash.Resources.Ticketing.OrderState`    | `:order_state`   | `lib/voelgoedevents/ash/resources/ticketing/order_state.ex`   |
+| Resource        | Module                                                 | Atom             | File                                                      | Phase 3 Notes |
+| --------------- | ------------------------------------------------------ | ---------------- | --------------------------------------------------------- | ------------- |
+| **Ticket**      | `Voelgoedevents.Ash.Resources.Ticketing.Ticket`        | `:ticket`        | `lib/voelgoedevents/ash/resources/ticketing/ticket.ex`   | Phase 4+ |
+| **TicketType**  | `Voelgoedevents.Ash.Resources.Ticketing.TicketType`    | `:ticket_type`   | `lib/voelgoedevents/ash/resources/ticketing/ticket_type.ex` | GA-only, quantity-based in Phase 3 |
+| **SeatHold**    | `Voelgoedevents.Ash.Resources.Ticketing.SeatHold`      | `:seat_hold`     | `lib/voelgoedevents/ash/resources/ticketing/seat_hold.ex` | GA holds with global 15-min TTL, backing ReserveSeat/ReleaseSeat |
+| **PricingRule** | `Voelgoedevents.Ash.Resources.Ticketing.PricingRule`   | `:pricing_rule`  | `lib/voelgoedevents/ash/resources/ticketing/pricing_rule.ex` | Phase 4+ complex models |
+| **Coupon**      | `Voelgoedevents.Ash.Resources.Ticketing.Coupon`        | `:coupon`        | `lib/voelgoedevents/ash/resources/ticketing/coupon.ex`   | Basic usage tracking |
+| **OrderState**  | `Voelgoedevents.Ash.Resources.Ticketing.OrderState`    | `:order_state`   | `lib/voelgoedevents/ash/resources/ticketing/order_state.ex` | Order status machine |
 
 **Domain File:**
 
@@ -252,19 +262,22 @@ lib/voelgoedevents/ash/domains/monetization_domain.ex
 
 ---
 
-## ⚙️ 3. Workflow Modules (All Confirmed in Repo)
+## 🔄 WORKFLOW MODULES (Verified Against Phase Specs)
 
-| Workflow               | Module                                                    | File Path                                                |
-| ---------------------- | --------------------------------------------------------- | --------------------------------------------------------- |
-| Start Checkout         | `Voelgoedevents.Workflows.Checkout.StartCheckout`         | `lib/voelgoedevents/workflows/checkout/start_checkout.ex` |
-| Complete Checkout      | `Voelgoedevents.Workflows.Checkout.CompleteCheckout`      | `lib/voelgoedevents/workflows/checkout/complete_checkout.ex` |
-| Reserve Seat           | `Voelgoedevents.Workflows.Ticketing.ReserveSeat`          | `lib/voelgoedevents/workflows/ticketing/reserve_seat.ex`  |
-| Release Seat           | `Voelgoedevents.Workflows.Ticketing.ReleaseSeat`          | `lib/voelgoedevents/workflows/ticketing/release_seat.ex`  |
-| Process Scan           | `Voelgoedevents.Workflows.Scanning.ProcessScan`           | `lib/voelgoedevents/workflows/scanning/process_scan.ex`   |
-| Scanning Sync Resolver | `Voelgoedevents.Workflows.Scanning.SyncResolver`          | `lib/voelgoedevents/workflows/scanning/sync_resolver.ex`  |
-| Funnel Builder         | `Voelgoedevents.Workflows.Analytics.FunnelBuilder`        | `lib/voelgoedevents/workflows/analytics/funnel_builder.ex` |
+| Workflow                      | Module                                                 | File Path                                                            | Purpose                                 | Phase |
+| ----------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------- | --------------------------------------- | ----- |
+| **ReserveSeat**               | `Voelgoedevents.Workflows.Ticketing.ReserveSeat`       | `lib/voelgoedevents/workflows/ticketing/reserve_seat.ex`           | Hold GA tickets (15-min TTL) | 3     |
+| **ReleaseSeat**               | `Voelgoedevents.Workflows.Ticketing.ReleaseSeat`       | `lib/voelgoedevents/workflows/ticketing/release_seat.ex`           | Release expired/cancelled holds | 3     |
+| **StartCheckout**             | `Voelgoedevents.Workflows.Checkout.StartCheckout`      | `lib/voelgoedevents/workflows/checkout/start_checkout.ex`         | Initiate checkout session | 3     |
+| **CompleteCheckout**          | `Voelgoedevents.Workflows.Checkout.CompleteCheckout`   | `lib/voelgoedevents/workflows/checkout/complete_checkout.ex`       | Complete checkout (payment + ticketing) | 4     |
+| **ProcessScan**               | `Voelgoedevents.Workflows.Scanning.ProcessScan`        | `lib/voelgoedevents/workflows/scanning/process_scan.ex`           | Scan QR code + validate entry | 5     |
+| **OfflineSync**               | `Voelgoedevents.Workflows.Scanning.OfflineSync`        | `lib/voelgoedevents/workflows/scanning/offline_sync.ex`           | Batch sync offline scan data | 5     |
+| **FunnelBuilder**             | `Voelgoedevents.Workflows.Analytics.FunnelBuilder`     | `lib/voelgoedevents/workflows/analytics/funnel_builder.ex`        | Build conversion funnel snapshots | 6     |
 
-All verified.
+**Workflow Phase 3 Scope Note:**
+
+- Phase 3: `ReserveSeat` / `ReleaseSeat` operate on GA inventory exclusively via SeatHold.
+- Phase 8: Seating Engine extends these same workflows to handle reserved (assigned) seats via Seat resource.
 
 ---
 
@@ -290,14 +303,15 @@ All verified.
 
 ---
 
-## 👷 6. Oban Workers (Verified)
+## ⚙️ QUEUES & WORKERS (Oban Jobs — Verified)
 
-| Worker             | Module                                        | File                                                   |
-| ------------------ | --------------------------------------------- | ------------------------------------------------------ |
-| Send Email         | `Voelgoedevents.Queues.WorkerSendEmail`       | `lib/voelgoedevents/queues/worker_send_email.ex`       |
-| Generate PDF       | `Voelgoedevents.Queues.WorkerGeneratePdf`     | `lib/voelgoedevents/queues/worker_generate_pdf.ex`     |
-| Cleanup Seat Holds | `Voelgoedevents.Queues.WorkerCleanupHolds`    | `lib/voelgoedevents/queues/worker_cleanup_holds.ex`    |
-| Analytics Export   | `Voelgoedevents.Queues.WorkerAnalyticsExport` | `lib/voelgoedevents/queues/worker_analytics_export.ex` |
+| Worker                  | Module                                                 | File Path                                                            | Purpose                                 | Schedule |
+| ----------------------- | ------------------------------------------------------ | ------------------------------------------------------------------- | --------------------------------------- | -------- |
+| **WorkerCleanupHolds**  | `Voelgoedevents.Queues.WorkerCleanupHolds`             | `lib/voelgoedevents/queues/workers/cleanup_holds.ex`              | Expire SeatHold at TTL + 10s grace      | Per-hold |
+| **WorkerFunnelSnapshot**| `Voelgoedevents.Queues.WorkerFunnelSnapshot`           | `lib/voelgoedevents/queues/workers/funnel_snapshot.ex`            | Aggregate funnel events hourly | Hourly   |
+| **WorkerOfflineSync**   | `Voelgoedevents.Queues.WorkerOfflineSync`              | `lib/voelgoedevents/queues/workers/offline_sync.ex`               | Process offline scan batches | On-demand |
+
+**Note:** No `seat_hold_expiry_job` or fake jobs. Only real, verified worker modules above.
 
 ---
 
@@ -520,7 +534,7 @@ Voelgoedevents.Caching.OccupancyCache
 
 ### Workflow Documentation
 
-- `reserve_seat.md` - Reserve seat with 5-min hold
+- `reserve_seat.md` - Reserve GA inventory with 15-min SeatHold TTL
 - `start_checkout.md` - Pricing pipeline
 - `complete_checkout.md` - Payment + accounting
 - `process_scan.md` - Venue entry (online)

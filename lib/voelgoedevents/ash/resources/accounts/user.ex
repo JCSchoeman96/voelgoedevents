@@ -191,14 +191,31 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     end
   end
 
+  @auth_actions [
+    :sign_in_with_password,
+    :register_with_password,
+    :sign_in_with_token,
+    :confirm,
+    :resend_confirmation,
+    :request_password_reset,
+    :reset_password
+  ]
+
   policies do
+    # 1. Platform superuser override
     PlatformPolicy.platform_admin_root_access()
 
-    policy action([:create, :read, :update]) do
-      forbid_if expr(is_nil(actor(:id)))
+    # 2. AshAuthentication entry-point actions
+    #    These must be callable WITHOUT an actor, because they are how a user becomes authenticated.
+    #    Includes: sign-in, register, token sign-in, confirmation, password reset flows
+    policy action(@auth_actions) do
+      authorize_if always()
     end
 
+    # 3. Normal CRUD – only the canonical actions, not auth actions
     policy action(:create) do
+      forbid_if actor_attribute_equals(:id, nil)
+
       forbid_if expr(arg(:organization_id) != actor(:organization_id))
 
       forbid_if expr(
@@ -209,21 +226,21 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
       authorize_if always()
     end
 
-    policy action_type([:read, :update]) do
+    policy action(:read) do
+      forbid_if actor_attribute_equals(:id, nil)
       forbid_if expr(not exists(memberships, organization_id == actor(:organization_id)))
       authorize_if always()
     end
 
     policy action(:update) do
+      forbid_if actor_attribute_equals(:id, nil)
+      forbid_if expr(not exists(memberships, organization_id == actor(:organization_id)))
+
       forbid_if expr(
                    (not is_nil(arg(:is_platform_staff)) or not is_nil(arg(:is_platform_admin))) and
                      actor(:is_platform_admin) != true
                  )
 
-      authorize_if always()
-    end
-
-    policy action([:confirm, :resend_confirmation]) do
       authorize_if always()
     end
   end

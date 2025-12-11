@@ -1,923 +1,573 @@
+<!-- docs/domain/ticketing_pricing.md -->
+
 # Domain: Ticketing & Pricing
 
-## Overview & Purpose
+## 1. Overview & Purpose
 
-The **Ticketing & Pricing** domain manages all aspects of ticket types, inventory, pricing rules, promotions, and seat holds. This domain ensures that events can flexibly offer GA (General Admission) and seated tickets, apply complex pricing logic, handle refunds correctly with the Payments & Ledger domain, and prevent overselling under high-concurrency conditions (flash sales, large events).
+The **Ticketing & Pricing** domain manages ticket types, inventory tracking, seat holds, and pricing rules. In **Phase 3**, this domain focuses exclusively on **GA (General Admission) ticketing** using quantity-based inventory. Later phases will extend this to support seating-aware ticketing and advanced pricing models.
 
-**Core Responsibilities**:
+**Phase 3 Core Responsibilities**:
 
-- Ticket type and variant management (GA, seated, passes, add-ons, bundles).
-- Inventory tracking (GA capacity, seating allocation, stock management).
-- Pricing rules evaluation (early-bird, time-window, capacity-based, dynamic).
-- Coupon and promotion management.
-- Seat hold lifecycle and release.
-- **Ticket entitlement models** (re-entry rules, daily limits, multi-day passes).
-- **Tenant-level policy configuration** (SuperAdmin controls).
+- TicketType resource management (GA only in Phase 3)
+- GA inventory tracking (quantity-based: total, sold, held)
+- SeatHold lifecycle and release (15-minute TTL)
+- Basic coupon management (codes, usage limits)
+- Caching and concurrency protection
 
-**Out of Scope**:
+**Out of Scope (Phase 3)**:
 
-- Payment authorization/capture (Payments & Ledger domain).
-- QR code generation, scanning validation (Scanning & Devices, Ticket Identity docs).
-- Refund ledger reversal (Payments & Ledger domain).
-
----
-
-## Scope & Boundaries
-
-### In Scope
-
-1. TicketType resource (GA, seated, passes, add-ons, bundles).
-2. PricingRule evaluation (tiered, time-based, capacity-based, bundle-based, donation-based).
-3. Coupon management (codes, usage limits, per-customer caps).
-4. Inventory tracking (GA remaining quantity, seating allocation, cross-zone blending).
-5. Seat holds and releases (5-10 minute TTL, oversell protection).
-6. **Ticket entitlement modes** (single_entry, unlimited_reentry, limited_reentry_per_day, multi-day passes).
-7. **TicketingPolicy resource** (SuperAdmin per-tenant controls).
-8. Refund eligibility rules (integration with Payments domain).
-9. Performance caching (ETS, Redis, Postgres).
-
-### Out of Scope
-
-- External payment processing (delegated to Payments & Ledger).
-- QR code signing, validation (delegated to Ticket Identity architecture).
-- Scanning access control (delegated to Scanning domain).
-- Seating plan builder UI (delegated to Phase 8 Seating domain).
+- Seating-aware ticketing (Phase 8)
+- Entitlement modes, multi-day passes, re-entry rules (Phase 4+)
+- Complex pricing rules (tiered, demand-based, capacity-based) — Phase 4+
+- Bundles, add-ons, passes (Phase 4+)
+- Payment processing (Payments & Ledger domain)
+- QR code generation/validation (Scanning & Devices domain)
 
 ---
 
-## Personas & Use Cases
+## 2. Phase 3 Focus Box
 
-### 1. Event Organiser
+**PHASE 3 SCOPE: GA TICKETING ONLY**
 
-- Create ticket types (GA, VIP, standing, multi-day passes).
-- Set prices and pricing rules (early-bird, capacity-based discounts).
-- Create and manage promotional codes.
-- View inventory and sell-through analytics.
-- Issue refunds and understand refund fee impact.
+This domain specification covers General Admission (quantity-based) ticketing exclusively in Phase 3. Seating-aware ticketing, per-seat pricing, and advanced entitlement modes are **explicitly deferred to Phase 8** (see `/docs/domain/seating.md` and future Phase 8 planning docs).
 
-### 2. SuperAdmin / Platform Operator
-
-- Configure which ticket types are allowed per organisation.
-- Set min/max ticket prices per organisation.
-- Enable/disable specific entitlement modes (re-entry, daily limits).
-- Control donation availability per organisation.
-- Restrict fee models (client pays, organiser absorbs, split).
-- Set payout rules per organisation.
-
-### 3. Customer / Event Attendee
-
-- Purchase single or multiple tickets.
-- Apply promotional codes.
-- Choose ticket variants (GA, VIP, seating, add-ons).
-- View ticket entitlements (allowed entries, valid dates).
-- Process refunds (if eligible).
-
-### 4. Finance / Accounting
-
-- Understand fee interaction: platform fees, processor fees, refund fees.
-- Reconcile refund ledger impact.
-- Understand refund eligibility by ticket type.
+TicketType in Phase 3 is designed to be forward-compatible with future seating resources; no hard-coded assumptions prevent later bridging to seat structures.
 
 ---
 
-## Core Resources
+## 3. Scope & Responsibility (Canonical)
 
-### 1. TicketType (Ticket Definitions)
+### In Scope (Phase 3)
+
+1. **TicketType** – GA (quantity-based) ticket definitions.
+2. **SeatHold** – Temporary reservations (15-minute TTL) to prevent overselling.
+3. **Basic Coupons** – Discount codes with usage tracking.
+4. **Inventory Tracking** – GA quantity: total, sold, held.
+5. **Caching & Concurrency** – ETS + Redis for fast access and distributed locking.
+
+### Out of Scope (Phase 3)
+
+- **Seating layouts, per-seat pricing** – belongs to Seating domain (Phase 8).
+- **Entitlement modes** (re-entry, daily limits, multi-day passes) – Phase 4+.
+- **Bundles, add-ons, passes** – Phase 4+.
+- **Complex pricing models** (tiered, demand-based, capacity-based) – Phase 4+.
+- **Event lifecycle or visibility** – belongs to Events & Venues domain.
+- **Financial settlement, PSP details, refunds** – belongs to Payments & Ledger domain.
+
+---
+
+## 4. Core Resources
+
+### 4.1 TicketType (GA Only, Phase 3)
 
 **Module**: `Voelgoedevents.Ash.Resources.Ticketing.TicketType`  
 **File**: `lib/voelgoedevents/ash/resources/ticketing/ticket_type.ex`  
-**Phase Introduced**: Phase 3
+**Phase**: Phase 3  
 
-**Responsibility**: Define available ticket types for an event.
+**Responsibility**: Define available GA (quantity-based) ticket types for an event.
 
-**Key Fields**:
+**Fields (Phase 3)**:
 
 - `id` (UUID)
-- `organization_id` (UUID) — multi-tenancy
-- `event_id` (UUID) — associated event
-- `name` (string) — e.g., "VIP", "General Admission", "3-Day Pass"
-- `description` (string, nullable)
-- `kind` (atom: `:ga`, `:seated`, `:pass`, `:addon`, `:bundle`)
-- `base_price_cents` (integer) — starting price before rules
-- `currency` (string, default `"ZAR"`)
-- `status` (atom: `:draft`, `:on_sale`, `:paused`, `:closed`)
-- `total_capacity` (integer, nullable) — for GA tickets
-- `sold_count` (integer, default 0)
-- `held_count` (integer, default 0)
-- `max_per_order` (integer, nullable) — e.g., 5 tickets max per order
-- `min_per_order` (integer, default 1)
-- `refundable` (boolean, default true)
-- `entitlement_mode` (atom: `:single_entry`, `:unlimited_reentry`, `:limited_reentry_per_day`, `:single_entry_per_day`, `:unlimited_multi_day`)
-- `max_daily_entries` (integer, nullable) — for `:limited_reentry_per_day`
-- `max_total_entries` (integer, nullable) — for `:limited_reentry_per_day` across full event
-- `valid_days` (array of atoms, nullable) — for multi-day: `[:monday, :tuesday, ...]` or range
-- `entry_reset_strategy` (atom: `:calendar_day`, `:sliding_24h`, `:event_day`) — how resets work
-- `created_at`, `updated_at`
+- `event_id` (UUID) – associated event
+- `organization_id` (UUID) – multi-tenancy scoping
+- `name` (string) – e.g., "Early Bird", "General Admission"
+- `description` (text, nullable)
+- `price` (Decimal) – price in primary currency
+- `currency` (atom, default `:ZAR`) – for now fixed to ZAR
+- `total_quantity` (integer) – total available tickets
+- `sold_count` (integer, default 0) – already sold
+- `held_count` (integer, default 0) – currently held in SeatHolds
+- `sale_start_at` (datetime, nullable) – when sales begin
+- `sale_end_at` (datetime, nullable) – when sales end
+- `status` (atom: `:available`, `:sold_out`, `:hidden`) – visibility/availability status
+- `settings` (JSONB, optional) – e.g. `{"early_bird": true, "internal_only": false}`
+- timestamps (`inserted_at`, `updated_at`)
 
-**Calculations**:
+**Derived Calculations** (read-time logic, NOT denormalized fields):
 
-- `available_quantity`: `total_capacity - sold_count - held_count` (for GA)
+```
+available_quantity = total_quantity - sold_count - held_count
+```
 
-**Invariants**:
+**Behaviour**:
 
-- MUST match event status (if event not published, cannot sell).
-- For GA: `total_capacity` MUST NOT exceed venue capacity.
-- For seated: linked via seating domain.
-- Entitlement mode MUST be allowed per TicketingPolicy for org.
-- `refundable` status MUST align with PaymentPolicy refund fee logic.
-- **Entitlement Price Interaction**:
-  - `effective_price` MUST NOT vary based on number of entries used.
-  - Pricing rules MUST NOT contradict entitlement rules (e.g. cannot offer "one entry per day" if the ticket is sold as a single-day ticket).
-  - Multi-day tickets MUST specify either `valid_dates` or `event_day_indices`.
+A ticket can be sold **only if all of the following are true**:
+
+1. `Event.can_sell_tickets? == true` (derived from Event status + sale window; see `/docs/domain/events_venues.md`)
+2. `TicketType.status == :available`
+3. `available_quantity > 0`
+
+**Important**: TicketType never overrides Event lifecycle. If an Event moves to `:cancelled`, no TicketType can be sold regardless of its status.
+
+**On Sale (Derived, Not a TicketType Status)**:
+
+The concept of "on sale" is a **derived computation combining Event and TicketType**:
+
+```
+ticket_on_sale? = Event.on_sale? 
+                  AND TicketType.status == :available
+                  AND now in [TicketType.sale_start_at, TicketType.sale_end_at]
+                  AND available_quantity > 0
+```
+
+**Forward Compatibility (Phase 8+)**:
+
+In Phase 3, TicketType is GA-only and does not reference seating constructs. Future phases may:
+
+- Introduce a `kind` field (`:ga` | `:seated`) to distinguish GA from seated tickets.
+- Link TicketType to seating constructs via a bridge resource (e.g., `TicketTypeSeatBlock` or `TicketTypeSeatCategory`).
+- Add per-seat pricing overrides.
+
+**None of these extensions are implemented in Phase 3**, but the schema must not hard-code anything that prevents them later.
 
 ---
 
-### 2. PricingRule (Dynamic Price Evaluation)
-
-**Module**: `Voelgoedevents.Ash.Resources.Ticketing.PricingRule`  
-**File**: `lib/voelgoedevents/ash/resources/ticketing/pricing_rule.ex`  
-**Phase Introduced**: Phase 3
-
-**Responsibility**: Define pricing adjustments based on conditions.
-
-**Key Fields**:
-
-- `id` (UUID)
-- `organization_id` (UUID)
-- `ticket_type_id` (UUID)
-- `rule_type` (atom: `:fixed`, `:tiered`, `:early_bird`, `:capacity_based`, `:time_window`, `:demand_based`, `:addon_based`, `:bundle_based`, `:donation_based`, `:override`)
-- `priority` (integer) — lower priority evaluates first
-- `conditions` (JSONB) — rule-specific conditions
-  - Early-bird: `{ "ends_at": "2025-02-15" }`
-  - Tiered: `{ "thresholds": [{ "min_qty": 0, "max_qty": 50, "discount_percent": 10 }] }`
-  - Time-window: `{ "starts_at": "...", "ends_at": "..." }`
-  - Capacity-based: `{ "sold_threshold": 50, "discount_percent": 5 }`
-  - Demand-based: `{ "occupancy_percent": 75, "price_increase_percent": 15 }`
-- `adjustment_type` (atom: `:fixed`, `:percentage`)
-- `adjustment_value` (decimal) — ZAR or %
-- `max_discount_cents` (integer, nullable) — cap on discount
-- `status` (atom: `:active`, `:inactive`)
-- `created_at`, `updated_at`
-
-**Calculations**:
-
-- **Effective Price**: Evaluate all active rules in priority order, apply adjustments (stacking or override).
-
-**Invariants**:
-
-- Rules MUST be deterministic and orderable.
-- MUST NOT allow rules that contradict entitlement model (e.g., dynamic pricing on refundable pass).
-- Rules MUST be evaluated at checkout time and **price locked** in cart.
-
-#### Manual Override Rule (`rule_type: :override`)
-
-A price override rule allows an administrator or organiser to directly set the effective ticket price
-for a defined time window, bypassing all other pricing rules.
-
-**Fields**:
-
-- `override_price_cents` (required)
-- `starts_at` (optional)
-- `ends_at` (optional)
-
-**Behavior**:
-
-- When active, the override price MUST supersede all other price rules:
-  - fixed price
-  - tiered/early-bird
-  - capacity thresholds
-  - time-window adjustments
-  - dynamic pricing
-- If multiple override rules exist, the highest-priority (earliest created or explicit priority field) MUST win.
-- If the override window expires, the pricing engine MUST automatically revert to the next active rule.
-
-**Invariants**:
-
-- Override rules MUST NOT violate min/max price constraints defined in TicketingPolicy.
-- Override rules MUST be auditable through the platform auditing system.
-
----
-
-### 3. Coupon (Promotional Codes)
-
-**Module**: `Voelgoedevents.Ash.Resources.Ticketing.Coupon`  
-**File**: `lib/voelgoedevents/ash/resources/ticketing/coupon.ex`  
-**Phase Introduced**: Phase 3
-
-**Responsibility**: Manage discount codes.
-
-**Key Fields**:
-
-- `id` (UUID)
-- `organization_id` (UUID)
-- `code` (string, unique per org) — e.g., "EARLY20"
-- `applies_to` (atom: `:all_events`, `:specific_events`, `:specific_ticket_types`)
-- `applies_to_ids` (array of UUIDs, nullable) — event or ticket type IDs
-- `discount_type` (atom: `:fixed`, `:percentage`)
-- `discount_value` (decimal) — ZAR or %
-- `max_discount_cents` (integer, nullable) — cap discount
-- `max_uses` (integer, nullable) — global limit
-- `per_customer_limit` (integer, default 1) — can use once per customer
-- `valid_from` (datetime)
-- `valid_until` (datetime)
-- `status` (atom: `:active`, `:inactive`, `:archived`)
-- `multi_coupon_allowed` (boolean, default false) — can combine with other coupons
-- `created_at`, `updated_at`
-
-**Tracking**:
-
-- `coupon_uses` table (or JSONB array in coupon) tracking:
-  - `user_id`, `order_id`, `created_at`
-
-**Invariants**:
-
-- Coupon usage MUST be concurrency-safe (prevent exceeding `max_uses`).
-- Usage MUST be validated at checkout.
-- Code MUST be unique per organisation.
-
----
-
-### 4. SeatHold (Temporary Reservation)
+### 4.2 SeatHold (GA Holds, Phase 3)
 
 **Module**: `Voelgoedevents.Ash.Resources.Ticketing.SeatHold`  
 **File**: `lib/voelgoedevents/ash/resources/ticketing/seat_hold.ex`  
-**Phase Introduced**: Phase 3
+**Phase**: Phase 3  
 
-**Responsibility**: Track 5-10 minute temporary holds during checkout.
+**Responsibility**: Track temporary reservations (holds) to prevent overselling during checkout.
 
-**Key Fields**:
+**Fields**:
 
 - `id` (UUID)
-- `organization_id` (UUID)
-- `event_id` (UUID)
-- `ticket_type_id` (UUID)
-- `user_id` (UUID) — who is holding
-- `quantity` (integer) — for GA
-- `seat_ids` (array of UUIDs, nullable) — for seated tickets
+- `ticket_type_id` (UUID) – the TicketType being held
+- `event_id` (UUID) – denormalized from TicketType for fast queries
+- `organization_id` (UUID) – multi-tenancy scoping
+- `user_id` (UUID, nullable) – for guest flows or later auth
+- `quantity` (integer) – number of tickets held
 - `status` (atom: `:active`, `:expired`, `:converted`, `:cancelled`)
-- `held_until` (datetime) — expiry
-- `source` (atom: `:web`, `:scanner`, `:api`)
-- `created_at`
+- `held_until` (datetime, NOT nullable while status == `:active`) – when this hold expires
+- `source` (atom: `:web`, `:scanner`, `:backoffice`, optional) – origin of the hold
+- `notes` (text, optional) – audit trail info
+- timestamps (`inserted_at`, `updated_at`)
 
-**Storage**:
+**TTL and Lifecycle** (GLOBALLY STANDARD):
 
-- **Redis ZSET**: `ticketing:holds:event:{event_id}`
-  - Member: `{seat_id}` or `{ticket_type_id}:{hold_id}`
-  - Score: `held_until` timestamp (auto-expire via ZSET operations)
-- **ETS**: per-node fast lookup (mirrors Redis)
-- **PostgreSQL**: durable record for audit & recovery
+- **Global TTL**: 15 minutes (900 seconds), **no per-event override in Phase 3**
+- `held_until = inserted_at + 15 minutes`
+- At or after `held_until`, SeatHold **must** move to `:expired` and its quantity returned to available inventory
+- Status `:expired` includes both:
+  - Natural TTL expiry
+  - Forced expiry due to Event status change (`:cancelled` or `:postponed` without rescheduled_at)
 
-**Invariants**:
+**Event Status Interaction** (Must follow `/docs/domain/events_venues.md`):
 
-- A seat CANNOT be held by two carts simultaneously.
-- Holds MUST NOT exceed available inventory.
-- Expired holds MUST be released automatically via Oban cleanup job.
+- **When Event moves to `:cancelled`**:
+  - All `:active` SeatHolds for that event **MUST** be immediately released (moved to `:expired`).
+  - `TicketType.held_count` is decremented.
+  - No new SeatHolds or checkouts may be created while event is `:cancelled`.
+
+- **When Event moves to `:postponed` without `rescheduled_at`**:
+  - Existing `:active` SeatHolds remain in the database but are functionally **suspended** (checkout cannot proceed).
+  - No new SeatHolds or checkouts are allowed until `rescheduled_at` is set.
+
+- **When Event moves to `:postponed` with `rescheduled_at` set**:
+  - SeatHolds and checkouts resume as normal within the new event window.
+
+**Caching & Storage Patterns**:
+
+- **Redis ZSET** for expiry tracking:
+  - Key: `ticketing:holds:org:{org_id}:event:{event_id}`
+  - Score: `held_until` (epoch timestamp)
+  - Value: `seat_hold_id`
+  - Used by cleanup worker to scan for expired holds efficiently
+
+- **ETS mirror** per node:
+  - For fast per-node lookup before Redis query
+  - Invalidated when hold expires or converts
+
+- Must match patterns in `/docs/architecture/03_caching_and_realtime.md`
+
+**Oban Cleanup Worker** (Existing Module):
+
+- Module: `Voelgoedevents.Queues.WorkerCleanupHolds` (do NOT invent new job paths)
+- Triggered at `held_until + 10 seconds` (small grace window)
+- Actions:
+  - Scan Redis ZSET for expired holds
+  - Mark SeatHolds as `:expired`
+  - Decrement `TicketType.held_count`
+  - Update Redis/ETS counters (write-through pattern per Appendix C)
+  - Emit PubSub notification: `ticketing:event:{event_id}` with hold expiry details
 
 ---
 
-### 5. Ticket (Sold Instance)
+### 4.3 Coupon (Basic, Phase 3)
 
-**Module**: `Voelgoedevents.Ash.Resources.Ticketing.Ticket`  
-**File**: `lib/voelgoedevents/ash/resources/ticketing/ticket.ex`  
-**Phase Introduced**: Phase 4
+**Module**: `Voelgoedevents.Ash.Resources.Ticketing.Coupon`  
+**File**: `lib/voelgoedevents/ash/resources/ticketing/coupon.ex`  
+**Phase**: Phase 3  
 
-**Responsibility**: Individual ticket instance with state machine.
+**Responsibility**: Track discount codes and their usage.
 
-**Key Fields**:
+**Fields**:
 
 - `id` (UUID)
-- `organization_id` (UUID)
-- `order_id` (UUID)
-- `ticket_type_id` (UUID)
-- `event_id` (UUID)
-- `user_id` (UUID) — who owns this ticket
-- `ticket_code` (string, unique) — 16-char base62
-- `qr_payload` (string) — signed JWT for scanning
-- `status` (atom: `:active`, `:scanned`, `:used`, `:voided`, `:refunded`)
-- `entry_count` (integer, default 0) — for re-entry tracking
-- `last_entry_date` (date, nullable) — last time entered
-- `last_exit_at` (datetime, nullable) — last exit scan
-- `scanned_at` (datetime, nullable)
-- `refunded_at` (datetime, nullable)
-- `seat_id` (UUID, nullable) — for Phase 8 seating
-- `created_at`, `updated_at`
+- `organization_id` (UUID) – coupon scoped to org; no cross-org usage
+- `event_id` (UUID, nullable) – if set, coupon applies only to this event
+- `code` (string, unique per org) – the discount code
+- `discount_type` (atom: `:fixed_amount` | `:percent`)
+- `amount` (Decimal) – fixed discount amount (if `:fixed_amount`)
+- `percent` (Decimal, 0-100) – discount percentage (if `:percent`)
+- `max_uses` (integer, nullable) – global max uses across all customers
+- `max_uses_per_user` (integer, nullable) – max per customer
+- `valid_from` (datetime, nullable)
+- `valid_until` (datetime, nullable)
+- `is_active` (boolean, default true)
+- `notes` (text, optional)
+- timestamps (`inserted_at`, `updated_at`)
 
-**State Machine** (Ash.StateMachine):
+**Behaviour**:
 
-- `:active` → `:scanned` (first scan)
-- `:scanned` → `:used` (after allowed entries)
-- Any → `:voided` (admin/system)
-- Any → `:refunded` (refund processed)
-
-**Entitlement Enforcement**:
-
-- At scan time, check entitlement mode:
-  - `:single_entry`: Can scan once.
-  - `:unlimited_reentry`: Can scan unlimited times.
-  - `:limited_reentry_per_day`: Max X entries per calendar/sliding day.
-  - `:single_entry_per_day`: One entry per day.
-  - `:unlimited_multi_day`: Unlimited on valid days.
+- Coupon must be checked at checkout time against Event and TicketType rules.
+- A coupon is valid only if:
+  - `is_active == true`
+  - Current datetime is within `[valid_from, valid_until]`
+  - `event_id` is null OR matches the checkout event
+  - `max_uses` has not been exhausted (global)
+  - User's coupon use count < `max_uses_per_user` (user-scoped)
+- **Multi-tenancy**: All coupons are scoped by `organization_id`. No coupon may apply across organizations.
 
 ---
 
-### 6. TicketingPolicy (SuperAdmin Tenant Controls)
+## 5. Pricing & Coupons (Phase 3: Simple)
 
-**Module**: `Voelgoedevents.Ash.Resources.Ticketing.TicketingPolicy`  
-**File**: `lib/voelgoedevents/ash/resources/ticketing/ticketing_policy.ex`  
-**Phase Introduced**: Phase 3
+**Phase 3 Pricing Strategy**:
 
-**Responsibility**: Tenant-level configuration of ticketing and pricing behaviour.
+- **Base Price**: Fixed price on TicketType.price
+- **Optional Discount**: Single coupon applied at checkout (no multi-coupon stacking in Phase 3)
+- **Effective Price Calculation** (at checkout):
+  ```
+  discount = coupon ? apply_discount(base_price, coupon) : 0
+  effective_price = base_price - discount
+  ```
 
-**Key Fields**:
+**Caching**:
 
-- `id` (UUID)
-- `organization_id` (UUID)
-- `enabled_ticket_kinds` (array of atoms, default all) — which types allowed
-- `enabled_entitlement_modes` (array of atoms, default all) — `:single_entry`, `:unlimited_reentry`, etc.
-- `allowed_pricing_models` (array of atoms, default all) — `:fixed`, `:tiered`, `:early_bird`, etc.
-- `allowed_discount_types` (array of atoms) — `:fixed`, `:percentage`, `:addon`, `:bundle`
-- `allow_coupons` (boolean, default true)
-- `allow_multi_coupon` (boolean, default false)
-- `min_ticket_price_cents` (integer, nullable)
-- `max_ticket_price_cents` (integer, nullable)
-- `allow_addons` (boolean, default true)
-- `allow_bundles` (boolean, default true)
-- `allow_passes` (boolean, default true)
-- `allow_donations` (boolean, default false) — for free/NPO events
-- `refund_enabled` (boolean, default true)
-- `refund_platform_fee_on_refund` (boolean, default false) — non-refundable fees
-- `checkout_grace_period_minutes` (integer, default 15) — seat hold TTL
-- `max_seats_per_order` (integer, default 10)
-- `created_at`, `updated_at`
+- Effective pricing is computed at read-time, not stored.
+- Cache pricing lookups for performance:
+  - **ETS key**: `pricing:effective:{org_id}:{ticket_type_id}`
+  - **Redis warm layer**: For recomputation across nodes (see `/docs/architecture/03_caching_and_realtime.md`)
+  - TTL: 30 minutes
 
-#### Seat Hold Configuration
+**Phase 4+**:
 
-The following fields define the tenant-level defaults for seat holds and GA inventory reservations.
-These values SHOULD be overridden by event-level configuration where required.
-
-- `seat_hold_ttl_minutes`
-
-  - The number of minutes a GA or seated hold remains valid before automatic expiry.
-  - Default: 10 minutes.
-
-- `seat_hold_expiry_strategy`
-
-  - How expired holds are processed.
-  - Allowed: `:lazy_cleanup` (on access), `:strict_cleanup` (via Oban job), `:immediate_release` (aggressive).
-  - Default: `:strict_cleanup`.
-
-- `max_holds_per_user`
-
-  - Maximum number of active holds per user/session/cart across all events.
-  - Prevents abuse where a single user locks too many seats.
-
-- `max_holds_per_ip`
-  - Maximum holds allowed per IP to prevent automated scalping behavior.
-
-**Invariants**:
-
-- All holds MUST be stored in Redis ZSET with expiry timestamps.
-- A hold MAY NOT exist past its TTL unless overridden by admin tooling.
-
-**Enforcement**:
-
-- Applied during:
-  - TicketType creation (validate `kind` and `entitlement_mode` allowed).
-  - PricingRule creation (validate `rule_type` allowed).
-  - Coupon creation (validate allowed).
-  - Checkout (validate refund eligibility).
+Complex pricing models (tiered, volume-based, capacity-based, dynamic) will be introduced later. Phase 3 must not hard-code pricing logic in a way that blocks future models.
 
 ---
 
-### 7. PassBundle (Multi-Day / Package Tickets)
+## 6. Interaction with Events & Venues (CRITICAL)
 
-**Module**: `Voelgoedevents.Ash.Resources.Ticketing.PassBundle`  
-**File**: `lib/voelgoedevents/ash/resources/ticketing/pass_bundle.ex`  
-**Phase Introduced**: Phase 4
+**Do NOT introduce a separate Event state machine in Ticketing.** Instead:
 
-**Responsibility**: Represent passes and bundles (e.g., "3-Day Weekend Pass").
+- **Canonical Event States**: Defined in `/docs/domain/events_venues.md`
+- **Ticketing Rules**: Pure consequences of Event status and sale windows
 
-**Key Fields**:
+**Event Status Impact on Ticketing**:
 
-- `id` (UUID)
-- `organization_id` (UUID)
-- `event_id` (UUID)
-- `name` (string) — e.g., "3-Day Festival Pass"
-- `description` (string, nullable)
-- `type` (atom: `:multi_day_pass`, `:family_pack`, `:vip_bundle`, `:camping_addon`)
-- `bundle_ticket_type_ids` (array of UUIDs) — constituent ticket types
-- `bundle_price_cents` (integer) — total price (may be less than sum)
-- `valid_dates` (array of dates) — which days are valid
-- `entry_rules` (JSONB) — entry limits per day, resets, etc.
-- `refund_rules` (JSONB) — partial refund rules
-- `status` (atom: `:draft`, `:on_sale`, `:closed`)
-- `created_at`, `updated_at`
+| Event Status | Ticket Sales Allowed? | Notes |
+|--------------|----------------------|-------|
+| `:draft` | no | Internal/dev only |
+| `:published` | yes (if within sale window) | Publicly listed |
+| `:live` | yes (if within sale window) | Event in progress |
+| `:ended` | no | Finished; read-only |
+| `:cancelled` | no (stops immediately) | All holds released |
+| `:postponed` (no rescheduled_at) | no | No holds until rescheduled |
+| `:postponed` (with rescheduled_at) | yes (if within new window) | Sales resume |
+| `:archived` | no | Historical only |
 
-**Invariants**:
+**PubSub Listening**:
 
-- Bundle price SHOULD be less than or equal to sum of component prices.
-- Refund eligibility depends on how many days/items used.
+Ticketing domain listens to:
 
----
-
-### 8. AddOn (Optional Extras)
-
-**Module**: `Voelgoedevents.Ash.Resources.Ticketing.AddOn`  
-**File**: `lib/voelgoedevents/ash/resources/ticketing/addon.ex`  
-**Phase Introduced**: Phase 4
-
-**Responsibility**: Optional extras (parking, camping, merchandise).
-
-**Key Fields**:
-
-- `id` (UUID)
-- `organization_id` (UUID)
-- `event_id` (UUID)
-- `name` (string) — e.g., "Parking Pass"
-- `price_cents` (integer)
-- `max_per_order` (integer, nullable)
-- `inventory_available` (integer, nullable) — can be limited
-- `status` (atom: `:available`, `:sold_out`, `:discontinued`)
-- `created_at`, `updated_at`
-
-**Integration**:
-
-- AddOns selected during checkout, added to order line items.
-- Price locked in order.
+- Topic: `events:event:{event_id}`
+  - On `:cancelled` → Release all `:active` SeatHolds for that event
+  - On `:postponed` (no rescheduled_at) → Suspend new holds/checkouts
+  - On `:postponed` (rescheduled_at set) → Resume holds/checkouts
+- Publish reactions to `ticketing:event:{event_id}` for downstream consumers (checkout, scanning)
 
 ---
 
-## Ticket Entitlement & Check-In Rules
+## 7. Multi-Tenancy & RBAC (Phase 3)
 
-### Overview
+**Multi-Tenancy Enforcement**:
 
-Ticket entitlement defines HOW a ticket may be used during an event: single entry, re-entry, daily limits, multi-day access, etc.
+- All TicketType, SeatHold, and Coupon entities **must** be scoped by `organization_id`
+- No TicketType, pricing rule, or coupon may apply across organizations
+- Queries must always filter by org_id to prevent cross-tenant leakage
 
-### Supported Entitlement Modes
+**RBAC Capabilities** (align with `/docs/domain/rbac_and_platform_access.md`):
 
-| Mode                       | Behavior                                 | Use Case                            | Reset                                |
-| -------------------------- | ---------------------------------------- | ----------------------------------- | ------------------------------------ |
-| `:single_entry`            | Can scan exactly once. Re-entry blocked. | Day-pass, one-time access           | N/A                                  |
-| `:unlimited_reentry`       | Can scan unlimited times.                | Festival wristband, multi-venue     | N/A                                  |
-| `:limited_reentry_per_day` | Max X entries per day (configurable).    | Multi-day festival with daily limit | Daily (calendar/sliding/event-based) |
-| `:single_entry_per_day`    | Max 1 entry per day.                     | Gym membership, daily access        | Daily                                |
-| `:unlimited_multi_day`     | Unlimited entries on specified days.     | 3-day festival, valid Fri-Sun       | Daily                                |
+| Role | Manage TicketTypes | Manage Coupons/Pricing | View Revenue Reports | Trigger Refunds | Touch Ledger/Settlement |
+|------|-------------------|------------------------|----------------------|-----------------|-------------------------|
+| `:owner` | yes | yes | yes | (Phase 4+) | (Phase 4+) |
+| `:admin` | yes | yes | yes | (Phase 4+) | (Phase 4+) |
+| `:staff` | yes (bounded) | yes (bounded) | yes | no | no |
+| `:scanner_only` | no | no | no | no | no |
+| Platform `super_admin` | yes (audit logged) | yes (audit logged) | yes | (Phase 4+) | (Phase 4+) |
+| Platform `tenant_manager` | yes (with tenant consent & audit) | yes (with tenant consent & audit) | yes (support) | **no** | **no** |
 
-### Checkout Semantics
+**tenant_manager Constraints** (Platform-Level Support Role):
 
-TicketingPolicy and TicketType MUST specify how a ticket interacts with checkout actions at event gates.
+- `tenant_manager` may adjust TicketTypes and Coupons **only**:
+  - with explicit tenant approval, and
+  - when providing:
+    - `reason` (text: why the change is needed)
+    - `tenant_approval_reference` (email, ticket ID, signed agreement, etc.)
+  - All such changes **MUST** be logged via the Auditable/AuditLog mechanism
+  
+- `tenant_manager` may **NOT**:
+  - issue refunds
+  - touch ledger balances or settlement configuration
+  - change payment method or payout rules
+  - modify TicketType prices/coupons without documented tenant consent
 
-**Operational Rules**:
+This pattern mirrors Event cancel/postpone permissions in `/docs/domain/events_venues.md` and prevents silent, untraceable platform meddling.
 
-- **Exit Scan Required**
+**Audit Requirements**:
 
-  - If `checkout_required_for_reentry` is TRUE, a ticket MUST perform an EXIT scan
-    before performing the next valid ENTRY. This prevents infinite re-entry without explicit tracking.
-
-- **Optional Checkout**
-
-  - If `allow_checkout` is TRUE but `checkout_required_for_reentry` is FALSE:
-    - A ticket MAY check out.
-    - Re-entry is still allowed without performing an exit scan.
-    - Used for events that want approximate but not enforced occupancy tracking.
-
-- **No Checkout Allowed**
-
-  - If `allow_checkout` is FALSE:
-    - Devices MUST NOT offer a checkout option.
-    - All "exit gate" scanning attempts MUST be rejected.
-
-- **Daily Reset Interaction**
-
-  - For entitlement modes that reset daily (e.g., single_entry_per_day):
-    - Reset occurs at midnight or `event_day_start` as defined by event configuration.
-    - Exits do NOT reset the entitlement window.
-
-- **State Machine Requirements**
-  - ENTRY increments `entries_used`.
-  - EXIT sets `last_exit_at`.
-  - Re-entry rules MUST verify both:
-    1. Whether checkout was required
-    2. Whether entitlement caps have been reached
-
-These rules MUST be enforced by both the scanning API and the in-venue scanner devices.
+- All TicketType creation/update/delete must be logged with actor, timestamp, and changes
+- All coupon creation and usage must be auditable (especially application at checkout)
+- All platform-level overrides (super_admin, tenant_manager) must include reason and tenant consent reference
 
 ---
 
-## Pricing Models
+## 8. Redis Structures & Caching
 
-### Supported Models
+**ETS + Redis Layers** (per `/docs/architecture/03_caching_and_realtime.md`):
 
-| Model              | Use Case                   | Conditions                          |
-| ------------------ | -------------------------- | ----------------------------------- |
-| **Fixed**          | Simple, static pricing     | Price does not change               |
-| **Tiered**         | Volume discount            | `qty >= 50 → 10% off`               |
-| **Early-Bird**     | Early purchase discount    | Before date X → ZAR 50 off          |
-| **Capacity-Based** | Dynamic based on occupancy | `sold >= 50% → +5%`                 |
-| **Time-Window**    | Limited-time offer         | `valid_from` to `valid_until`       |
-| **Demand-Based**   | Surge pricing              | High occupancy → higher price       |
-| **Addon-Based**    | Add-on bundling            | Parking + ticket = bundle price     |
-| **Bundle-Based**   | Multi-ticket packages      | 3-Day pass < 3 × 1-Day              |
-| **Donation-Based** | Free events with donations | Optional donation field             |
-| **Override**       | Manual admin pricing       | Directly set price, bypassing rules |
+### SeatHold Expiry Tracking
 
-### Pricing Evaluation Logic
-
-**At Checkout**:
-
-1. Start with base price.
-2. Evaluate all active rules in priority order.
-3. Apply adjustments (stack or override per rule config).
-4. **Lock price** in order (immutable).
-5. Calculate fees (platform, processor) per PaymentPolicy.
-
-**Key Rules**:
-
-- Prices MUST be evaluated and locked **before payment**.
-- Prices MUST NOT change between cart and payment.
-- Price cache TTL: 30-120 seconds (short, for rapid re-evaluation).
-
----
-
-## Discount & Promotion Rules
-
-### Coupon Application
-
-**Multi-Coupon Mixing**:
-
-- By default: ONE coupon per order.
-- If `multi_coupon_allowed: true` on TicketingPolicy:
-  - Multiple coupons can be stacked.
-  - Applied in priority order.
-
-**Per-Coupon Limits**:
-
-- `max_uses`: Global limit (concurrency-safe via Redis INCR).
-- `per_customer_limit`: Max times a customer can use.
-- Usage validation at checkout.
-
-**Cross-Event Promotions**:
-
-- Coupon `applies_to: :all_events` applies to all org events.
-- Coupon `applies_to: :specific_events` lists event IDs.
-
-**Donation-Based Discount** (Free Events):
-
-- If event is free and donation enabled:
-  - Customer can donate any amount.
-  - Donation amount does NOT affect ticket price (ticket is free).
-  - Donation is separate ledger entry (4400-DONATION-REVENUE or liability).
-
----
-
-## Inventory Management
-
-### GA Inventory
-
-**Tracking**:
-
-- `total_capacity`: Fixed limit per ticket type.
-- `sold_count`: Confirmed sales.
-- `held_count`: Active seat holds (ZSET in Redis).
-- `available_quantity` (derived): `total_capacity - sold_count - held_count`
-
-**Cross-Zone Blending** (Phase 8+):
-
-- If seating allows GA + reserved zones:
-  - Total GA inventory = `total_capacity - reserved_allocated`.
-  - Inventory "pools" across zones.
-
-**Dynamic Release**:
-
-- Inventory can be released time-based (e.g., release VIP-only section at T-7 days).
-- Release is manual admin action or configured rule.
-
-### Seating Inventory (Phase 8)
-
-- Linked to Seat resources (1:1).
-- Seat status: `:available`, `:held`, `:sold`, `:blocked`.
-- Cross-zone queries must account for price zone.
-
----
-
-## Multi-Day & Multi-Event Validity
-
-### Ticket Validity Model
-
-**Date Ranges**:
-
-- Single-day: Event date only.
-- Multi-day: Specific date array (e.g., Friday, Saturday, Sunday).
-- Cross-event: Not supported in MVP (future feature).
-
-**Day-Indexed Access**:
-
-- Each valid day = one entry (`:limited_reentry_per_day`).
-- Reset strategy:
-  - `:calendar_day`: Resets at midnight UTC or org timezone.
-  - `:sliding_24h`: Resets 24h from first scan.
-  - `:event_day`: Resets at event start time each day.
-
-**QR Code Strategy**:
-
-- **Single QR**: One stable QR for all days (regenerated on refund only).
-- **Per-Day QR**: New QR generated each day (future, complex).
-
----
-
-## Refund & Ledger Integration
-
-### Refund Eligibility
-
-**By Ticket Type**:
-
-- TicketType field `refundable: true` (default).
-- If `refundable: false` (e.g., special events): No refunds allowed.
-
-**Platform Fee Handling**:
-
-- Determined by PaymentPolicy `refund_platform_fee_on_refund`:
-  - `false` (default): Platform fees non-refundable.
-  - `true`: Platform fees refundable.
-
-**Processor Fee Handling**:
-
-- Determined by PaymentPolicy `processor_fee_type`:
-  - `:non_refundable`: Customer absorbs processor fee.
-  - `:refundable`: Refunded if PSP supports it.
-
-### Refund Ledger Example
-
-**Ticket Sale** (Client Pays All Fees):
-
+**Redis ZSET**:
 ```
-Debit  1000-CASH                    1040 ZAR
-Credit 2000-PAYABLE-ORGANIZER        950 ZAR (ZAR 1000 - ZAR 50 platform fee)
-Credit 5000-PLATFORM-FEE              50 ZAR
-Credit 5100-PROCESSOR-FEE             40 ZAR
+Key: ticketing:holds:org:{org_id}:event:{event_id}
+Score: held_until (epoch timestamp)
+Value: seat_hold_id
+TTL: Match SeatHold TTL (15 minutes)
 ```
 
-**Refund** (Non-Refundable Platform Fee):
+Used by cleanup worker to efficiently identify expired holds without scanning all records.
 
+### TicketType Inventory Summary
+
+**Redis Hash**:
 ```
-Debit  2000-PAYABLE-ORGANIZER        950 ZAR
-Credit 5100-PROCESSOR-FEE             40 ZAR
-Credit 1000-CASH                     990 ZAR (customer gets back ZAR 1000 − ZAR 50 platform fee)
+Key: ticketing:inventory:{ticket_type_id}
+Fields: total_quantity, sold_count, held_count, status, last_updated
+TTL: 5 minutes (recalculated frequently due to volatile holds)
 ```
 
-(See payments_ledger.md for full details.)
+Used by checkout/cart flows for real-time availability checks.
+
+### Effective Pricing Cache
+
+**Redis Hash**:
+```
+Key: pricing:effective:{org_id}:{ticket_type_id}
+Fields: base_price, currency, effective_price, coupon_applied, last_updated
+TTL: 30 minutes
+```
+
+Invalidated on TicketType or Coupon change.
 
 ---
 
-## Seat Holds & Oversell Protection
+## 9. Indexing & Query Patterns
 
-### Hold Lifecycle
+**Critical Indexes on `ticket_types`**:
 
-**Creation**:
+- `organization_id`
+- `event_id`
+- `(organization_id, event_id)`
+- `(organization_id, status)`
 
-1. User selects seats/tickets.
-2. System creates SeatHold (status: `:active`, `held_until: now + 15 min`).
-3. Inventory decremented (held_count incremented).
-4. Hold stored in Redis ZSET + ETS for fast lookup.
+**Critical Indexes on `seat_holds`**:
 
-**Expiry**:
+- `organization_id`
+- `event_id`
+- `ticket_type_id`
+- `user_id`
+- `status`
+- `(event_id, status, held_until)` – for expiry scans
 
-1. Oban job runs every 30s, checks expired ZSET members.
-2. Deletes from Redis ZSET.
-3. Updates TicketType `held_count`.
-4. Broadcasts PubSub event (occupancy updated).
+**Critical Indexes on `coupons`**:
 
-**Conversion**:
+- `organization_id`
+- `event_id`
+- `code` (unique per org)
 
-1. Payment succeeds.
-2. SeatHold status → `:converted`.
-3. Seat holds released (held_count decremented).
-4. Tickets created.
+**Common Queries**:
 
-**Cancellation**:
-
-1. User abandons checkout.
-2. System marks SeatHold `:cancelled`.
-3. Releases inventory.
-
-### Oversell Prevention
-
-**Invariant**: `available_quantity >= 0` always.
-
-**Implementation**:
-
-1. **Optimistic Lock** on TicketType `version` field.
-2. **Redis DLM** (Distributed Lock Manager) for critical section.
-3. **ZSET Score** for hold expiry (atomic via Redis).
-
-**Race Condition Example**:
-
-- User A tries to hold last 5 GA tickets.
-- User B tries to hold same 5 tickets.
-- Only one succeeds (DLM ensures atomicity).
+- List TicketTypes for an event (with inventory): `WHERE event_id = ? AND status != :hidden`
+- Get active holds for an event: `WHERE event_id = ? AND status = :active AND held_until > now()`
+- Validate coupon at checkout: `WHERE code = ? AND organization_id = ? AND is_active = true`
 
 ---
 
-## Performance & Caching
+## 10. Interactions with Other Domains
 
-### Data Temperature
+### Events & Venues
 
-| Layer    | Purpose                                                          | TTL        | Technology  |
-| -------- | ---------------------------------------------------------------- | ---------- | ----------- |
-| **Hot**  | Inventory snapshots, hold status, pricing cache                  | 30-120 sec | ETS, Cachex |
-| **Warm** | Seat holds registry, coupon usage, aggregate counts              | 5-30 min   | Redis       |
-| **Cold** | Canonical resources (ticket types, rules, coupons, sold tickets) | Permanent  | PostgreSQL  |
-
-### Redis Structures
-
-```
-ticketing:holds:event:{event_id}
-  → ZSET, member={ticket_type_id}:{hold_id}, score={expires_at}
-
-ticketing:inventory:ga:{ticket_type_id}
-  → HASH | STRING, fields={available, sold, held}
-
-ticketing:coupon_uses:{coupon_id}
-  → Counter (INCR)
-
-ticketing:pricing:effective:{ticket_type_id}
-  → HASH | JSON, fields={current_price, next_threshold, ...}
-```
-
-### Caching Invalidation
-
-**Triggers**:
-
-- Ticket sold → invalidate inventory, pricing cache.
-- Seat hold created/expired → invalidate inventory.
-- PricingRule updated → invalidate pricing cache.
-- Coupon used → invalidate coupon usage counter.
-
-**Method**:
-
-- PubSub broadcast to all nodes.
-- Oban job for async cleanup.
-- TTL auto-expiry for eventual consistency.
-
----
-
-## Testing & Observability
-
-### Test Coverage
-
-**High-Concurrency Tests**:
-
-- Two users attempting last GA ticket → only one succeeds.
-- Seat hold expiry with high rate of purchases.
-- Coupon usage counter under concurrent updates.
-
-**Refund Tests**:
-
-- Non-refundable fee handling.
-- Refundable fee handling.
-- Partial refunds.
-
-**Pricing Tests**:
-
-- Rule evaluation order.
-- Coupon application.
-- Price locking at checkout.
-- Override-rule price locking during seat hold TTL.
-
-**Entitlement Tests**:
-
-- Single-entry blocks second scan.
-- Daily limit enforced.
-- Multi-day pass valid only on specified days.
-- Validate daily entitlement resets (midnight/event-day-based).
-- Validate multi-day pass behavior across different days.
-- Validate "single entry only" tickets reject re-entry.
-- Validate "checkout required" mode enforces EXIT scan before re-entry.
-- Validate "unlimited re-entry" mode correctly increments entry counters.
-- Validate `max_daily_entries` and `max_total_entries` caps.
-- Validate TicketingPolicy seat_hold_ttl and hold expiration correctness.
-
-### Metrics & Alerts
-
-| Metric                  | Target              | Alert                   |
-| ----------------------- | ------------------- | ----------------------- |
-| Oversell Incidents      | 0                   | Any > 0 = critical      |
-| Hold-to-Sale Conversion | 40-60%              | < 30% = investigate     |
-| Hold Expiry Rate        | Normal distribution | Spike = checkout issues |
-| Coupon Usage vs. Max    | < max               | Any >= max = warn       |
-| Price Cache Hit Rate    | 90%+                | < 80% = degradation     |
-
-### Logs
-
-- Log `organization_id`, `event_id`, `ticket_type_id`, `user_id` for all operations.
-- Log rule evaluation details (which rules applied, effective price).
-- Log hold creation/expiry/conversion.
-- Log refund eligibility checks.
-
----
-
-## Domain Interactions
+- **Dependency**: TicketType.event_id must reference a valid Event
+- **Constraint**: Ticket sales allowed only if Event.can_sell_tickets? == true
+- **PubSub**: Listen to event status changes to update hold behaviour
 
 ### Seating Domain (Phase 8)
 
-- TicketType `kind: :seated` links to Seating domain.
-- Seat resource provides `seat_id`.
-- Price zone mapping: Seat maps to PricingRule via zone.
+- **Deferred**: TicketType will link to seating constructs via bridge resource in Phase 8
+- **Constraint**: Phase 3 must NOT hard-code seat-specific logic
+- **Design Pattern**: Bridge resource (e.g., TicketTypeSeatBlock) will map TicketType to Seat inventory later
 
-### Payments & Ledger Domain
+### Payments & Ledger
 
-- Order → Transaction (payment processing).
-- Refund → JournalEntry (ledger reversal).
-- TicketType `refundable` flag + PaymentPolicy `refund_platform_fee` determine ledger impact.
+- **Dependency**: Order creation requires TicketType validation (inventory, price, eligibility)
+- **Refund Integration**: Determined by Coupon.refundable flag (Phase 4+)
 
-### Scanning Domain
+### Scanning & Devices
 
-- Ticket entitlement mode governs re-entry behaviour.
-- Scan workflow validates entry count against entitlement mode.
-- Multi-day passes validate date of scan against valid_dates.
+- **Dependency**: Ticket scanning uses **Ticket status** (and Event status) to validate eligibility
+- **SeatHold**: Is a checkout-time construct only and is **never consulted at scan time**
+- **Entitlement**: In Phase 3, all scans are `:single_entry` (no re-entry logic yet)
 
-### Analytics Domain
+### Reporting & Analytics
 
-- Ticket sales feed into FunnelSnapshot.
-- Pricing rule effectiveness tracked (% discount applied).
-
----
-
-## MVP vs. Future Phases
-
-### Phase 3-4: Basic Ticketing & Pricing
-
-**In Scope**:
-
-- Simple TicketType (GA, basic seated).
-- Fixed pricing + early-bird rule.
-- Coupon codes (basic usage tracking).
-- Seat holds (5 min TTL).
-- Single-entry entitlement only.
-
-**Out of Scope**:
-
-- Advanced pricing models (demand-based, addon-based).
-- Multi-coupon stacking.
-- Complex entitlement modes (daily limits, multi-day passes).
-- TicketingPolicy resource (assume defaults).
-- Passes/bundles (simplified).
-
-### Phase 8+: Advanced Ticketing
-
-**Additions**:
-
-- All pricing models (tiered, capacity-based, demand-based, addon-based, bundle-based, override).
-- Multi-coupon stacking.
-- All entitlement modes (daily limits, multi-day passes, unlimited re-entry).
-- TicketingPolicy resource (full SuperAdmin control).
-- Complex passes and bundles.
-- Donation subsystem.
-- Advanced inventory management (cross-zone blending, dynamic release).
-- Full checkout semantics with exit scan tracking.
+- **Feeds**: Ticket sales and hold creation/expiry feed FunnelSnapshot
+- **Dimension**: Event + TicketType is primary breakdown
 
 ---
 
-## New Resources to Register
+## 11. Performance & Observability
 
-The following resources MUST be added to `DOMAIN_MAP.md` and `ai_context_map.md`:
+### Tests (Phase 3 Must Cover)
 
-| Resource          | Module                                                   | File Path                                                        | Domain    | Phase | Notes                              |
-| ----------------- | -------------------------------------------------------- | ---------------------------------------------------------------- | --------- | ----- | ---------------------------------- |
-| `TicketingPolicy` | `Voelgoedevents.Ash.Resources.Ticketing.TicketingPolicy` | `lib/voelgoedevents/ash/resources/ticketing/ticketing_policy.ex` | Ticketing | 3     | SuperAdmin controls per tenant     |
-| `PassBundle`      | `Voelgoedevents.Ash.Resources.Ticketing.PassBundle`      | `lib/voelgoedevents/ash/resources/ticketing/pass_bundle.ex`      | Ticketing | 4     | Multi-day passes, family packs     |
-| `AddOn`           | `Voelgoedevents.Ash.Resources.Ticketing.AddOn`           | `lib/voelgoedevents/ash/resources/ticketing/addon.ex`            | Ticketing | 4     | Optional extras (parking, camping) |
+- **Inventory Protection**:
+  - Cannot oversell (available_quantity must remain >= 0)
+  - sold_count + held_count <= total_quantity always
+
+- **SeatHold Lifecycle**:
+  - Hold expires after exactly 15 minutes
+  - Expiry releases quantity back to available
+  - Cleanup worker processes expirations correctly
+
+- **Event Status Transitions**:
+  - `:cancelled` event releases all active holds
+  - `:postponed` (no rescheduled_at) suspends new holds
+  - `:postponed` (with rescheduled_at) resumes holds
+
+- **Multi-Tenant Isolation**:
+  - Cannot access another org's TicketTypes, SeatHolds, or Coupons
+  - Coupon never applies across orgs
+
+- **Coupon Validation**:
+  - Invalid coupons rejected (expired, max uses reached, inactive)
+  - Per-user limits enforced correctly
+
+### Observability: Telemetry Events
+
+Emit structured telemetry with these standard fields:
+
+- `organization_id`
+- `event_id`
+- `ticket_type_id`
+- `user_id` (if applicable)
+- `timestamp`
+
+**Events to Track**:
+
+1. **Ticket Sold**
+   - Fields: quantity, price, coupon_code, effective_price
+   - Used for: Revenue tracking, discount analysis
+
+2. **Hold Created**
+   - Fields: quantity, source (web/scanner/backoffice)
+   - Used for: Conversion funnel, hold analysis
+
+3. **Hold Expired**
+   - Fields: quantity, reason (natural TTL vs event cancelled/postponed)
+   - Used for: Cart abandonment metrics, inventory volatility
+
+4. **Hold Converted** (to ticket)
+   - Fields: quantity, conversion_time_seconds
+   - Used for: Checkout conversion rates
+
+5. **Inventory Recalculated**
+   - Fields: total_quantity, sold_count, held_count, available_quantity
+   - Used for: Inventory health monitoring
+
+6. **Coupon Applied**
+   - Fields: coupon_code, discount_type, discount_amount
+   - Used for: Pricing analytics, discount effectiveness
+
+7. **TicketType Status Changed**
+   - Fields: old_status, new_status, reason
+   - Used for: Audit, sales pattern analysis
+
+### Logs
+
+- Log all TicketType CRUD operations with actor, timestamp, and changes
+- Log hold creation/expiry/conversion with reason
+- Log coupon application attempts (valid and invalid)
+- Log refund eligibility checks and outcomes
 
 ---
 
-## Document Status
+## 12. Edge Cases & Error Handling
 
-**Version**: 2.1 (Extended, Finalized, and Edited)  
-**Last Updated**: December 8, 2025  
-**Status**: Canonical Specification for Phase 3, 4, and 8 Implementation — Phase-Ready  
-**Next Review**: After Phase 4 completion (before Phase 8 seating integration)
+- **Concurrent holds on same TicketType**:
+  - Use distributed lock (DLM) during hold creation: `lock:ticket_type:{ticket_type_id}`
+  - Prevents double-booking via optimistic lock on version field
+
+- **Event cancelled mid-hold**:
+  - SeatHold release triggered via PubSub notification
+  - If release fails, manual intervention queue flagged for admin
+
+- **Hold expiry race**:
+  - Worker checks `held_until` at invocation time; if already released, skip
+  - Idempotent release logic ensures no double-decrement
+
+- **Coupon exhausted at checkout**:
+  - Validate max_uses BEFORE checkout creation
+  - If exhausted between validation and checkout, checkout fails with clear message
 
 ---
 
-## References
+## 13. Future Extensions (Phase 4+)
 
-### Internal VoelgoedEvents Docs
+**Not in Phase 3 Scope**:
 
-- `MASTER_BLUEPRINT.md` — Section 4 (Domain Map), Section 7 (Workflows)
-- `DOMAIN_MAP.md` — Section 4 (Ticketing & Pricing)
-- `PROJECT_GUIDE.md` — Section 5.3 (Ticketing Resources)
-- `payments_ledger.md` — Refund fee logic, ledger integration
-- `start_checkout.md` — Pricing calculation workflow
-- `complete_checkout.md` — Ticket issuance and inventory updates
-- `VOELGOEDEVENTS_FINAL_ROADMAP.md` — Phase 3 (Core Events & GA Ticketing), Phase 4 (Orders & Payments), Phase 8 (Seating)
-- `03_caching_and_realtime.md` — Cache layers, PubSub patterns
-- `02_multi_tenancy.md` — Multi-tenant enforcement
-- `05_eventing_model.md` — Domain event emission
+- Complex pricing models (tiered, capacity-based, demand-based, add-on-based, bundle-based)
+- Multi-coupon stacking
+- Advanced entitlement modes (re-entry, daily limits, multi-day passes)
+- Passes, bundles, add-ons
+- TicketingPolicy resource (tenant-level configuration)
+- Seated tickets and per-seat pricing
+- Donation subsystem
+- Refund policy enforcement
 
-### External References
+These will be introduced in later phases with clear TOON prompts and phase documentation.
 
-- **Stripe Pricing & Billing**: https://stripe.com/billing/pricing
-- **Event Ticketing Best Practices**: https://www.eventbrite.com/platform/solutions/
-- **Capacity-Based Pricing**: https://en.wikipedia.org/wiki/Yield_management
+---
+
+## 14. Document Status
+
+**Version**: 3.1 (Phase 3 Canonical + RBAC & Scanning Updates)  
+**Last Updated**: December 11, 2025  
+**Status**: Phase 3 Specification – GA Ticketing Only  
+**Next Review**: After Phase 3 implementation, before Phase 4 planning  
+
+---
+
+## 15. References
+
+- `/docs/PHASE_03_Core_Events_&_GA_Ticketing.md` – Phase 3 implementation roadmap
+- `/docs/domain/events_venues.md` – Event lifecycle and state machine (canonical)
+- `/docs/domain/rbac_and_platform_access.md` – RBAC policies and capabilities
+- `/docs/architecture/02_multi_tenancy.md` – Multi-tenancy enforcement patterns
+- `/docs/architecture/03_caching_and_realtime.md` – ETS + Redis caching patterns
+- `/docs/architecture/05_eventing_model.md` – PubSub topics and event patterns
+- `/docs/architecture/06_jobs_and_async.md` – Oban job patterns
 
 ---

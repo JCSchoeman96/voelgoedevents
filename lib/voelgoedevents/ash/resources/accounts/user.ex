@@ -198,7 +198,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     :confirm,
     :resend_confirmation,
     :request_password_reset,
-    :reset_password
+    :reset_password,
+    :get_by_subject
   ]
 
   policies do
@@ -253,15 +254,21 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     {:ok, Application.fetch_env!(:voelgoedevents, :token_signing_secret)}
   end
 
+  # Allow AshAuthentication and other “no actor yet” flows to query users
+  # safely. Authorization is still enforced by the policies block.
+  def filter_by_organization(query, %{actor: nil}), do: query
+
   def filter_by_organization(query, %{actor: actor}) do
     case Map.get(actor, :organization_id) do
       nil ->
+        # Actor exists but has no org – hard deny
         Query.filter(query, false)
 
       organization_id ->
         Query.filter(query, exists(memberships, organization_id == ^organization_id))
     end
   end
+
 
   def setup_new_user_membership(changeset, _context) do
     organization_id = Changeset.get_argument(changeset, :organization_id)

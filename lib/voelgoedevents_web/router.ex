@@ -92,6 +92,13 @@ defmodule VoelgoedeventsWeb.Router do
     live "/select-organization", Live.Tenancy.OrganizationSelectionLive, :index
   end
 
+  # Dashboard Route (for OrganizationSelectionLive redirect)
+  scope "/dashboard", VoelgoedeventsWeb do
+    pipe_through [:browser, :ash_actor]
+
+    live "/:slug", Live.AdminDashboard.DashboardLive, :show
+  end
+
   # Tenant-scoped routes (multi-tenancy enforcement)
   scope "/t/:slug", VoelgoedeventsWeb do
     # CRITICAL: browser -> tenant_scope (resolves org) -> THEN ash_actor (hydrates with org)

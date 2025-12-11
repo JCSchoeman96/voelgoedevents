@@ -25,10 +25,7 @@ defmodule Voelgoedevents.Ash.Policies.PlatformPolicy do
       policy action_type([:read, :create, :update, :destroy, :action]) do
         description "Platform admin root access (authorization only; audit/rate limits still apply)"
 
-        authorize_if expr(
-                       actor(:is_platform_admin) == true or
-                         actor(:is_platform_admin?) == true
-                     )
+        authorize_if actor_attribute_equals(:is_platform_admin, true)
       end
     end
   end

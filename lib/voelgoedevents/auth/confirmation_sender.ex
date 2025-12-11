@@ -9,7 +9,7 @@ defmodule Voelgoedevents.Auth.ConfirmationSender do
   @impl true
   def send(user, token, _opts) do
     new()
-    |> to({full_name(user), user.email})
+    |> to({full_name(user), to_string(user.email)})
     |> from({"VoelgoedEvents", "no-reply@voelgoedevents.test"})
     |> subject("Confirm your VoelgoedEvents account")
     |> text_body(build_body(token))

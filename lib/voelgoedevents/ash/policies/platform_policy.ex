@@ -22,7 +22,10 @@ defmodule Voelgoedevents.Ash.Policies.PlatformPolicy do
   """
   defmacro platform_admin_root_access do
     quote do
-      policy action_type([:read, :create, :update, :destroy, :action]) do
+      # Platform admin “root access” – if this passes, we skip all other policies.
+      # If it does NOT pass (actor not platform_admin or actor = nil),
+      # it does NOT cause a failure; it’s simply ignored.
+      bypass action_type([:read, :create, :update, :destroy, :action]) do
         description "Platform admin root access (authorization only; audit/rate limits still apply)"
 
         authorize_if actor_attribute_equals(:is_platform_admin, true)

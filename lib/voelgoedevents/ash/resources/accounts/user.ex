@@ -37,6 +37,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
         identity_field :email
         hashed_password_field :hashed_password
         hash_provider AshAuthentication.BcryptProvider
+        register_action_accept [:first_name, :last_name]
       end
     end
 
@@ -46,6 +47,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
       token_resource Voelgoedevents.Ash.Resources.Accounts.Token
       # FIX: Use __MODULE__ (must be public)
       signing_secret &__MODULE__.get_token_signing_secret/2
+      store_all_tokens? true
     end
   end
 

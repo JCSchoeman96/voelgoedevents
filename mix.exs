@@ -129,7 +129,7 @@ defmodule Voelgoedevents.MixProject do
       ],
       precommit: ["compile --warning-as-errors", "deps.unlock --unused", "format", "test"],
       "ash.audit": ["ash.audit"],
-      "check": ["format", "ash.audit", "test"]
+      check: ["format", "ash.audit", "test"]
     ]
   end
 end

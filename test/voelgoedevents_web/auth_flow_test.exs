@@ -56,6 +56,10 @@ defmodule VoelgoedeventsWeb.AuthFlowTest do
           }
         })
 
+      # TEMP: inspect what is actually going on
+      IO.puts("STATUS: #{inspect(conn.status)}")
+      IO.puts("BODY:\n#{conn.resp_body}")
+
       # Successful auth should redirect (302)
       assert redirected_to(conn, 302)
     end
@@ -91,12 +95,15 @@ defmodule VoelgoedeventsWeb.AuthFlowTest do
     test "registration endpoint exists and accepts requests", %{conn: conn} do
       unique_email = "register-#{System.unique_integer([:positive])}@example.com"
 
+      # In auth_flow_test.exs, update the registration test
       conn =
         post(conn, ~p"/auth/user/password/register", %{
           "user" => %{
             "email" => unique_email,
             "password" => @password,
-            "password_confirmation" => @password
+            "password_confirmation" => @password,
+            "first_name" => "Test",
+            "last_name" => "User"
           }
         })
 

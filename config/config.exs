@@ -30,7 +30,7 @@ config :voelgoedevents,
   redis_url: "redis://localhost:6379",
   redis_pool_size: 10
 
-config :voelgoedevents, :ash_rate_limiter, hammer: Voelgoedevents.RateLimit
+config :voelgoedevents, :ash_rate_limiter, hammer: Voelgoedevents.RateLimitBackend
 
 # --- SESSION SECURITY ---
 config :voelgoedevents,

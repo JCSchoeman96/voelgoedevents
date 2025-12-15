@@ -5,12 +5,16 @@ import Config
 # The MIX_TEST_PARTITION environment variable can be used
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
+port = String.to_integer(System.get_env("DB_PORT") || "5433")
+
 config :voelgoedevents, Voelgoedevents.Repo,
   username: System.get_env("DB_USERNAME") || "voelgoed",
   password: System.get_env("DB_PASSWORD") || "voelgoed_dev",
   hostname: System.get_env("DB_HOST") || "localhost",
-  database: (System.get_env("DB_TEST_NAME") || "voelgoedevents_test") <> "#{System.get_env("MIX_TEST_PARTITION")}",
-  port: String.to_integer(System.get_env("DB_PORT") || "5432"),
+  database:
+    (System.get_env("DB_TEST_NAME") || "voelgoedevents_test") <>
+      "#{System.get_env("MIX_TEST_PARTITION")}",
+  port: port,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
@@ -18,8 +22,10 @@ config :voelgoedevents, Voelgoedevents.ObanRepo,
   username: System.get_env("DB_USERNAME") || "voelgoed",
   password: System.get_env("DB_PASSWORD") || "voelgoed_dev",
   hostname: System.get_env("DB_HOST") || "localhost",
-  database: (System.get_env("DB_TEST_NAME") || "voelgoedevents_test") <> "#{System.get_env("MIX_TEST_PARTITION")}",
-  port: String.to_integer(System.get_env("DB_PORT") || "5432"),
+  database:
+    (System.get_env("DB_TEST_NAME") || "voelgoedevents_test") <>
+      "#{System.get_env("MIX_TEST_PARTITION")}",
+  port: port,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
@@ -50,3 +56,5 @@ config :phoenix_live_view,
 config :voelgoedevents,
        :token_signing_secret,
        "test_only_token_signing_secret_for_testing_purposes_only_xyz789"
+
+config :voelgoedevents, :rate_limiter_on_error, :allow

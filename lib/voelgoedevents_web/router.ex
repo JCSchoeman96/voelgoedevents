@@ -1,7 +1,6 @@
 defmodule VoelgoedeventsWeb.Router do
   use VoelgoedeventsWeb, :router
   use AshAuthentication.Phoenix.Router
-  use Honeybadger.Plug
 
   # ---------------------------------------------------------------------------
   # Browser Pipeline
@@ -22,12 +21,8 @@ defmodule VoelgoedeventsWeb.Router do
   # Auth-Limited Pipeline (Browser + Rate Limiting)
   # ---------------------------------------------------------------------------
   pipeline :auth_limited do
-    # We *extend* browser in scopes: [:browser, :auth_limited]
     plug VoelgoedeventsWeb.Plugs.SetRateLimitContext
-
-    plug VoelgoedeventsWeb.Plugs.RateLimiter,
-      max_requests: 10,
-      interval_ms: 60_000
+    plug VoelgoedeventsWeb.Plugs.RateLimiter
   end
 
   # ---------------------------------------------------------------------------

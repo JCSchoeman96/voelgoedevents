@@ -44,10 +44,14 @@ bind_session_ip =
 
 config :voelgoedevents, :bind_session_ip, bind_session_ip
 
+honeybadger_key = System.get_env("HONEYBADGER_API_KEY")
+
 config :honeybadger,
   api_key: System.get_env("HONEYBADGER_API_KEY"),
-  environment_name: System.get_env("PHX_HOST") || "development",
-  insights_enabled: true
+  environment_name: System.get_env("HONEYBADGER_ENV") || Atom.to_string(config_env()),
+  insights_enabled: config_env() == :prod,
+  # if no key, effectively disable reporting
+  disabled: is_nil(honeybadger_key)
 
 # AshAuthentication token signing secret
 # In prod, this MUST be set via environment variable

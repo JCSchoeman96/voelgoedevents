@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BEADS_DIR="beads"
+ISSUES_DIR="$BEADS_DIR/issues"
+INDEX_FILE="$BEADS_DIR/index.md"
+
+today() {
+  date +"%Y-%m-%d"
+}
+
+ensure_index() {
+  if [ ! -f "$INDEX_FILE" ]; then
+    cat > "$INDEX_FILE" <<EOF
+# Beads Index
+
+| ID | Title | Status | Type | Area | Created |
+|----|-------|--------|------|------|---------|
+EOF
+  fi
+}
+
+next_id() {
+  ls "$ISSUES_DIR" 2>/dev/null \
+    | grep -E '^[0-9]{4}-' \
+    | sed 's/-.*//' \
+    | sort -n \
+    | tail -n1 \
+    | awk '{ printf "%04d", ($1 + 1) }' \
+    || echo "0001"
+}
+
+cmd_new() {
+  ensure_index
+
+  TITLE="$*"
+  if [ -z "$TITLE" ]; then
+    echo "Usage: bin/beads new \"short description\""
+    exit 1
+  fi
+
+  ID=$(next_id)
+  SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g')
+  FILE="$ISSUES_DIR/${ID}-${SLUG}.md"
+
+  cat > "$FILE" <<EOF
+# Beads Issue $ID — $TITLE
+
+Status: Open
+Created: $(today)
+Owner: $(whoami)
+Type: bug
+Area:
+
+## Context
+
+## Symptoms
+
+## Reproduction
+
+## Expected behavior
+
+## Root cause
+
+## Fix
+
+## Proof
+
+## Prevention
+EOF
+
+  echo "| $ID | $TITLE | Open | bug |  | $(today) |" >> "$INDEX_FILE"
+
+  echo "Created issue $FILE"
+}
+
+cmd_close() {
+  ensure_index
+
+  ID="$1"
+  if [ -z "$ID" ]; then
+    echo "Usage: bin/beads close 0001"
+    exit 1
+  fi
+
+  FILE=$(ls "$ISSUES_DIR"/"$ID"-*.md 2>/dev/null | head -n1 || true)
+  if [ -z "$FILE" ]; then
+    echo "Issue $ID not found"
+    exit 1
+  fi
+
+  sed -i '' -e 's/^Status: .*/Status: Closed/' "$FILE" 2>/dev/null \
+    || sed -i -e 's/^Status: .*/Status: Closed/' "$FILE"
+
+  sed -i '' -e "s/| $ID | \\(.*\\) | Open |/| $ID | \\1 | Closed |/" "$INDEX_FILE" 2>/dev/null \
+    || sed -i -e "s/| $ID | \\(.*\\) | Open |/| $ID | \\1 | Closed |/" "$INDEX_FILE"
+
+  echo "Closed issue $ID"
+}
+
+case "${1:-}" in
+  new)
+    shift
+    cmd_new "$@"
+    ;;
+  close)
+    shift
+    cmd_close "$@"
+    ;;
+  *)
+    echo "Usage:"
+    echo "  bin/beads new \"description\""
+    echo "  bin/beads close 0001"
+    exit 1
+    ;;
+esac

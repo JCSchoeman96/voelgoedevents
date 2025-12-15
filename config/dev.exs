@@ -1,12 +1,14 @@
 import Config
 
 # Configure your database
+port = String.to_integer(System.get_env("DB_PORT") || "5433")
+
 config :voelgoedevents, Voelgoedevents.Repo,
   username: System.get_env("DB_USERNAME") || "voelgoed",
   password: System.get_env("DB_PASSWORD") || "voelgoed_dev",
   hostname: System.get_env("DB_HOST") || "localhost",
   database: System.get_env("DB_NAME") || "voelgoedevents_dev",
-  port: String.to_integer(System.get_env("DB_PORT") || "5432"),
+  port: port,
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
@@ -16,7 +18,7 @@ config :voelgoedevents, Voelgoedevents.ObanRepo,
   password: System.get_env("DB_PASSWORD") || "voelgoed_dev",
   hostname: System.get_env("DB_HOST") || "localhost",
   database: System.get_env("DB_NAME") || "voelgoedevents_dev",
-  port: String.to_integer(System.get_env("DB_PORT") || "5432"),
+  port: port,
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
@@ -73,6 +75,8 @@ config :voelgoedevents, VoelgoedeventsWeb.Endpoint,
       ~r"lib/voelgoedevents_web/(?:controllers|live|components|router)/?.*\.(ex|heex)$"
     ]
   ]
+
+config :voelgoedevents, :rate_limiter_on_error, :allow
 
 # Enable dev routes for dashboard and mailbox
 config :voelgoedevents, dev_routes: true

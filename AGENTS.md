@@ -25,6 +25,22 @@ This document defines:
 
 ---
 
+## Beads workflow (mandatory)
+
+Before coding:
+- Check beads/index.md
+- If a bug or change request exists, use that issue
+- Otherwise create one with bin/beads new
+
+While working:
+- Update Root cause, Fix, Proof, Prevention sections
+
+After fix:
+- Ensure tests are green
+- Close issue with bin/beads close <id>
+- Reference Beads ID in commit message
+
+
 ## 2. Mandatory Load Order (Before ANY Coding)
 
 Before writing, modifying, deleting, or generating any code, the agent must load the following documents **IN THIS ORDER**:

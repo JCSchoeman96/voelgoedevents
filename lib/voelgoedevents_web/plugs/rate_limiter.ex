@@ -1,60 +1,65 @@
 defmodule VoelgoedeventsWeb.Plugs.RateLimiter do
   @moduledoc """
-  HTTP-level rate limiting for sensitive endpoints.
+  Applies one-or-more rate limit rules (usually set by SetRateLimitContext).
 
-  Uses Hammer + Redis under Voelgoedevents.RateLimit.
-  Typically applied to /auth routes to limit attempts per IP.
+  Resilience:
+    - If Redis/Hammer is unavailable, behavior is controlled by :on_error.
+      Recommended:
+        * dev/test: :allow
+        * prod: :deny (or :service_unavailable)
   """
+  import Plug.Conn
 
   @behaviour Plug
-
-  import Plug.Conn
-  require Logger
-
-  @default_max 10
-  @default_interval_ms :timer.minutes(1)
 
   def init(opts), do: opts
 
   def call(conn, opts) do
-    max_requests = Keyword.get(opts, :max_requests, @default_max)
-    interval_ms = Keyword.get(opts, :interval_ms, @default_interval_ms)
+    rules = conn.assigns[:rate_limit_rules] || []
+    on_error = Keyword.get(opts, :on_error, default_on_error())
 
-    ip = extract_ip(conn)
-    key = "auth:http:ip:#{ip}"
+    Enum.reduce_while(rules, conn, fn rule, conn ->
+      key = rule.key
+      interval_ms = rule.interval_ms
+      max = rule.max
 
-    case Voelgoedevents.RateLimit.hit(key, interval_ms, max_requests) do
-      {:allow, count} ->
-        conn
-        |> put_resp_header("x-ratelimit-limit", to_string(max_requests))
-        |> put_resp_header("x-ratelimit-remaining", to_string(max(0, max_requests - count)))
+      case Voelgoedevents.RateLimit.hit(key, interval_ms, max) do
+        {:allow, _count} ->
+          {:cont, conn}
 
-      {:deny, retry_after_ms} ->
-        Logger.warning("HTTP auth rate limit exceeded",
-          ip: ip,
-          path: conn.request_path
-        )
+        {:deny, retry_ms} ->
+          conn
+          |> put_resp_header("cache-control", "no-store")
+          |> put_resp_header("retry-after", Integer.to_string(ceil(retry_ms / 1000)))
+          |> send_resp(429, "Too Many Requests")
+          |> halt()
+          |> then(&{:halt, &1})
 
-        conn
-        |> put_resp_header("retry-after", Integer.to_string(div(retry_after_ms, 1000)))
-        |> put_resp_content_type("application/json")
-        |> send_resp(429, ~s({"error":"Too Many Requests"}))
-        |> halt()
-    end
+        {:error, _reason} ->
+          handle_error(conn, on_error)
+      end
+    end)
   end
 
-  defp extract_ip(conn) do
-    case get_req_header(conn, "x-forwarded-for") do
-      [forwarded | _] ->
-        forwarded
-        |> String.split(",")
-        |> List.first()
-        |> String.trim()
+  defp handle_error(conn, :allow), do: {:cont, conn}
 
-      [] ->
-        conn.remote_ip
-        |> :inet.ntoa()
-        |> to_string()
-    end
+  defp handle_error(conn, :deny) do
+    conn
+    |> put_resp_header("cache-control", "no-store")
+    |> send_resp(429, "Too Many Requests")
+    |> halt()
+    |> then(&{:halt, &1})
+  end
+
+  defp handle_error(conn, :service_unavailable) do
+    conn
+    |> put_resp_header("cache-control", "no-store")
+    |> send_resp(503, "Rate limiter unavailable")
+    |> halt()
+    |> then(&{:halt, &1})
+  end
+
+  defp default_on_error do
+    Application.get_env(:voelgoedevents, :rate_limiter_on_error, :allow)
   end
 end

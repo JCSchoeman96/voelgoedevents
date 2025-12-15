@@ -2,19 +2,21 @@ import Config
 
 # Configure your database
 config :voelgoedevents, Voelgoedevents.Repo,
-  username: "voelgoed",
-  password: "voelgoed_dev",
-  hostname: "localhost",
-  database: "voelgoedevents_dev",
+  username: System.get_env("DB_USERNAME") || "voelgoed",
+  password: System.get_env("DB_PASSWORD") || "voelgoed_dev",
+  hostname: System.get_env("DB_HOST") || "localhost",
+  database: System.get_env("DB_NAME") || "voelgoedevents_dev",
+  port: String.to_integer(System.get_env("DB_PORT") || "5432"),
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
 
 config :voelgoedevents, Voelgoedevents.ObanRepo,
-  username: "voelgoed",
-  password: "voelgoed_dev",
-  hostname: "localhost",
-  database: "voelgoedevents_dev",
+  username: System.get_env("DB_USERNAME") || "voelgoed",
+  password: System.get_env("DB_PASSWORD") || "voelgoed_dev",
+  hostname: System.get_env("DB_HOST") || "localhost",
+  database: System.get_env("DB_NAME") || "voelgoedevents_dev",
+  port: String.to_integer(System.get_env("DB_PORT") || "5432"),
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10

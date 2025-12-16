@@ -3,6 +3,10 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
   alias Voelgoedevents.Ash.Preparations.FilterByTenant
   require Ash.Query
 
+  defp org_id_ref?(:organization_id), do: true
+  defp org_id_ref?(%Ash.Query.Ref{attribute: %{name: :organization_id}}), do: true
+  defp org_id_ref?(_), do: false
+
   # Minimal domain for testing
   defmodule TestDomain do
     use Ash.Domain, otp_app: :voelgoedevents
@@ -35,11 +39,9 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
 
     assert %Ash.Filter{expression: expression} = prepared.filter
 
-    assert %Ash.Query.Operator.Eq{
-             operator: :==,
-             left: :organization_id,
-             right: ^org_id
-           } = expression
+    assert %Ash.Query.Operator.Eq{operator: :==} = expression
+    assert org_id_ref?(expression.left)
+    assert expression.right == org_id
   end
 
   test "nil actor with organization_id in context uses context org" do
@@ -51,11 +53,9 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
 
     assert %Ash.Filter{expression: expression} = prepared.filter
 
-    assert %Ash.Query.Operator.Eq{
-             operator: :==,
-             left: :organization_id,
-             right: ^org_id
-           } = expression
+    assert %Ash.Query.Operator.Eq{operator: :==} = expression
+    assert org_id_ref?(expression.left)
+    assert expression.right == org_id
   end
 
   test "no actor but context has organization_id uses context org" do
@@ -67,11 +67,9 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
 
     assert %Ash.Filter{expression: expression} = prepared.filter
 
-    assert %Ash.Query.Operator.Eq{
-             operator: :==,
-             left: :organization_id,
-             right: ^org_id
-           } = expression
+    assert %Ash.Query.Operator.Eq{operator: :==} = expression
+    assert org_id_ref?(expression.left)
+    assert expression.right == org_id
   end
 
   test "platform admin with skip_tenant_rule bypasses tenant filter" do
@@ -103,11 +101,9 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
 
     assert %Ash.Filter{expression: expression} = prepared.filter
 
-    assert %Ash.Query.Operator.Eq{
-             operator: :==,
-             left: :organization_id,
-             right: ^org_id
-           } = expression
+    assert %Ash.Query.Operator.Eq{operator: :==} = expression
+    assert org_id_ref?(expression.left)
+    assert expression.right == org_id
   end
 
   test "non-admin with skip_tenant_rule raises error" do

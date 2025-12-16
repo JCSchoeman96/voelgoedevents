@@ -40,3 +40,9 @@ npm-debug.log
 .env.*
 
 priv/resource_snapshots/
+
+# Beads
+.beads/beads.db
+.beads/*.db
+.beads/*-wal
+.beads/*-shm

@@ -1,5 +1,7 @@
 # CLAUDE.md — VoelgoedEvents Agent Rulebook (Claude-Specific)
 
+Note: This project uses bd (beads) for issue tracking. Use bd commands instead of markdown TODOs. See AGENTS.md.
+
 **Purpose:** Define mandatory behavior, coding standards, and execution rules for Claude (Claude Code, Claude API, Claude Pro) working on VoelgoedEvents  
 **Audience:** Claude in all modes (interactive, code generation, reasoning, analysis)
 

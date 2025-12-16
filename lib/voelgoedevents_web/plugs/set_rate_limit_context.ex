@@ -24,31 +24,31 @@ defmodule VoelgoedeventsWeb.Plugs.SetRateLimitContext do
           []
           |> maybe_add_rule(true, %{
             key: "vge:rl:auth:login:ip:#{ip}",
-            max: 60,
-            interval_ms: 60_000
+            max: limit(:login_ip).max,
+            interval_ms: limit(:login_ip).interval_ms
           })
           |> maybe_add_rule(email_hash != nil, %{
             key: "vge:rl:auth:login:email_ip:#{email_hash}:#{ip}",
-            max: 10,
-            interval_ms: 600_000
+            max: limit(:login_email_ip).max,
+            interval_ms: limit(:login_email_ip).interval_ms
           })
           |> maybe_add_rule(email_hash != nil, %{
             key: "vge:rl:auth:login:email:#{email_hash}",
-            max: 20,
-            interval_ms: 3_600_000
+            max: limit(:login_email).max,
+            interval_ms: limit(:login_email).interval_ms
           })
 
         :reset ->
           []
           |> maybe_add_rule(true, %{
             key: "vge:rl:auth:reset:ip:#{ip}",
-            max: 30,
-            interval_ms: 3_600_000
+            max: limit(:reset_ip).max,
+            interval_ms: limit(:reset_ip).interval_ms
           })
           |> maybe_add_rule(email_hash != nil, %{
             key: "vge:rl:auth:reset:email:#{email_hash}",
-            max: 5,
-            interval_ms: 3_600_000
+            max: limit(:reset_email).max,
+            interval_ms: limit(:reset_email).interval_ms
           })
 
         :none ->
@@ -63,7 +63,7 @@ defmodule VoelgoedeventsWeb.Plugs.SetRateLimitContext do
     |> maybe_put_debug_header(labels)
   end
 
-  defp auth_action(%Plug.Conn{method: "POST", request_path: "/auth/log_in"}), do: :login
+  defp auth_action(%Plug.Conn{method: "POST", request_path: "/auth/user/password/sign_in"}), do: :login
   defp auth_action(%Plug.Conn{method: "POST", request_path: "/auth/reset"}), do: :reset
   defp auth_action(_), do: :none
 
@@ -105,6 +105,26 @@ defmodule VoelgoedeventsWeb.Plugs.SetRateLimitContext do
 
   defp maybe_add_rule(rules, true, rule), do: [rule | rules]
   defp maybe_add_rule(rules, false, _rule), do: rules
+
+  defp limit(key) do
+    overrides =
+      Application.get_env(:voelgoedevents, :rate_limit_overrides, %{})
+      |> normalize_overrides()
+
+    defaults = %{
+      login_ip: %{max: 60, interval_ms: 60_000},
+      login_email_ip: %{max: 10, interval_ms: 600_000},
+      login_email: %{max: 20, interval_ms: 3_600_000},
+      reset_ip: %{max: 30, interval_ms: 3_600_000},
+      reset_email: %{max: 5, interval_ms: 3_600_000}
+    }
+
+    Map.get(overrides, key, Map.fetch!(defaults, key))
+  end
+
+  defp normalize_overrides(overrides) when is_map(overrides), do: overrides
+  defp normalize_overrides(overrides) when is_list(overrides), do: Enum.into(overrides, %{})
+  defp normalize_overrides(_), do: %{}
 
   defp labels(:login, true), do: ["login_ip", "login_email_ip", "login_email"]
   defp labels(:login, false), do: ["login_ip"]

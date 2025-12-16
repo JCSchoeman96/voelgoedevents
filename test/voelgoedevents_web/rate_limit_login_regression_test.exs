@@ -1,5 +1,5 @@
 defmodule VoelgoedeventsWeb.RateLimitLoginRegressionTest do
-  use VoelgoedeventsWeb.ConnCase, async: true
+  use VoelgoedeventsWeb.ConnCase, async: false
 
   @login_page "/auth/log_in"
   @wrong_post "/auth/log_in"
@@ -20,9 +20,10 @@ defmodule VoelgoedeventsWeb.RateLimitLoginRegressionTest do
     {conn, csrf}
   end
 
-  defp post_form(conn, path, csrf, params, ip \\ "127.0.0.1") do
+  defp post_form(conn, path, csrf, params, ip) do
     conn
     |> recycle()
+    |> Map.put(:remote_ip, ip_to_tuple(ip) || conn.remote_ip)
     |> put_req_header("accept", "text/html")
     |> put_req_header("content-type", "application/x-www-form-urlencoded")
     |> put_req_header("x-csrf-token", csrf)
@@ -35,10 +36,11 @@ defmodule VoelgoedeventsWeb.RateLimitLoginRegressionTest do
 
   test "POSTing to /auth/log_in (404) does not trigger login rate limit", %{conn: conn} do
     {conn, csrf} = establish_session_and_csrf(conn)
+    ip = unique_ip()
 
     statuses =
       for _ <- 1..30 do
-        c = post_form(conn, @wrong_post, csrf, %{"email" => "test@example.com"})
+        c = post_form(conn, @wrong_post, csrf, %{"email" => "test@example.com"}, ip)
         c.status
       end
 
@@ -51,14 +53,13 @@ defmodule VoelgoedeventsWeb.RateLimitLoginRegressionTest do
 
   test "real sign-in endpoint eventually rate limits after repeated attempts", %{conn: conn} do
     {conn, csrf} = establish_session_and_csrf(conn)
+    ip = unique_ip()
 
-    # Try enough times to exceed your configured threshold.
-    # If your limiter is high, increase this number or (better) lower limits in test config.
-    attempts = 60
+    attempts = 15
 
     statuses =
       for _ <- 1..attempts do
-        c = post_form(conn, @real_sign_in, csrf, %{"email" => "test@example.com"})
+        c = post_form(conn, @real_sign_in, csrf, %{"email" => "test@example.com"}, ip)
         c.status
       end
 
@@ -67,4 +68,18 @@ defmodule VoelgoedeventsWeb.RateLimitLoginRegressionTest do
     assert Enum.any?(statuses, &(&1 == 429)),
            "Expected to eventually hit 429 on #{@real_sign_in}. Statuses: #{inspect(statuses)}"
   end
+
+  defp unique_ip do
+    suffix = rem(System.unique_integer([:positive]), 250) + 1
+    "203.0.113.#{suffix}"
+  end
+
+  defp ip_to_tuple(ip_str) when is_binary(ip_str) do
+    case :inet.parse_address(String.to_charlist(ip_str)) do
+      {:ok, tuple} -> tuple
+      _ -> nil
+    end
+  end
+
+  defp ip_to_tuple(_), do: nil
 end

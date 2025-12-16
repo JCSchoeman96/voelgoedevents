@@ -11,12 +11,13 @@ defmodule Voelgoedevents.Ash.Changes.AuditChangeTest do
 
   # Minimal domain for testing
   defmodule TestDomain do
-    use Ash.Domain,
-      resources: [
-        Voelgoedevents.Ash.Changes.AuditChangeTest.TestResource,
-        Voelgoedevents.Ash.Changes.AuditChangeTest.SuccessAuditLog,
-        Voelgoedevents.Ash.Changes.AuditChangeTest.FailingAuditLog
-      ]
+    use Ash.Domain, otp_app: :voelgoedevents
+
+    resources do
+      resource Voelgoedevents.Ash.Changes.AuditChangeTest.TestResource
+      resource Voelgoedevents.Ash.Changes.AuditChangeTest.SuccessAuditLog
+      resource Voelgoedevents.Ash.Changes.AuditChangeTest.FailingAuditLog
+    end
   end
 
   # ETS-backed AuditLog for success case
@@ -51,8 +52,7 @@ defmodule Voelgoedevents.Ash.Changes.AuditChangeTest do
       data_layer: Ash.DataLayer.Ets
 
     attributes do
-      # Wrong type maybe? Or just validation fail.
-      number_primary_key(:id)
+      uuid_primary_key :id
     end
 
     actions do
@@ -134,9 +134,9 @@ defmodule Voelgoedevents.Ash.Changes.AuditChangeTest do
 
   defp actor do
     %{
-      id: @actor_id,
+      user_id: @actor_id,
       organization_id: @org_id,
-      role: nil,
+      role: :viewer,
       is_platform_admin: false,
       is_platform_staff: false,
       type: :user

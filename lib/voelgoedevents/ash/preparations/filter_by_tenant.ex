@@ -11,42 +11,28 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenant do
 
   @impl true
   def prepare(query, _opts, context) do
-    # In Ash 3.x, context is a struct with .actor, .tenant, etc.
-    actor = context.actor
-    source_context = context.source_context || %{}
-    skip? = Map.get(source_context, :skip_tenant_rule, false)
-
-    org_id_from_actor =
-      case actor do
-        %{organization_id: org_id} when not is_nil(org_id) -> org_id
-        _ -> nil
-      end
-
-    org_id_from_context = Map.get(source_context, :organization_id)
+    actor = Map.get(context, :actor)
+    source_context = Map.get(context, :source_context, %{})
+    skip? =
+      Map.get(context, :skip_tenant_rule, false) ||
+        Map.get(source_context, :skip_tenant_rule, false)
+    platform_admin? = is_map(actor) and Map.get(actor, :is_platform_admin) == true
 
     cond do
-      # 0. Escape hatch: only platform admins may skip tenant rule
-      skip? and match?(%{is_platform_admin: true}, actor) ->
+      skip? and platform_admin? ->
         query
 
       skip? ->
-        raise "FilterByTenant: :skip_tenant_rule may only be used with platform-admin actors"
+        raise "skip_tenant_rule may only be used with platform-admin actors"
 
-      # 1. Tenant user / admin – prefer organization_id from actor
-      not is_nil(org_id_from_actor) ->
-        Ash.Query.filter(query, organization_id == ^org_id_from_actor)
-
-      # 2. Fallback: context carries active tenant
-      not is_nil(org_id_from_context) ->
-        Ash.Query.filter(query, organization_id == ^org_id_from_context)
-
-      # 3. No actor provided (bypass for admin/test reads with authorize?: false)
-      is_nil(actor) ->
-        query
-
-      # 4. Fail closed – actor provided but no org context
       true ->
-        raise "FilterByTenant requires actor with organization_id, context with organization_id, or platform_admin privileges"
+        org_id =
+          Map.get(actor || %{}, :organization_id) ||
+            Map.get(context, :organization_id) ||
+            Map.get(source_context, :organization_id) ||
+            raise("FilterByTenant requires actor or context with organization_id")
+
+        Ash.Query.filter(query, organization_id == ^org_id)
     end
   end
 end

@@ -146,7 +146,7 @@ defmodule Voelgoedevents.TestFixtures do
   """
   def build_actor(user, organization, role_atom, opts \\ []) do
     %{
-      id: user.id,
+      user_id: user.id,
       organization_id: organization.id,
       role: role_atom,
       is_platform_admin: Keyword.get(opts, :is_platform_admin, user.is_platform_admin || false),

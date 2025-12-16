@@ -220,11 +220,11 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     policy action(:create) do
       forbid_if actor_attribute_equals(:id, nil)
 
-      forbid_if expr(arg(:organization_id) != actor(:organization_id))
+      forbid_if expr(arg(:organization_id) != ^actor(:organization_id))
 
       forbid_if expr(
                   (not is_nil(arg(:is_platform_staff)) or not is_nil(arg(:is_platform_admin))) and
-                    actor(:is_platform_admin) != true
+                    ^actor(:is_platform_admin) != true
                 )
 
       authorize_if always()
@@ -239,7 +239,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
       # 2. For logged-in users, enforce tenancy: they must have a membership
       #    in the organization they’re trying to read from.
-      forbid_if expr(not exists(memberships, organization_id == actor(:organization_id)))
+      forbid_if expr(not exists(memberships, organization_id == ^actor(:organization_id)))
 
       # 3. If they weren’t forbidden by the tenancy check, allow.
       authorize_if always()
@@ -247,11 +247,11 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
     policy action(:update) do
       forbid_if actor_attribute_equals(:id, nil)
-      forbid_if expr(not exists(memberships, organization_id == actor(:organization_id)))
+      forbid_if expr(not exists(memberships, organization_id == ^actor(:organization_id)))
 
       forbid_if expr(
                   (not is_nil(arg(:is_platform_staff)) or not is_nil(arg(:is_platform_admin))) and
-                    actor(:is_platform_admin) != true
+                    ^actor(:is_platform_admin) != true
                 )
 
       authorize_if always()

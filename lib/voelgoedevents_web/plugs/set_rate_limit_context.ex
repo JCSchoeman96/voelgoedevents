@@ -63,7 +63,9 @@ defmodule VoelgoedeventsWeb.Plugs.SetRateLimitContext do
     |> maybe_put_debug_header(labels)
   end
 
-  defp auth_action(%Plug.Conn{method: "POST", request_path: "/auth/user/password/sign_in"}), do: :login
+  defp auth_action(%Plug.Conn{method: "POST", request_path: "/auth/user/password/sign_in"}),
+    do: :login
+
   defp auth_action(%Plug.Conn{method: "POST", request_path: "/auth/reset"}), do: :reset
   defp auth_action(_), do: :none
 

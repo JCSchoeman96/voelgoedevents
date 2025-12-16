@@ -18,32 +18,41 @@ defmodule Voelgoedevents.Ash.Changes.AuditChange do
 
   @impl true
   def change(changeset, opts, context) do
-    audit_resource = Keyword.get(opts, :audit_resource, AuditLog)
-    audit_domain = Keyword.get(opts, :audit_domain, AuditDomain)
+    audit_resource = Keyword.fetch!(opts, :audit_resource)
+    audit_domain = Keyword.fetch!(opts, :audit_domain)
 
-    Ash.Changeset.after_action(changeset, fn changeset, result ->
-      actor = context[:actor]
+    Ash.Changeset.after_action(changeset, fn _changeset, result ->
+      actor = context.actor
 
       if actor do
         audit_params = %{
-          actor_id: actor.id,
-          action: to_string(context.action.name),
+          actor_id: resolve_actor_id(actor),
+          action: to_string(resolve_action_name(context.action)),
           resource: to_string(context.resource),
           resource_id: result.id,
           changes: Map.take(result, Map.keys(changeset.attributes)),
           organization_id: Map.get(actor, :organization_id)
         }
 
-        case audit_domain.create(audit_resource, audit_params, actor: actor) do
+        case Ash.create(audit_resource, audit_params, domain: audit_domain, actor: actor) do
           {:ok, _audit_log} ->
-            :ok
+            {:ok, result}
 
           {:error, reason} ->
-            raise "Audit logging failed for #{inspect(context.resource)}##{inspect(result.id)}: #{inspect(reason)}"
+            raise "Audit logging failed: #{inspect(reason)}"
         end
       end
 
       {:ok, result}
     end)
   end
+
+  defp resolve_actor_id(%{user_id: user_id}) when not is_nil(user_id), do: user_id
+  defp resolve_actor_id(%{id: id}) when not is_nil(id), do: id
+  defp resolve_actor_id(map) when is_map(map), do: Map.get(map, :user_id) || Map.get(map, :id)
+  defp resolve_actor_id(_), do: nil
+
+  defp resolve_action_name(%{name: name}) when not is_nil(name), do: name
+  defp resolve_action_name(name) when is_atom(name), do: name
+  defp resolve_action_name(_), do: nil
 end

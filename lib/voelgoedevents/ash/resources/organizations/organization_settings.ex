@@ -73,21 +73,21 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
     # CREATE/UPDATE: Only owner can modify organization settings
     # Settings include financial configuration (currency) which is owner-only per RBAC spec
     policy action_type([:create, :update]) do
-      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(is_nil(fact(:actor_user_id)))
 
       authorize_if expr(
-                     organization_id == actor(:organization_id) and
-                       actor(:role) == :owner
+                     organization_id == fact(:actor_org_id) and
+                       fact(:actor_role) == :owner
                    )
     end
 
     # READ: Any authenticated member of the organization can read its settings
     # Cross-tenant reads are forbidden by the organization_id check
     policy action_type(:read) do
-      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(is_nil(fact(:actor_user_id)))
 
       # Tenant isolation: only members of the same org can see its settings
-      authorize_if expr(organization_id == actor(:organization_id))
+      authorize_if expr(organization_id == fact(:actor_org_id))
     end
   end
 end

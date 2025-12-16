@@ -68,7 +68,7 @@ defmodule Voelgoedevents.Ash.Resources.Audit.AuditLog do
 
     policy action_type(:read) do
       description "Users can only read audit logs for their organization."
-      forbid_if expr(organization_id != actor(:organization_id))
+      forbid_if expr(organization_id != ^actor(:organization_id))
       authorize_if always()
     end
   end

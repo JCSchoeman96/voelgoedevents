@@ -94,8 +94,14 @@ defmodule VoelgoedeventsWeb.Plugs.SetAshActorPlug do
         }
 
         # ActorUtils.normalize/1 is the SINGLE canonical constructor
-        # It validates shape, enforces multi-tenancy rules, and returns nil if invalid
-        ActorUtils.normalize(actor_input)
+        # It validates shape and either returns {:ok, actor} or {:error, :invalid_actor}
+        case ActorUtils.normalize(actor_input) do
+          {:ok, actor} ->
+            actor
+
+          {:error, :invalid_actor} ->
+            raise ArgumentError, "Invalid actor constructed in SetAshActorPlug"
+        end
     end
   end
 end

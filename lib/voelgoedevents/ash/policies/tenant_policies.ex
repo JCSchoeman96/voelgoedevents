@@ -77,9 +77,9 @@ defmodule Voelgoedevents.Ash.Policies.TenantPolicies do
   defmacro authorize_read do
     quote do
       policy action_type(:read) do
-        forbid_if expr(is_nil(actor(:id)))
+        forbid_if expr(is_nil(^actor(:user_id)))
 
-        authorize_if expr(organization_id == actor(:organization_id))
+        authorize_if expr(organization_id == ^actor(:organization_id))
       end
     end
   end
@@ -93,11 +93,11 @@ defmodule Voelgoedevents.Ash.Policies.TenantPolicies do
   defmacro authorize_write(required_roles) when is_list(required_roles) do
     quote do
       policy action_type([:create, :update]) do
-        forbid_if expr(is_nil(actor(:id)))
+        forbid_if expr(is_nil(^actor(:user_id)))
 
         authorize_if expr(
-                       actor(:organization_id) == organization_id and
-                         actor(:role) in unquote(required_roles)
+                       ^actor(:organization_id) == organization_id and
+                         ^actor(:role) in unquote(required_roles)
                      )
       end
     end
@@ -111,11 +111,11 @@ defmodule Voelgoedevents.Ash.Policies.TenantPolicies do
   defmacro authorize_destroy(required_roles) when is_list(required_roles) do
     quote do
       policy action_type(:destroy) do
-        forbid_if expr(is_nil(actor(:id)))
+        forbid_if expr(is_nil(^actor(:user_id)))
 
         authorize_if expr(
-                       actor(:organization_id) == organization_id and
-                         actor(:role) in unquote(required_roles)
+                       ^actor(:organization_id) == organization_id and
+                         ^actor(:role) in unquote(required_roles)
                      )
       end
     end

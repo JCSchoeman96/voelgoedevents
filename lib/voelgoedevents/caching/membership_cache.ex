@@ -65,7 +65,16 @@ defmodule Voelgoedevents.Caching.MembershipCache do
   end
 
   defp hydrate_from_source(user_id, organization_id, ttl_ms, opts) do
-    actor = Keyword.get(opts, :actor) || %{id: user_id, organization_id: organization_id}
+    actor =
+      Keyword.get(opts, :actor) ||
+        %{
+          user_id: user_id,
+          organization_id: organization_id,
+          role: :viewer,
+          is_platform_admin: false,
+          is_platform_staff: false,
+          type: :user
+        }
 
     query =
       Membership

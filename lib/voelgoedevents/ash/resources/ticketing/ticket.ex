@@ -187,22 +187,22 @@ defmodule Voelgoedevents.Ash.Resources.Ticketing.Ticket do
 
     # Read: Allow all authenticated org members (customers can view their tickets)
     policy action_type(:read) do
-      forbid_if expr(is_nil(actor(:id)))
-      authorize_if expr(organization_id == actor(:organization_id))
+      forbid_if expr(is_nil(^actor(:user_id)))
+      authorize_if expr(organization_id == ^actor(:organization_id))
     end
 
     # Create: Only staff, admin, owner can create tickets
     policy action_type(:create) do
-      forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(arg(:organization_id) != actor(:organization_id))
-      authorize_if expr(actor(:role) in [:owner, :admin, :staff])
+      forbid_if expr(is_nil(^actor(:user_id)))
+      forbid_if expr(arg(:organization_id) != ^actor(:organization_id))
+      authorize_if expr(^actor(:role) in [:owner, :admin, :staff])
     end
 
     # Update/Destroy: Only staff, admin, owner
     policy action_type([:update, :destroy]) do
-      forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(organization_id != actor(:organization_id))
-      authorize_if expr(actor(:role) in [:owner, :admin, :staff])
+      forbid_if expr(is_nil(^actor(:user_id)))
+      forbid_if expr(organization_id != ^actor(:organization_id))
+      authorize_if expr(^actor(:role) in [:owner, :admin, :staff])
     end
   end
 

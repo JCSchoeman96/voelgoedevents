@@ -21,34 +21,34 @@ defmodule Voelgoedevents.Ash.Resources.Scanning.ScanSession do
   policies do
     # Platform admins have root access
     policy always() do
-      authorize_if expr(actor(:is_platform_admin) == true)
+      authorize_if expr(^actor(:is_platform_admin) == true)
     end
 
     # Read: Allow all authenticated org members (including scanners)
     policy action_type(:read) do
-      forbid_if expr(is_nil(actor(:id)))
-      authorize_if expr(organization_id == actor(:organization_id))
+      forbid_if expr(is_nil(^actor(:user_id)))
+      authorize_if expr(organization_id == ^actor(:organization_id))
     end
 
     # Create: Scanners, staff, admin, owner can create scan sessions
     policy action_type(:create) do
-      forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(arg(:organization_id) != actor(:organization_id))
-      authorize_if expr(actor(:role) in [:owner, :admin, :staff, :scanner])
+      forbid_if expr(is_nil(^actor(:user_id)))
+      forbid_if expr(arg(:organization_id) != ^actor(:organization_id))
+      authorize_if expr(^actor(:role) in [:owner, :admin, :staff, :scanner])
     end
 
     # Update: Only staff, admin, owner can update
     policy action_type(:update) do
-      forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(organization_id != actor(:organization_id))
-      authorize_if expr(actor(:role) in [:owner, :admin, :staff])
+      forbid_if expr(is_nil(^actor(:user_id)))
+      forbid_if expr(organization_id != ^actor(:organization_id))
+      authorize_if expr(^actor(:role) in [:owner, :admin, :staff])
     end
 
     # Destroy: Only admin, owner
     policy action_type(:destroy) do
-      forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(organization_id != actor(:organization_id))
-      authorize_if expr(actor(:role) in [:owner, :admin])
+      forbid_if expr(is_nil(^actor(:user_id)))
+      forbid_if expr(organization_id != ^actor(:organization_id))
+      authorize_if expr(^actor(:role) in [:owner, :admin])
     end
   end
 

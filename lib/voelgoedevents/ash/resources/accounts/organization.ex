@@ -115,36 +115,36 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     PlatformPolicy.platform_admin_root_access()
 
     policy action(:create) do
-      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(is_nil(^actor(:user_id)))
 
-      authorize_if expr(actor(:is_platform_admin) == true)
+      authorize_if expr(^actor(:is_platform_admin) == true)
     end
 
     policy action(:update) do
-      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(is_nil(^actor(:user_id)))
 
-      authorize_if expr(actor(:is_platform_admin) == true)
+      authorize_if expr(^actor(:is_platform_admin) == true)
 
       authorize_if expr(
-                     actor(:organization_id) == resource.id and
-                       actor(:role) in [:owner, :admin]
+                     ^actor(:organization_id) == id and
+                       ^actor(:role) in [:owner, :admin]
                    )
     end
 
     policy action_type(:read) do
-      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(is_nil(^actor(:user_id)))
 
-      authorize_if expr(resource.id == actor(:organization_id))
+      authorize_if expr(id == ^actor(:organization_id))
     end
 
     policy action(:archive) do
-      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(is_nil(^actor(:user_id)))
 
-      authorize_if expr(actor(:is_platform_admin) == true)
+      authorize_if expr(^actor(:is_platform_admin) == true)
 
       authorize_if expr(
-                     actor(:organization_id) == resource.id and
-                       actor(:role) in [:owner, :admin]
+                     ^actor(:organization_id) == id and
+                       ^actor(:role) in [:owner, :admin]
                    )
     end
 

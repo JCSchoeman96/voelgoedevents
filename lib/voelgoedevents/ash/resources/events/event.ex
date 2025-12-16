@@ -112,22 +112,22 @@ defmodule Voelgoedevents.Ash.Resources.Events.Event do
 
     # Read: Allow all authenticated org members
     policy action_type(:read) do
-      forbid_if expr(is_nil(actor(:id)))
-      authorize_if expr(organization_id == actor(:organization_id))
+      forbid_if expr(is_nil(^actor(:user_id)))
+      authorize_if expr(organization_id == ^actor(:organization_id))
     end
 
     # Create: Only organizers, admins, and owners can create events
     policy action_type(:create) do
-      forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(arg(:organization_id) != actor(:organization_id))
-      authorize_if expr(actor(:role) in [:owner, :admin, :organizer])
+      forbid_if expr(is_nil(^actor(:user_id)))
+      forbid_if expr(arg(:organization_id) != ^actor(:organization_id))
+      authorize_if expr(^actor(:role) in [:owner, :admin, :organizer])
     end
 
     # Update/Destroy: Only organizers, admins, and owners
     policy action_type([:update, :destroy]) do
-      forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(organization_id != actor(:organization_id))
-      authorize_if expr(actor(:role) in [:owner, :admin, :organizer])
+      forbid_if expr(is_nil(^actor(:user_id)))
+      forbid_if expr(organization_id != ^actor(:organization_id))
+      authorize_if expr(^actor(:role) in [:owner, :admin, :organizer])
     end
   end
 end

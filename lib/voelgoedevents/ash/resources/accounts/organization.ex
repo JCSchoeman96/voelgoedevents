@@ -3,7 +3,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
 
   alias Ash.Changeset
   alias Ash.Context
-  alias Ash.Query
+  alias Ash.Query, as: Query
+  require Query
   alias Voelgoedevents.Ash.Policies.PlatformPolicy
   alias Voelgoedevents.Ash.Resources.Accounts.Membership
   alias Voelgoedevents.Ash.Resources.Accounts.Role
@@ -16,8 +17,6 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     authorizers: [Ash.Policy.Authorizer]
 
   require PlatformPolicy
-  alias Ash.Query, as: Query
-  require Query
 
   postgres do
     table "organizations"
@@ -148,9 +147,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
                    )
     end
 
-    # Public registration action - no actor required
     policy action(:register_tenant) do
-      authorize_if always()
+      forbid_if expr(is_nil(^actor(:user_id)))
+
+      authorize_if expr(^actor(:is_platform_admin) == true)
     end
   end
 
@@ -215,12 +215,11 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
   Creates the owner user and membership after organization creation.
   Called as an after_action callback within the same transaction.
   """
-  def create_owner_and_membership(_changeset, organization, context) do
-    # Extract arguments from the original changeset via context
-    owner_email = context.arguments[:owner_email]
-    owner_password = context.arguments[:owner_password]
-    owner_first_name = context.arguments[:owner_first_name]
-    owner_last_name = context.arguments[:owner_last_name]
+  def create_owner_and_membership(changeset, organization, _context) do
+    owner_email = Ash.Changeset.get_argument(changeset, :owner_email)
+    owner_password = Ash.Changeset.get_argument(changeset, :owner_password)
+    owner_first_name = Ash.Changeset.get_argument(changeset, :owner_first_name)
+    owner_last_name = Ash.Changeset.get_argument(changeset, :owner_last_name)
 
     # Find the :owner role
     owner_role =
@@ -231,9 +230,12 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     # Hash the password using Bcrypt (same as AshAuthentication)
     hashed_password = Bcrypt.hash_pwd_salt(owner_password)
 
+    # User.create manages membership creation; do not create membership here.
     # Create user with bypass authorization (system action)
-    {:ok, user} =
+    {:ok, _user} =
       User
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.set_argument(:password, owner_password)
       |> Ash.Changeset.for_create(
         :create,
         %{
@@ -241,25 +243,10 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
           first_name: owner_first_name,
           last_name: owner_last_name,
           hashed_password: hashed_password,
-          status: :active,
-          confirmed_at: DateTime.utc_now()
-        },
-        actor: %{id: "system", organization_id: organization.id, role: :system},
-        skip_unknown_inputs: [:organization_id, :role_id]
-      )
-      |> Ash.create(authorize?: false)
-
-    # Create membership linking user to organization with owner role
-    {:ok, _membership} =
-      Membership
-      |> Ash.Changeset.for_create(
-        :create,
-        %{
-          user_id: user.id,
           organization_id: organization.id,
           role_id: owner_role.id,
           status: :active,
-          joined_at: DateTime.utc_now()
+          confirmed_at: DateTime.utc_now()
         }
       )
       |> Ash.create(authorize?: false)

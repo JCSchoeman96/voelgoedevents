@@ -7,7 +7,8 @@ defmodule Voelgoedevents.Ash.AccountsTest do
   alias Voelgoedevents.Ash.Resources.Accounts.Role
   alias Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings
 
-  require Ash.Query
+  alias Ash.Query, as: Query
+  require Query
 
   #
   # ACTOR HELPERS (CORRECT SHAPE FOR ASH 3.x POLICIES)
@@ -17,7 +18,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
       %{
         user_id: Ecto.UUID.generate(),
         organization_id: nil,
-        role: :system,
+        role: nil,
         is_platform_admin: true,
         is_platform_staff: false,
         type: :user
@@ -353,9 +354,10 @@ defmodule Voelgoedevents.Ash.AccountsTest do
   # REGISTER TENANT TESTS
   # --------------------------------------------------------------------
   describe "register_tenant" do
+    @describetag :register_tenant
     setup do
       case Role
-           |> Ash.Query.filter(name == :owner)
+           |> Query.filter(name == :owner)
            |> Ash.read_one(authorize?: false) do
         {:ok, nil} ->
           Role
@@ -369,7 +371,67 @@ defmodule Voelgoedevents.Ash.AccountsTest do
       :ok
     end
 
+    test "forbids anonymous tenant registration" do
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Organization
+               |> Ash.Changeset.for_create(:register_tenant, %{
+                 organization_name: "Forbidden Corp",
+                 organization_slug: "forbidden-#{System.unique_integer([:positive])}",
+                 owner_email: "forbidden@test.com",
+                 owner_password: "SecurePassword123!",
+                 owner_first_name: "Forbidden",
+                 owner_last_name: "Owner"
+               })
+               |> Ash.create()
+    end
+
+    test "forbids logged-in non-platform-admin tenant registration" do
+      actor =
+        platform_admin_actor(%{
+          user_id: Ash.UUID.generate(),
+          is_platform_admin: false,
+          role: :viewer,
+          organization_id: nil
+        })
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Organization
+               |> Ash.Changeset.for_create(:register_tenant, %{
+                 organization_name: "Forbidden Corp",
+                 organization_slug: "forbidden-user-#{System.unique_integer([:positive])}",
+                 owner_email: "forbidden-user@test.com",
+                 owner_password: "SecurePassword123!",
+                 owner_first_name: "Forbidden",
+                 owner_last_name: "Owner"
+               })
+               |> Ash.create(actor: actor)
+    end
+
+    test "allows platform-admin tenant registration" do
+      actor =
+        platform_admin_actor(%{
+          user_id: Ash.UUID.generate(),
+          is_platform_admin: true
+        })
+
+      assert {:ok, org} =
+               Organization
+               |> Ash.Changeset.for_create(:register_tenant, %{
+                 organization_name: "Allowed Corp",
+                 organization_slug: "allowed-#{System.unique_integer([:positive])}",
+                 owner_email: "allowed@test.com",
+                 owner_password: "SecurePassword123!",
+                 owner_first_name: "Allowed",
+                 owner_last_name: "Owner"
+               })
+               |> Ash.create(actor: actor)
+
+      assert org.name == "Allowed Corp"
+    end
+
     test "atomically creates organization, owner user, and membership" do
+      actor = platform_admin_actor()
+
       {:ok, org} =
         Organization
         |> Ash.Changeset.for_create(:register_tenant, %{
@@ -380,7 +442,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
           owner_first_name: "Test",
           owner_last_name: "Owner"
         })
-        |> Ash.create()
+        |> Ash.create(actor: actor)
 
       assert org.name == "Test Corp"
       assert org.status == :active
@@ -399,6 +461,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
     end
 
     test "rejects registration with duplicate slug" do
+      actor = platform_admin_actor()
       unique_id = System.unique_integer([:positive])
 
       {:ok, _org1} =
@@ -411,7 +474,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
           owner_first_name: "First",
           owner_last_name: "Owner"
         })
-        |> Ash.create()
+        |> Ash.create(actor: actor)
 
       assert {:error, _} =
                Organization
@@ -423,10 +486,12 @@ defmodule Voelgoedevents.Ash.AccountsTest do
                  owner_first_name: "Second",
                  owner_last_name: "Owner"
                })
-               |> Ash.create()
+               |> Ash.create(actor: actor)
     end
 
     test "hashes password correctly" do
+      actor = platform_admin_actor()
+
       {:ok, org} =
         Organization
         |> Ash.Changeset.for_create(:register_tenant, %{
@@ -437,7 +502,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
           owner_first_name: "Hash",
           owner_last_name: "Test"
         })
-        |> Ash.create()
+        |> Ash.create(actor: actor)
 
       loaded = Ash.load!(org, [memberships: :user], authorize?: false)
       user = hd(loaded.memberships).user

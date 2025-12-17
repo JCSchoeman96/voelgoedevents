@@ -12,7 +12,6 @@ defmodule Voelgoedevents.Ash.Changes.AuditChangeTest do
       |> Ash.Changeset.for_create(:create, %{name: "Test", organization_id: @org_id})
       |> Ash.create(actor: actor, domain: Voelgoedevents.Ash.Changes.AuditChangeTest.TestDomain)
 
-
     logs =
       Ash.read!(
         Voelgoedevents.Ash.Changes.AuditChangeTest.SuccessAuditLog,

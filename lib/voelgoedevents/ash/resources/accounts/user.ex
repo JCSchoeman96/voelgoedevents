@@ -304,6 +304,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     end
   end
 
+  # User.create is the single source of truth for initial membership creation.
   def setup_new_user_membership(changeset, _context) do
     organization_id = Changeset.get_argument(changeset, :organization_id)
     role_id = Changeset.get_argument(changeset, :role_id)
@@ -366,9 +367,9 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
   def audit_platform_admin_change(changeset, _context) do
     previous_value = Map.get(changeset.data, :is_platform_admin)
 
-    Changeset.after_action(changeset, fn changeset, user, context ->
+    Changeset.after_action(changeset, fn changeset, user ->
       if Changeset.changing_attribute?(changeset, :is_platform_admin) do
-        actor = Map.get(context, :actor) || %{}
+        actor = get_in(changeset.context, [:private, :actor]) || %{}
 
         Voelgoedevents.AuditLogger.log_critical(%{
           event: "accounts.user.is_platform_admin_changed",

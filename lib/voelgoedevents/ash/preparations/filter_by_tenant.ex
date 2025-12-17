@@ -13,9 +13,11 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenant do
   def prepare(query, _opts, context) do
     actor = Map.get(context, :actor)
     source_context = Map.get(context, :source_context, %{})
+
     skip? =
       Map.get(context, :skip_tenant_rule, false) ||
         Map.get(source_context, :skip_tenant_rule, false)
+
     platform_admin? = is_map(actor) and Map.get(actor, :is_platform_admin) == true
 
     cond do

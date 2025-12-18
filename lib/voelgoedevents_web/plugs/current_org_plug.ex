@@ -98,7 +98,7 @@ defmodule VoelgoedeventsWeb.Plugs.CurrentOrgPlug do
       )
       |> Ash.Query.load(:role)
 
-    case Ash.read_one(query, actor: nil) do
+    case Ash.read_one(query, authorize?: false, context: %{organization_id: org_id}) do
       {:ok, %{role: %{name: role_name}}} when not is_nil(role_name) ->
         {:ok, role_name}
 

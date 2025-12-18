@@ -126,6 +126,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
   actions do
     read :read do
+      primary? true
       # FIX: Use __MODULE__ reference
       prepare &__MODULE__.filter_by_organization/2
     end
@@ -220,11 +221,11 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     policy action(:create) do
       forbid_if actor_attribute_equals(:id, nil)
 
-      forbid_if expr(arg(:organization_id) != actor(:organization_id))
+      forbid_if expr(arg(:organization_id) != ^actor(:organization_id))
 
       forbid_if expr(
                   (not is_nil(arg(:is_platform_staff)) or not is_nil(arg(:is_platform_admin))) and
-                    actor(:is_platform_admin) != true
+                    ^actor(:is_platform_admin) != true
                 )
 
       authorize_if always()
@@ -239,7 +240,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
       # 2. For logged-in users, enforce tenancy: they must have a membership
       #    in the organization they’re trying to read from.
-      forbid_if expr(not exists(memberships, organization_id == actor(:organization_id)))
+      forbid_if expr(not exists(memberships, organization_id == ^actor(:organization_id)))
 
       # 3. If they weren’t forbidden by the tenancy check, allow.
       authorize_if always()
@@ -247,11 +248,11 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
     policy action(:update) do
       forbid_if actor_attribute_equals(:id, nil)
-      forbid_if expr(not exists(memberships, organization_id == actor(:organization_id)))
+      forbid_if expr(not exists(memberships, organization_id == ^actor(:organization_id)))
 
       forbid_if expr(
                   (not is_nil(arg(:is_platform_staff)) or not is_nil(arg(:is_platform_admin))) and
-                    actor(:is_platform_admin) != true
+                    ^actor(:is_platform_admin) != true
                 )
 
       authorize_if always()
@@ -304,6 +305,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     end
   end
 
+  # User.create is the single source of truth for initial membership creation.
   def setup_new_user_membership(changeset, _context) do
     organization_id = Changeset.get_argument(changeset, :organization_id)
     role_id = Changeset.get_argument(changeset, :role_id)
@@ -366,9 +368,9 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
   def audit_platform_admin_change(changeset, _context) do
     previous_value = Map.get(changeset.data, :is_platform_admin)
 
-    Changeset.after_action(changeset, fn changeset, user, context ->
+    Changeset.after_action(changeset, fn changeset, user ->
       if Changeset.changing_attribute?(changeset, :is_platform_admin) do
-        actor = Map.get(context, :actor) || %{}
+        actor = get_in(changeset.context, [:private, :actor]) || %{}
 
         Voelgoedevents.AuditLogger.log_critical(%{
           event: "accounts.user.is_platform_admin_changed",

@@ -21,20 +21,20 @@ defmodule Voelgoedevents.Ash.Resources.Payments.Transaction do
   policies do
     # Platform admins have root access
     policy always() do
-      authorize_if expr(actor(:is_platform_admin) == true)
+      authorize_if expr(^actor(:is_platform_admin) == true)
     end
 
     # Read: Allow all authenticated org members
     policy action_type(:read) do
-      forbid_if expr(is_nil(actor(:id)))
-      authorize_if expr(organization_id == actor(:organization_id))
+      forbid_if expr(is_nil(^actor(:user_id)))
+      authorize_if expr(organization_id == ^actor(:organization_id))
     end
 
     # Create/Update/Destroy: Only owner and admin (payment transactions are sensitive)
     policy action_type([:create, :update, :destroy]) do
-      forbid_if expr(is_nil(actor(:id)))
-      forbid_if expr(organization_id != actor(:organization_id))
-      authorize_if expr(actor(:role) in [:owner, :admin])
+      forbid_if expr(is_nil(^actor(:user_id)))
+      forbid_if expr(organization_id != ^actor(:organization_id))
+      authorize_if expr(^actor(:role) in [:owner, :admin])
     end
   end
 

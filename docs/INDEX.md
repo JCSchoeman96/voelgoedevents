@@ -14,6 +14,14 @@ Use the links below to find the authoritative source for any topic.
 
 ---
 
+## Ops & Debugging
+
+- **IEx Rosetta Stone (Canonical)** — `docs/ops/IEX.md`  
+  Interactive debugging reference for VoelgoedEvents (Ash 3.x + multi-tenancy + Redis/ETS/Postgres + workflows).  
+  Use this before adding ad-hoc `IO.inspect` or changing code to diagnose production-like issues.
+
+---
+
 ## 1. Vision & Planning
 
 **Purpose:** Defines the "Why" and "When". Strategic direction and build sequence.
@@ -191,5 +199,11 @@ Use the links below to find the authoritative source for any topic.
 
 ---
 
-**Last Updated:** 2025-12-11
+### Rate limiting implemented
+lib/voelgoedevents_web/plugs/set_rate_limit_context.ex
+test/voelgoedevents_web/rate_limit_login_regression_test.exs\
+
+---
+
+**Last Updated:** 2025-12-16
 **Status:** Canonical & Verified

@@ -564,6 +564,31 @@ Ensure Phase 2 implementation aligns with these canonical docs for:
 - Membership caching layer (ETS hot + Redis warm)
 - AuditLog immutability and origin tracking
 
+### Authentication Rate Limiting (Implemented)
+
+Phase 2 includes request-level authentication rate limiting to protect
+login and password reset endpoints from brute-force attacks.
+
+Implemented characteristics:
+
+- Rate limiting is scoped to:
+  - IP
+  - Email
+  - Email + IP combination
+- Keys are explicitly namespaced:
+  - vge:rl:auth:login:*
+  - vge:rl:auth:reset:*
+- Login rate limits apply ONLY to:
+  - POST /auth/user/password/sign_in
+- Invalid routes (e.g. POST /auth/log_in) do NOT burn rate limits
+- Limits are configurable via application config:
+  - Defaults for production
+  - Lowered thresholds in test for deterministic regression testing
+- All rate-limit behavior is enforced before Ash authentication actions
+
+This behavior is protected by regression tests:
+- test/voelgoedevents_web/rate_limit_login_regression_test.exs
+
 ---
 
 ## 🎟️ PHASE 3: Core Events & GA Ticketing

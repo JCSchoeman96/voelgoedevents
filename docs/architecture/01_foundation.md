@@ -194,7 +194,7 @@ The project structure follows the PETAL plan and vertical slice mapping.
 
 ### 4.1 Folder Structure (High-Level)
 
-/lib/voelgoodevents
+/lib/voelgoedevents
 /domains
 /tenancy
 /events

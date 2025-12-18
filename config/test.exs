@@ -42,6 +42,13 @@ config :voelgoedevents, Voelgoedevents.Mailer, adapter: Swoosh.Adapters.Test
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
 
+config :voelgoedevents, :rate_limit_overrides,
+  login_ip: %{max: 5, interval_ms: 60_000},
+  login_email_ip: %{max: 3, interval_ms: 60_000},
+  login_email: %{max: 3, interval_ms: 60_000},
+  reset_ip: %{max: 5, interval_ms: 60_000},
+  reset_email: %{max: 3, interval_ms: 60_000}
+
 # Print only warnings and errors during test
 config :logger, level: :warning
 

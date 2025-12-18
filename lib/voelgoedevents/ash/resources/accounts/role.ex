@@ -60,6 +60,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Role do
   postgres do
     table "roles"
     repo Voelgoedevents.Repo
+    identity_index_names unique_name: "roles_name_index"
   end
 
   attributes do

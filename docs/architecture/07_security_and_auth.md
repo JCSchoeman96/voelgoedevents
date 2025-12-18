@@ -282,6 +282,21 @@ Abuse handling:
 - Track IP, org, and key in metrics.  
 - Consider dynamic blocking for extreme abuse cases.  
 
+## Rate Limiting (IMPLEMENTED)
+
+Authentication endpoints are protected by request-level rate limiting.
+
+Rules:
+- Login limits apply only to POST /auth/user/password/sign_in
+- Password reset limits apply only to POST /auth/reset
+- Rate limits are keyed by IP and (where applicable) email
+- Limits are enforced independently of Ash authorization
+
+Implementation:
+- Plug: VoelgoedeventsWeb.Plugs.SetRateLimitContext
+- Limits configurable via :rate_limit_overrides
+- Test-only overrides ensure deterministic CI behavior
+
 ---
 
 ## 10. Secrets & Credential Management

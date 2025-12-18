@@ -49,7 +49,8 @@ defmodule Voelgoedevents.Application do
       {AshAuthentication.Supervisor, otp_app: :voelgoedevents},
 
       # Hammer Redis rate limiter
-      {Voelgoedevents.RateLimitBackend, url: System.get_env("REDIS_URL", "redis://localhost:6379")},
+      {Voelgoedevents.RateLimitBackend,
+       url: System.get_env("REDIS_URL", "redis://localhost:6379")},
 
       # 7. Web Endpoint (Start LAST)
       VoelgoedeventsWeb.Endpoint

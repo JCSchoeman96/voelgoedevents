@@ -80,21 +80,21 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
     PlatformPolicy.platform_admin_root_access()
 
     policy action_type([:read, :create, :destroy, :action]) do
-      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(is_nil(^actor(:user_id)))
     end
 
     policy action_type(:read) do
-      forbid_if expr(organization_id != actor(:organization_id))
+      forbid_if expr(organization_id != ^actor(:organization_id))
       authorize_if always()
     end
 
     policy action(:create) do
-      forbid_if expr(organization_id != actor(:organization_id))
+      forbid_if expr(organization_id != ^actor(:organization_id))
 
       forbid_if expr(
                   not exists(
                     organization.memberships,
-                    user_id == actor(:id) and role.name == :owner
+                    user_id == ^actor(:user_id) and role.name == :owner
                   )
                 )
 
@@ -102,12 +102,12 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Invitation do
     end
 
     policy action(:accept) do
-      forbid_if expr(is_nil(actor(:email)))
+      forbid_if expr(is_nil(^actor(:email)))
       authorize_if always()
     end
 
     policy action_type(:destroy) do
-      forbid_if expr(organization_id != actor(:organization_id))
+      forbid_if expr(organization_id != ^actor(:organization_id))
       authorize_if always()
     end
   end

@@ -40,6 +40,25 @@ Only use paths/modules listed in this document.
 | Hard syntax rules, banned patterns, required resource structure | `/docs/ash/ASH_3_AI_STRICT_RULES.md` |
 | RBAC matrix, actor shape, policy templates, CI rules | `/docs/ash/ASH_3_RBAC_MATRIX.md` |
 
+---
+
+## Debugging & Operations (Canonical)
+
+### Primary reference (read first)
+- `docs/ops/IEX.md` — **IEx Rosetta Stone**  
+  Canonical interactive debugging playbook for:
+  - Ash 3.x resource/actions/policy debugging (actor-required)
+  - Multi-tenant scope verification (NotFound vs Forbidden)
+  - Redis/ETS/Postgres truth reconciliation (scanning + holds)
+  - Workflow/Reactor-style failure inspection
+  - PubSub/LiveView process inspection and runtime tracing
+
+### When to use it
+- Any time you see: `Ash.Error.Forbidden`, tenant “leaks”, “ghost” cached state, scan inconsistencies, slow queries, workflow step failures.
+- Prefer IEx diagnosis using this doc before modifying application code.
+
+---
+
 
 ## 🏗️ 1. High-Level Application Architecture (Confirmed from Project Code)
 

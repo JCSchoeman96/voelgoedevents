@@ -27,18 +27,27 @@ This document defines:
 
 ## Beads workflow (mandatory)
 
-Before coding:
-- Check beads/index.md
-- If a bug or change request exists, use that issue
-- Otherwise create one with bin/beads new
+This repo uses Beads (`bd`) as the *only* issue tracker.
+Do NOT create or use ad-hoc TODO markdown trackers.
 
-While working:
-- Update Root cause, Fix, Proof, Prevention sections
+Session start:
+- Run: bd sync
+- Run: bd ready (or bd ready --priority 1)
+- Select an issue and run: bd show <issue-id>
+- Mark it in progress: bd update <issue-id> --status in_progress
 
-After fix:
-- Ensure tests are green
-- Close issue with bin/beads close <id>
-- Reference Beads ID in commit message
+During work:
+- Any newly discovered bug/todo must become a bd issue immediately:
+  bd create "…" -t bug|task|feature -p <0-4> -l <labels>
+- Link discovered work back to the parent:
+  bd dep add <new-id> <parent-id> --type discovered-from
+
+Session end (“landing the plane”):
+- Ensure tests are green if code changed
+- Update/close the issue:
+  bd close <issue-id> --reason "Fixed"
+- Run: bd sync
+- Commit message MUST include the issue id.
 
 
 ## 2. Mandatory Load Order (Before ANY Coding)

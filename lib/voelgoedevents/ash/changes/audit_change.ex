@@ -11,39 +11,111 @@ defmodule Voelgoedevents.Ash.Changes.AuditChange do
   """
   use Ash.Resource.Change
 
-  alias Voelgoedevents.Ash.Domains.AuditDomain
-  alias Voelgoedevents.Ash.Resources.Audit.AuditLog
-
   require Ash.Query
 
   @impl true
   def change(changeset, opts, context) do
-    audit_resource = Keyword.get(opts, :audit_resource, AuditLog)
-    audit_domain = Keyword.get(opts, :audit_domain, AuditDomain)
+    audit_resource = Keyword.fetch!(opts, :audit_resource)
+    audit_domain = Keyword.fetch!(opts, :audit_domain)
 
-    Ash.Changeset.after_action(changeset, fn changeset, result ->
-      actor = context[:actor]
+    Ash.Changeset.after_action(changeset, fn after_changeset, result ->
+      after_ctx = Map.get(after_changeset, :context) || %{}
+      ctx_private = fetch(after_ctx, :private) || %{}
+      base_private = fetch(context || %{}, :private) || %{}
 
-      if actor do
-        audit_params = %{
-          actor_id: actor.id,
-          action: to_string(context.action.name),
-          resource: to_string(context.resource),
-          resource_id: result.id,
-          changes: Map.take(result, Map.keys(changeset.attributes)),
-          organization_id: Map.get(actor, :organization_id)
-        }
+      actor =
+        Map.get(after_changeset, :actor) ||
+          fetch(after_ctx, :actor) ||
+          fetch(ctx_private, :actor) ||
+          fetch(context || %{}, :actor) ||
+          fetch(base_private, :actor)
 
-        case audit_domain.create(audit_resource, audit_params, actor: actor) do
-          {:ok, _audit_log} ->
-            :ok
+      actor_id =
+        cond do
+          is_binary(actor) ->
+            actor
 
-          {:error, reason} ->
-            raise "Audit logging failed for #{inspect(context.resource)}##{inspect(result.id)}: #{inspect(reason)}"
+          is_integer(actor) ->
+            Integer.to_string(actor)
+
+          is_map(actor) ->
+            Map.get(actor, :user_id) || Map.get(actor, :id)
+
+          true ->
+            nil
         end
-      end
+        |> case do
+          nil -> nil
+          id -> to_string(id)
+        end
 
-      {:ok, result}
+      organization_id =
+        Map.get(result, :organization_id) ||
+          (is_map(actor) && Map.get(actor, :organization_id))
+
+      action =
+        case after_changeset.action do
+          %{name: name} -> to_string(name)
+          nil -> ""
+          other -> to_string(other)
+        end
+
+      resource =
+        case after_changeset.resource do
+          nil ->
+            case result do
+              %{__struct__: struct} when not is_nil(struct) -> inspect(struct)
+              _ -> ""
+            end
+
+          other ->
+            inspect(other)
+        end
+
+      audit_params = %{
+        actor_id: actor_id,
+        action: action,
+        resource: resource,
+        resource_id: Map.get(result, :id),
+        changes: Map.take(result, Map.keys(after_changeset.attributes)),
+        organization_id: organization_id
+      }
+
+      action_info = Ash.Resource.Info.action(audit_resource, :create)
+      accepted = action_info && Map.get(action_info, :accept, [])
+
+      accepted_strings =
+        accepted
+        |> Enum.filter(&is_atom/1)
+        |> Enum.map(&Atom.to_string/1)
+
+      filtered_params =
+        audit_params
+        |> Map.take(accepted)
+        |> Map.merge(Map.take(audit_params, accepted_strings))
+
+      case Ash.create(audit_resource, filtered_params,
+             action: :create,
+             domain: audit_domain,
+             actor: actor
+           ) do
+        {:ok, _audit_log} ->
+          {:ok, result}
+
+        {:error, reason} ->
+          message =
+            if is_exception(reason) do
+              Exception.message(reason)
+            else
+              to_string(reason)
+            end
+
+          raise RuntimeError, "Audit logging failed: #{message}"
+      end
     end)
   end
+
+  defp fetch(map_or_kw, key) when is_map(map_or_kw), do: Map.get(map_or_kw, key)
+  defp fetch(map_or_kw, key) when is_list(map_or_kw), do: Keyword.get(map_or_kw, key)
+  defp fetch(_, _), do: nil
 end

@@ -7,7 +7,8 @@ defmodule Voelgoedevents.Ash.AccountsTest do
   alias Voelgoedevents.Ash.Resources.Accounts.Role
   alias Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings
 
-  require Ash.Query
+  alias Ash.Query, as: Query
+  require Query
 
   #
   # ACTOR HELPERS (CORRECT SHAPE FOR ASH 3.x POLICIES)
@@ -15,7 +16,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
   defp platform_admin_actor(overrides \\ %{}) do
     Map.merge(
       %{
-        id: Ecto.UUID.generate(),
+        user_id: Ecto.UUID.generate(),
         organization_id: nil,
         role: nil,
         is_platform_admin: true,
@@ -28,7 +29,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
 
   defp tenant_actor(org_id, role) do
     %{
-      id: Ecto.UUID.generate(),
+      user_id: Ecto.UUID.generate(),
       organization_id: org_id,
       role: role,
       is_platform_admin: false,
@@ -48,14 +49,45 @@ defmodule Voelgoedevents.Ash.AccountsTest do
   # --------------------------------------------------------------------
   describe "roles" do
     test "expose canonical display name and permissions" do
-      {:ok, role} =
+      actor = platform_admin_actor()
+
+      role =
         Role
         |> Ash.Changeset.for_create(:create, %{
           name: :admin,
           display_name: "Temp Name",
           permissions: ["temporary_permission"]
         })
-        |> Ash.create(actor: platform_admin_actor())
+        |> Ash.create(actor: actor)
+        |> case do
+          {:ok, role} ->
+            role
+
+          {:error, %Ash.Error.Invalid{errors: errors} = error} ->
+            duplicate_name? =
+              Enum.any?(errors, fn
+                %Ash.Error.Changes.InvalidAttribute{field: :name, private_vars: private_vars} ->
+                  Keyword.get(private_vars, :constraint_type) == :unique and
+                    Keyword.get(private_vars, :constraint) in [
+                      "roles_name_index",
+                      "roles_unique_name_index"
+                    ]
+
+                _ ->
+                  false
+              end)
+
+            if duplicate_name? do
+              Role
+              |> Ash.Query.filter(name == :admin)
+              |> Ash.read_one!(actor: actor)
+            else
+              raise error
+            end
+
+          {:error, error} ->
+            raise error
+        end
 
       assert role.display_name == "Admin"
 
@@ -91,7 +123,13 @@ defmodule Voelgoedevents.Ash.AccountsTest do
         })
         |> Ash.create(actor: actor)
 
-      loaded = Ash.load!(organization, :settings, actor: actor)
+      scoped_actor =
+        platform_admin_actor(%{
+          user_id: actor.user_id,
+          organization_id: organization.id
+        })
+
+      loaded = Ash.load!(organization, :settings, actor: scoped_actor)
 
       assert loaded.settings.currency == :USD
       assert loaded.settings.timezone == "Africa/Johannesburg"
@@ -103,7 +141,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
         |> Ash.Changeset.for_update(:update, %{settings: %{currency: :EUR, timezone: "UTC"}})
         |> Ash.update(actor: actor)
 
-      updated_loaded = Ash.load!(updated, :settings, actor: actor)
+      updated_loaded = Ash.load!(updated, :settings, actor: scoped_actor)
 
       assert updated_loaded.settings.currency == :EUR
       assert updated_loaded.settings.timezone == "UTC"
@@ -117,10 +155,17 @@ defmodule Voelgoedevents.Ash.AccountsTest do
         |> Ash.Changeset.for_create(:create, %{name: "Solo Org", slug: "solo-org"})
         |> Ash.create!(actor: actor)
 
+      owner = tenant_actor(organization.id, :owner)
+
+      assert {:ok, _settings} =
+               OrganizationSettings
+               |> Ash.Changeset.for_create(:create, %{organization_id: organization.id})
+               |> Ash.create(actor: owner)
+
       assert {:error, %Ash.Error.Invalid{errors: errors}} =
                OrganizationSettings
                |> Ash.Changeset.for_create(:create, %{organization_id: organization.id})
-               |> Ash.create(actor: tenant_actor(organization.id, :owner))
+               |> Ash.create(actor: owner)
 
       assert Enum.any?(errors, &(&1.field == :organization_id))
     end
@@ -353,9 +398,10 @@ defmodule Voelgoedevents.Ash.AccountsTest do
   # REGISTER TENANT TESTS
   # --------------------------------------------------------------------
   describe "register_tenant" do
+    @describetag :register_tenant
     setup do
       case Role
-           |> Ash.Query.filter(name == :owner)
+           |> Query.filter(name == :owner)
            |> Ash.read_one(authorize?: false) do
         {:ok, nil} ->
           Role
@@ -369,7 +415,67 @@ defmodule Voelgoedevents.Ash.AccountsTest do
       :ok
     end
 
+    test "forbids anonymous tenant registration" do
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Organization
+               |> Ash.Changeset.for_create(:register_tenant, %{
+                 organization_name: "Forbidden Corp",
+                 organization_slug: "forbidden-#{System.unique_integer([:positive])}",
+                 owner_email: "forbidden@test.com",
+                 owner_password: "SecurePassword123!",
+                 owner_first_name: "Forbidden",
+                 owner_last_name: "Owner"
+               })
+               |> Ash.create()
+    end
+
+    test "forbids logged-in non-platform-admin tenant registration" do
+      actor =
+        platform_admin_actor(%{
+          user_id: Ash.UUID.generate(),
+          is_platform_admin: false,
+          role: :viewer,
+          organization_id: nil
+        })
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Organization
+               |> Ash.Changeset.for_create(:register_tenant, %{
+                 organization_name: "Forbidden Corp",
+                 organization_slug: "forbidden-user-#{System.unique_integer([:positive])}",
+                 owner_email: "forbidden-user@test.com",
+                 owner_password: "SecurePassword123!",
+                 owner_first_name: "Forbidden",
+                 owner_last_name: "Owner"
+               })
+               |> Ash.create(actor: actor)
+    end
+
+    test "allows platform-admin tenant registration" do
+      actor =
+        platform_admin_actor(%{
+          user_id: Ash.UUID.generate(),
+          is_platform_admin: true
+        })
+
+      assert {:ok, org} =
+               Organization
+               |> Ash.Changeset.for_create(:register_tenant, %{
+                 organization_name: "Allowed Corp",
+                 organization_slug: "allowed-#{System.unique_integer([:positive])}",
+                 owner_email: "allowed@test.com",
+                 owner_password: "SecurePassword123!",
+                 owner_first_name: "Allowed",
+                 owner_last_name: "Owner"
+               })
+               |> Ash.create(actor: actor)
+
+      assert org.name == "Allowed Corp"
+    end
+
     test "atomically creates organization, owner user, and membership" do
+      actor = platform_admin_actor()
+
       {:ok, org} =
         Organization
         |> Ash.Changeset.for_create(:register_tenant, %{
@@ -380,18 +486,22 @@ defmodule Voelgoedevents.Ash.AccountsTest do
           owner_first_name: "Test",
           owner_last_name: "Owner"
         })
-        |> Ash.create()
+        |> Ash.create(actor: actor)
 
       assert org.name == "Test Corp"
       assert org.status == :active
 
-      loaded = Ash.load!(org, [memberships: [:user, :role]], authorize?: false)
+      loaded =
+        Ash.load!(org, [memberships: [:user, :role]],
+          actor: tenant_actor(org.id, :owner),
+          authorize?: false
+        )
       assert length(loaded.memberships) == 1
 
       membership = hd(loaded.memberships)
       assert membership.status == :active
       assert membership.role.name == :owner
-      assert membership.user.email.value == "owner@test.com"
+      assert to_string(membership.user.email) == "owner@test.com"
       assert membership.user.first_name == "Test"
       assert membership.user.last_name == "Owner"
       assert membership.user.status == :active
@@ -399,6 +509,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
     end
 
     test "rejects registration with duplicate slug" do
+      actor = platform_admin_actor()
       unique_id = System.unique_integer([:positive])
 
       {:ok, _org1} =
@@ -411,7 +522,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
           owner_first_name: "First",
           owner_last_name: "Owner"
         })
-        |> Ash.create()
+        |> Ash.create(actor: actor)
 
       assert {:error, _} =
                Organization
@@ -423,10 +534,12 @@ defmodule Voelgoedevents.Ash.AccountsTest do
                  owner_first_name: "Second",
                  owner_last_name: "Owner"
                })
-               |> Ash.create()
+               |> Ash.create(actor: actor)
     end
 
     test "hashes password correctly" do
+      actor = platform_admin_actor()
+
       {:ok, org} =
         Organization
         |> Ash.Changeset.for_create(:register_tenant, %{
@@ -437,9 +550,13 @@ defmodule Voelgoedevents.Ash.AccountsTest do
           owner_first_name: "Hash",
           owner_last_name: "Test"
         })
-        |> Ash.create()
+        |> Ash.create(actor: actor)
 
-      loaded = Ash.load!(org, [memberships: :user], authorize?: false)
+      loaded =
+        Ash.load!(org, [memberships: :user],
+          actor: tenant_actor(org.id, :owner),
+          authorize?: false
+        )
       user = hd(loaded.memberships).user
 
       assert user.hashed_password != "MySecurePass123!"

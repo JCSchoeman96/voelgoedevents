@@ -53,44 +53,44 @@ defmodule Voelgoedevents.Ash.Resources.AccessControl.ApiKey do
 
     # Read actions: Allow if actor belongs to same organization
     policy action_type(:read) do
-      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(is_nil(^actor(:user_id)))
 
       authorize_if expr(
-                     organization_id == actor(:organization_id) and
-                       actor(:role) in [:owner, :admin]
+                     organization_id == ^actor(:organization_id) and
+                       ^actor(:role) in [:owner, :admin]
                    )
     end
 
     # Create actions: Only owners and admins can create API keys
     # Must create within their own organization
     policy action_type(:create) do
-      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(is_nil(^actor(:user_id)))
 
       authorize_if expr(
-                     arg(:organization_id) == actor(:organization_id) and
-                       actor(:role) in [:owner, :admin]
+                     arg(:organization_id) == ^actor(:organization_id) and
+                       ^actor(:role) in [:owner, :admin]
                    )
     end
 
     # Update actions: Only owners and admins can update API keys
     # Must be within their own organization
     policy action_type(:update) do
-      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(is_nil(^actor(:user_id)))
 
       authorize_if expr(
-                     organization_id == actor(:organization_id) and
-                       actor(:role) in [:owner, :admin]
+                     organization_id == ^actor(:organization_id) and
+                       ^actor(:role) in [:owner, :admin]
                    )
     end
 
     # Destroy actions: Only owners and admins can destroy API keys
     # Must be within their own organization
     policy action_type(:destroy) do
-      forbid_if expr(is_nil(actor(:id)))
+      forbid_if expr(is_nil(^actor(:user_id)))
 
       authorize_if expr(
-                     organization_id == actor(:organization_id) and
-                       actor(:role) in [:owner, :admin]
+                     organization_id == ^actor(:organization_id) and
+                       ^actor(:role) in [:owner, :admin]
                    )
     end
   end

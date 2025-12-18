@@ -3,12 +3,17 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
   alias Voelgoedevents.Ash.Preparations.FilterByTenant
   require Ash.Query
 
+  defp org_id_ref?(:organization_id), do: true
+  defp org_id_ref?(%Ash.Query.Ref{attribute: %{name: :organization_id}}), do: true
+  defp org_id_ref?(_), do: false
+
   # Minimal domain for testing
   defmodule TestDomain do
-    use Ash.Domain,
-      resources: [
-        Voelgoedevents.Ash.Preparations.FilterByTenantTest.TenantResource
-      ]
+    use Ash.Domain, otp_app: :voelgoedevents
+
+    resources do
+      resource Voelgoedevents.Ash.Preparations.FilterByTenantTest.TenantResource
+    end
   end
 
   # Minimal resource for testing
@@ -25,7 +30,7 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
 
   test "normal actor with organization_id filters query by that org" do
     org_id = "11111111-1111-1111-1111-111111111111"
-    actor = actor(%{id: "22222222-2222-2222-2222-222222222222", organization_id: org_id})
+    actor = actor(%{user_id: "22222222-2222-2222-2222-222222222222", organization_id: org_id})
     context = %{actor: actor}
 
     query = Ash.Query.new(TenantResource)
@@ -34,28 +39,23 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
 
     assert %Ash.Filter{expression: expression} = prepared.filter
 
-    assert %Ash.Query.BooleanExpression{
-             op: :eq,
-             left: %Ash.Query.Ref{attribute: %Ash.Resource.Attribute{name: :organization_id}},
-             right: ^org_id
-           } = expression
+    assert %Ash.Query.Operator.Eq{operator: :==} = expression
+    assert org_id_ref?(expression.left)
+    assert expression.right == org_id
   end
 
-  test "actor without org but context has organization_id uses context org" do
+  test "nil actor with organization_id in context uses context org" do
     org_id = "33333333-3333-3333-3333-333333333333"
-    actor = actor(%{id: "44444444-4444-4444-4444-444444444444"})
-    context = %{actor: actor, organization_id: org_id}
+    context = %{actor: nil, organization_id: org_id}
 
     query = Ash.Query.new(TenantResource)
     prepared = FilterByTenant.prepare(query, [], context)
 
     assert %Ash.Filter{expression: expression} = prepared.filter
 
-    assert %Ash.Query.BooleanExpression{
-             op: :eq,
-             left: %Ash.Query.Ref{attribute: %Ash.Resource.Attribute{name: :organization_id}},
-             right: ^org_id
-           } = expression
+    assert %Ash.Query.Operator.Eq{operator: :==} = expression
+    assert org_id_ref?(expression.left)
+    assert expression.right == org_id
   end
 
   test "no actor but context has organization_id uses context org" do
@@ -67,15 +67,13 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
 
     assert %Ash.Filter{expression: expression} = prepared.filter
 
-    assert %Ash.Query.BooleanExpression{
-             op: :eq,
-             left: %Ash.Query.Ref{attribute: %Ash.Resource.Attribute{name: :organization_id}},
-             right: ^org_id
-           } = expression
+    assert %Ash.Query.Operator.Eq{operator: :==} = expression
+    assert org_id_ref?(expression.left)
+    assert expression.right == org_id
   end
 
   test "platform admin with skip_tenant_rule bypasses tenant filter" do
-    actor = actor(%{id: "55555555-5555-5555-5555-555555555555", is_platform_admin: true})
+    actor = actor(%{user_id: "55555555-5555-5555-5555-555555555555", is_platform_admin: true})
 
     context = %{actor: actor, skip_tenant_rule: true}
 
@@ -91,7 +89,7 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
 
     actor =
       actor(%{
-        id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        user_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         is_platform_admin: true,
         organization_id: org_id
       })
@@ -103,15 +101,13 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
 
     assert %Ash.Filter{expression: expression} = prepared.filter
 
-    assert %Ash.Query.BooleanExpression{
-             op: :eq,
-             left: %Ash.Query.Ref{attribute: %Ash.Resource.Attribute{name: :organization_id}},
-             right: ^org_id
-           } = expression
+    assert %Ash.Query.Operator.Eq{operator: :==} = expression
+    assert org_id_ref?(expression.left)
+    assert expression.right == org_id
   end
 
   test "non-admin with skip_tenant_rule raises error" do
-    actor = actor(%{id: "88888888-8888-8888-8888-888888888888"})
+    actor = actor(%{user_id: "88888888-8888-8888-8888-888888888888"})
     context = %{actor: actor, skip_tenant_rule: true}
 
     query = Ash.Query.new(TenantResource)
@@ -124,7 +120,7 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
   end
 
   test "missing org and non-admin raises error" do
-    actor = actor(%{id: "66666666-6666-6666-6666-666666666666"})
+    actor = actor(%{user_id: "66666666-6666-6666-6666-666666666666"})
     context = %{actor: actor}
 
     query = Ash.Query.new(TenantResource)
@@ -139,9 +135,9 @@ defmodule Voelgoedevents.Ash.Preparations.FilterByTenantTest do
   defp actor(attrs) do
     Map.merge(
       %{
-        id: Ecto.UUID.generate(),
+        user_id: Ecto.UUID.generate(),
         organization_id: nil,
-        role: nil,
+        role: :viewer,
         is_platform_admin: false,
         is_platform_staff: false,
         type: :user

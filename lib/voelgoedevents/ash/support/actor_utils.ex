@@ -7,7 +7,7 @@ defmodule Voelgoedevents.Ash.Support.ActorUtils do
       %{
         user_id: uuid | "system",
         organization_id: uuid | nil,
-        role: :owner | :admin | :staff | :viewer | :scanner_only | :system,
+        role: :owner | :admin | :staff | :viewer | :scanner_only | nil,
         is_platform_admin: boolean(),
         is_platform_staff: boolean(),
         type: :user | :system | :device | :api_key
@@ -18,7 +18,7 @@ defmodule Voelgoedevents.Ash.Support.ActorUtils do
   """
 
   @type actor_type :: :user | :device | :api_key | :system
-  @type role_type :: :owner | :admin | :staff | :viewer | :scanner_only | :system
+  @type role_type :: :owner | :admin | :staff | :viewer | :scanner_only | nil
 
   @type actor :: %{
           user_id: String.t(),
@@ -29,7 +29,7 @@ defmodule Voelgoedevents.Ash.Support.ActorUtils do
           type: actor_type
         }
 
-  @roles [:owner, :admin, :staff, :viewer, :scanner_only, :system]
+  @roles [:owner, :admin, :staff, :viewer, :scanner_only]
   @types [:user, :system, :device, :api_key]
 
   # ------------------------------------------------------------
@@ -185,7 +185,7 @@ defmodule Voelgoedevents.Ash.Support.ActorUtils do
       not is_binary(user_id) ->
         {:error, :invalid_actor}
 
-      role not in @roles ->
+      role not in @roles and not (is_platform_admin and is_nil(role)) ->
         {:error, :invalid_actor}
 
       type not in @types ->

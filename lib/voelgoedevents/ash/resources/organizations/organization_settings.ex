@@ -11,6 +11,7 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
   postgres do
     table "organization_settings"
     repo Voelgoedevents.Repo
+    identity_index_names unique_organization: "organization_settings_organization_id_index"
   end
 
   attributes do
@@ -49,19 +50,17 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
   end
 
   actions do
-    read :read
+    read :read do
+      primary? true
+    end
 
     create :create do
       primary? true
-
       accept [:currency, :timezone, :primary_color, :logo_url, :organization_id]
-
-      # TODO: relate_actor(:organization) was removed - it incorrectly tried to
-      # look up the actor as an Organization. The organization_id is set via
-      # manage_relationship from the parent Organization.create action.
     end
 
     update :update do
+      primary? true
       accept [:currency, :timezone, :primary_color, :logo_url]
     end
   end
@@ -70,24 +69,34 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
     # Global override: platform admins always pass authorization checks
     PlatformPolicy.platform_admin_root_access()
 
-    # CREATE/UPDATE: Only owner can modify organization settings
-    # Settings include financial configuration (currency) which is owner-only per RBAC spec
-    policy action_type([:create, :update]) do
-      forbid_if expr(is_nil(fact(:actor_user_id)))
+    # CREATE: Only owner can create settings, and only for their own org.
+    policy action(:create) do
+      forbid_if expr(is_nil(^actor(:user_id)))
+
+      # Platform admin can create settings for any org (platform scope)
+      authorize_if expr(^actor(:is_platform_admin) == true)
+
+      # Tenant owner can only create settings for their own org
+      authorize_if Voelgoedevents.Ash.Policies.Checks.OwnerCreatingOwnOrgSettings
+    end
+
+    # UPDATE: Only owner can modify settings (record exists, so record filter is fine).
+    policy action(:update) do
+      forbid_if expr(is_nil(^actor(:user_id)))
 
       authorize_if expr(
-                     organization_id == fact(:actor_org_id) and
-                       fact(:actor_role) == :owner
-                   )
+        organization_id == ^actor(:organization_id) and
+          ^actor(:role) == :owner
+      )
     end
 
     # READ: Any authenticated member of the organization can read its settings
     # Cross-tenant reads are forbidden by the organization_id check
     policy action_type(:read) do
-      forbid_if expr(is_nil(fact(:actor_user_id)))
+      forbid_if expr(is_nil(^actor(:user_id)))
 
       # Tenant isolation: only members of the same org can see its settings
-      authorize_if expr(organization_id == fact(:actor_org_id))
+      authorize_if expr(organization_id == ^actor(:organization_id))
     end
   end
 end

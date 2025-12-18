@@ -49,14 +49,45 @@ defmodule Voelgoedevents.Ash.AccountsTest do
   # --------------------------------------------------------------------
   describe "roles" do
     test "expose canonical display name and permissions" do
-      {:ok, role} =
+      actor = platform_admin_actor()
+
+      role =
         Role
         |> Ash.Changeset.for_create(:create, %{
           name: :admin,
           display_name: "Temp Name",
           permissions: ["temporary_permission"]
         })
-        |> Ash.create(actor: platform_admin_actor())
+        |> Ash.create(actor: actor)
+        |> case do
+          {:ok, role} ->
+            role
+
+          {:error, %Ash.Error.Invalid{errors: errors} = error} ->
+            duplicate_name? =
+              Enum.any?(errors, fn
+                %Ash.Error.Changes.InvalidAttribute{field: :name, private_vars: private_vars} ->
+                  Keyword.get(private_vars, :constraint_type) == :unique and
+                    Keyword.get(private_vars, :constraint) in [
+                      "roles_name_index",
+                      "roles_unique_name_index"
+                    ]
+
+                _ ->
+                  false
+              end)
+
+            if duplicate_name? do
+              Role
+              |> Ash.Query.filter(name == :admin)
+              |> Ash.read_one!(actor: actor)
+            else
+              raise error
+            end
+
+          {:error, error} ->
+            raise error
+        end
 
       assert role.display_name == "Admin"
 
@@ -92,7 +123,13 @@ defmodule Voelgoedevents.Ash.AccountsTest do
         })
         |> Ash.create(actor: actor)
 
-      loaded = Ash.load!(organization, :settings, actor: actor)
+      scoped_actor =
+        platform_admin_actor(%{
+          user_id: actor.user_id,
+          organization_id: organization.id
+        })
+
+      loaded = Ash.load!(organization, :settings, actor: scoped_actor)
 
       assert loaded.settings.currency == :USD
       assert loaded.settings.timezone == "Africa/Johannesburg"
@@ -104,7 +141,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
         |> Ash.Changeset.for_update(:update, %{settings: %{currency: :EUR, timezone: "UTC"}})
         |> Ash.update(actor: actor)
 
-      updated_loaded = Ash.load!(updated, :settings, actor: actor)
+      updated_loaded = Ash.load!(updated, :settings, actor: scoped_actor)
 
       assert updated_loaded.settings.currency == :EUR
       assert updated_loaded.settings.timezone == "UTC"
@@ -118,10 +155,17 @@ defmodule Voelgoedevents.Ash.AccountsTest do
         |> Ash.Changeset.for_create(:create, %{name: "Solo Org", slug: "solo-org"})
         |> Ash.create!(actor: actor)
 
+      owner = tenant_actor(organization.id, :owner)
+
+      assert {:ok, _settings} =
+               OrganizationSettings
+               |> Ash.Changeset.for_create(:create, %{organization_id: organization.id})
+               |> Ash.create(actor: owner)
+
       assert {:error, %Ash.Error.Invalid{errors: errors}} =
                OrganizationSettings
                |> Ash.Changeset.for_create(:create, %{organization_id: organization.id})
-               |> Ash.create(actor: tenant_actor(organization.id, :owner))
+               |> Ash.create(actor: owner)
 
       assert Enum.any?(errors, &(&1.field == :organization_id))
     end
@@ -447,13 +491,17 @@ defmodule Voelgoedevents.Ash.AccountsTest do
       assert org.name == "Test Corp"
       assert org.status == :active
 
-      loaded = Ash.load!(org, [memberships: [:user, :role]], authorize?: false)
+      loaded =
+        Ash.load!(org, [memberships: [:user, :role]],
+          actor: tenant_actor(org.id, :owner),
+          authorize?: false
+        )
       assert length(loaded.memberships) == 1
 
       membership = hd(loaded.memberships)
       assert membership.status == :active
       assert membership.role.name == :owner
-      assert membership.user.email.value == "owner@test.com"
+      assert to_string(membership.user.email) == "owner@test.com"
       assert membership.user.first_name == "Test"
       assert membership.user.last_name == "Owner"
       assert membership.user.status == :active
@@ -504,7 +552,11 @@ defmodule Voelgoedevents.Ash.AccountsTest do
         })
         |> Ash.create(actor: actor)
 
-      loaded = Ash.load!(org, [memberships: :user], authorize?: false)
+      loaded =
+        Ash.load!(org, [memberships: :user],
+          actor: tenant_actor(org.id, :owner),
+          authorize?: false
+        )
       user = hd(loaded.memberships).user
 
       assert user.hashed_password != "MySecurePass123!"

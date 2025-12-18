@@ -83,6 +83,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
 
       argument :settings, :map, allow_nil?: true
 
+      change &__MODULE__.set_org_context_from_record/2
       change load(:settings)
       change &__MODULE__.update_settings/2
       change after_action(&__MODULE__.invalidate_membership_cache_on_suspend/3)
@@ -155,9 +156,13 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
   end
 
   def ensure_settings(changeset, _context) do
-    settings_attrs = Changeset.get_argument(changeset, :settings) || %{}
+    case Changeset.fetch_argument(changeset, :settings) do
+      {:ok, settings_attrs} ->
+        Changeset.manage_relationship(changeset, :settings, settings_attrs, type: :create)
 
-    Changeset.manage_relationship(changeset, :settings, settings_attrs, type: :create)
+      :error ->
+        changeset
+    end
   end
 
   def update_settings(changeset, _context) do
@@ -178,6 +183,26 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
       :error ->
         changeset
     end
+  end
+
+  def set_org_context_from_record(changeset, _context) do
+    org_id = changeset.data.id
+
+    existing_context = changeset.context || %{}
+
+    existing_source_context =
+      case Map.get(existing_context, :source_context) do
+        %{} = sc -> sc
+        _ -> %{}
+      end
+
+    Ash.Changeset.set_context(
+      changeset,
+      Map.merge(existing_context, %{
+        organization_id: org_id,
+        source_context: Map.merge(existing_source_context, %{organization_id: org_id})
+      })
+    )
   end
 
   def invalidate_membership_cache_on_suspend(changeset, organization, context) do

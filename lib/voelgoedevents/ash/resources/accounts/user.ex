@@ -126,6 +126,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
 
   actions do
     read :read do
+      primary? true
       # FIX: Use __MODULE__ reference
       prepare &__MODULE__.filter_by_organization/2
     end

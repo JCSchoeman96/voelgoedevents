@@ -5,7 +5,7 @@ import Config
 # The MIX_TEST_PARTITION environment variable can be used
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
-port = String.to_integer(System.get_env("DB_PORT") || "5433")
+port = String.to_integer(System.get_env("DB_PORT") || "5432")
 
 config :voelgoedevents, Voelgoedevents.Repo,
   username: System.get_env("DB_USERNAME") || "voelgoed",

@@ -1,10 +1,17 @@
-# AGENTS.md – Canonical Agent Rulebook for VoelgoedEvents
+# **AGENTS.md – Canonical Agent Rulebook for VoelgoedEvents**
+
+## Naming hard bans (NON-NEGOTIABLE)
+
+- NEVER use "voelgood" anywhere. It is always a typo.
+- Correct forms:
+  - "Voelgoed" / "Voelgoodevents" (brand/prose)
+  - "voelgoed" / "voelgoodevents" (technical identifiers only when they actually exist in code/paths)
 
 **This file defines EXACTLY how all coding agents must behave.**
 
-It is the supreme rulebook. Nothing overrides it.
+It is the **supreme rulebook**. Nothing overrides it.
 
-Agents reading this file must follow every rule exactly, without assumptions, shortcuts, or improvisation.
+Agents reading this file **must follow every rule exactly**, without assumptions, shortcuts, improvisation, or “helpful” deviations.
 
 ---
 
@@ -12,381 +19,394 @@ Agents reading this file must follow every rule exactly, without assumptions, sh
 
 This document defines:
 
-- How coding agents must reason
-- What project files they must load before acting
-- How they must navigate the codebase
-- How to ensure all code follows Ash, Phoenix & Svelte best practices
-- How to enforce multi-tenancy, logical vertical slices, caching, performance
-- And how to ensure all code output is correct, consistent, and maintainable
+* How coding agents must reason
+* What project files must be loaded before acting
+* How the codebase must be navigated
+* How Ash, Phoenix, and Svelte rules are enforced
+* How multi-tenancy, vertical slices, caching, and performance are protected
+* How correctness, consistency, and long-term maintainability are guaranteed
 
-**Agents will never generate TOON prompts.**
+### Absolute constraints
 
-**Agents execute TOON prompts created externally.**
+* **Agents will NEVER generate TOON prompts**
+* **Agents ONLY execute externally-provided TOON prompts**
+* Agents may **validate** TOON prompts and **refuse execution** if they violate this rulebook
 
 ---
 
-## Beads workflow (mandatory)
+## 2. Beads Workflow (Mandatory, Non-Negotiable)
 
-This repo uses Beads (`bd`) as the *only* issue tracker.
-Do NOT create or use ad-hoc TODO markdown trackers.
+This repository uses **Beads (`bd`) as the ONLY issue tracker**.
 
-Session start:
-- Run: bd sync
-- Run: bd ready (or bd ready --priority 1)
-- Select an issue and run: bd show <issue-id>
-- Mark it in progress: bd update <issue-id> --status in_progress
+❌ No ad-hoc TODOs
+❌ No markdown task lists
+❌ No “I’ll remember this later”
 
-During work:
-- Any newly discovered bug/todo must become a bd issue immediately:
+If it’s not in Beads, **it does not exist**.
+
+---
+
+### 2.1 Session Start (Mandatory Order)
+
+Before doing **anything**:
+
+```bash
+export BEADS_NO_DAEMON=1
+git fetch origin
+git reset --hard origin/main
+bd sync
+bd ready --priority 1
+```
+
+Then:
+
+```bash
+bd show <issue-id>
+bd update <issue-id> --status in_progress
+```
+
+---
+
+### 2.2 During Work
+
+* Any newly discovered bug / task / gap **must immediately become a Beads issue**:
+
+  ```bash
   bd create "…" -t bug|task|feature -p <0-4> -l <labels>
-- Link discovered work back to the parent:
+  ```
+
+* Link it back to the parent:
+
+  ```bash
   bd dep add <new-id> <parent-id> --type discovered-from
+  ```
 
-Session end (“landing the plane”):
-- Ensure tests are green if code changed
-- Update/close the issue:
+---
+
+### 2.3 Session End (“Land the Plane”)
+
+* Tests must be green if code changed
+* Update or close the issue:
+
+  ```bash
   bd close <issue-id> --reason "Fixed"
-- Run: bd sync
-- Commit message MUST include the issue id.
+  ```
+* Sync Beads:
 
+  ```bash
+  bd sync
+  ```
 
-## 2. Mandatory Load Order (Before ANY Coding)
+**Commit messages MUST include the Beads issue ID.**
 
-Before writing, modifying, deleting, or generating any code, the agent must load the following documents **IN THIS ORDER**:
+---
 
-### Step 1 — Load root-level AGENTS.md (this file)
+## 3. Beads + Git Worktree Hard Rules (CRITICAL)
 
-This defines all behaviour. It supersedes everything else.
+These rules exist because violating them **will corrupt project state**.
 
-### Step 2 — Load INDEX.md 
-[INDEX.md](/docs/INDEX.md)
+### 3.1 Beads Sync Branch Ownership
+
+* `beads-sync` is **owned exclusively by Beads**
+* It lives in a **separate git worktree** at:
+
+```
+.git/beads-worktrees/beads-sync
+```
+
+### 3.2 Forbidden Git Operations (Never Allowed)
+
+❌ `git checkout beads-sync`
+❌ `git reset beads-sync`
+❌ `git merge beads-sync`
+❌ `git rebase beads-sync`
+❌ GitHub UI conflict resolution on `.beads/issues.jsonl`
+
+**Only `bd sync` may modify or push `beads-sync`.**
+
+---
+
+### 3.3 `.beads/issues.jsonl` Is Generated State
+
+* Treat `.beads/issues.jsonl` as **generated, not authored**
+* If it conflicts:
+
+  * Discard local edits
+  * Run `bd sync`
+* **Never “accept both” blindly in GitHub**
+
+If `main` ever points at a Beads merge commit:
+
+```bash
+git fetch origin
+git reset --hard origin/main
+```
+
+Immediately.
+
+---
+
+## 4. Mandatory Load Order (Before ANY Coding)
+
+Agents MUST load the following **in this exact order** before touching code.
+
+### Step 1 — AGENTS.md (This File)
+
+This file supersedes everything else.
+
+---
+
+### Step 2 — INDEX.md
+
+`/docs/INDEX.md`
 
 Provides:
 
-- Folder map
-- File locations
-- Where new files must go
-- Domain/Slice mapping
+* Folder map
+* Canonical file locations
+* Domain / slice mapping
 
-### Step 3 — Load MASTER_BLUEPRINT.md
+---
+
+### Step 3 — MASTER_BLUEPRINT.md
 
 Provides:
 
-- Full system vision & architecture
-- Domain map
-- Feature overview
-- Performance architecture
-
-### Step 4 — Load relevant architecture docs
-
-Located in: `/docs/architecture/`
-
-Load **ALL** that apply to the task:
-
-- `01_foundation.md`
-- `02_multi_tenancy.md`
-- `03_caching_and_realtime.md`
-- `04_vertical_slices.md`
-- `05_eventing_model.md`
-- `06_jobs_and_async.md`
-- `07_security_and_auth.md`
-- `08_cicd_and_deployment.md`
-- `09_scaling_and_resilience.md`
-
-### Step 5 — Load domain docs for the slice being edited
-
-Located in: `/docs/domain/*.md`
-
-**Example:**
-
-- Editing events → load `domain/events_venues.md`
-- Editing seating → load `domain/seating.md`
-- Editing scanning → load `domain/scanning_devices.md`
-- Editing ticketing → load `domain/ticketing_pricing.md`
-- Editing payments → load `domain/payments_ledger.md`
-
-### Step 6 — Load workflow docs for the feature
-
-Located in: `/docs/workflows/*.md`
-
-**Example:**
-
-- "Reserve seat" → load `workflows/reserve_seat.md`
-- "Complete checkout" → load `workflows/complete_checkout.md`
-- "Offline sync" → load `workflows/offline_scan_sync.md`
-
-### Step 7 — Load coding style guidelines for all affected files
-
-Located in: `/docs/coding_style/*.md`
-
-The agent **MUST** load the correct style guide(s):
-
-| File Type                  | Must Load                      |
-| -------------------------- | ------------------------------ |
-| Elixir business logic      | `elixir_general.md` + `ash.md` |
-| Ash resources & validators | `ash.md`                       |
-| Ash policies               | `ash.md` + `ash_policies.md`   |
-| Phoenix controllers        | `phoenix_liveview.md`          |
-| LiveView modules/pages     | `phoenix_liveview.md`          |
-| HEEx templates             | `heex.md`                      |
-| Tailwind UI                | `tailwind.md`                  |
-| JavaScript/TypeScript      | `js_guidelines.md`             |
-| Svelte components          | `svelte.md`                    |
-
-When modifying any `policies do` block or any policy helper module (e.g., PlatformPolicy, OrganizationPolicy), you MUST also load and follow `/docs/coding_style/ash_policies.md`. Only Ash 3.x policy DSL is allowed.
-Ash 3.0 policies are deny-by-default
-
-If unsure which coding_style doc applies, load ALL of them.
-
-**Agents must not generate any code until all relevant style guides are loaded.**
-
-### Step 8 — Load Folder-Specific READMEs (Mandatory)
-
-For any file creation or modification, the agent **MUST** check and adhere to the architectural rules defined in the corresponding folder's `README.md`.
-
-**Example:**
-
-- Before coding workers, check `lib/voelgoedevents/queues/README.md`.
-- Before touching infrastructure, check `lib/voelgoedevents/infrastructure/README.md`.
+* System vision
+* Architecture
+* Domain boundaries
+* Performance model
 
 ---
 
-## 3. Core Project Principles
+### Step 4 — Architecture Docs
 
-Agents must always enforce the following global principles.
+`/docs/architecture/`
 
-### 3.1 Business Logic Rule (Critical)
+Load **ALL that apply**:
 
-**All business logic belongs in Ash. Always. No exceptions.**
-
-❌ **Do NOT:**
-
-- Put business logic in LiveViews
-- Put business logic in controllers
-- Put domain logic in components
-- Call Repo directly (except in seeds/Test helpers)
-
-✔ **Do:**
-
-- Use Ash Resources
-- Use Ash Domains
-- Use Ash Actions
-- Use Ash Validations
-- Use Policies for permissions
-- Use Calculations & Aggregates
-- Use Ash workflows for complex logic
-- Ash 3.0 policies are deny-by-default
-
-**Any attempt to bypass Ash is a violation.**
-
-### 3.2 Logical Vertical Slices (Standard Ash Structure)
-
-We use **Logical Vertical Slices** mapped to **Standard Ash Folders**.
-Logical slices define conceptual boundaries only; agents must always place files in the standard Ash/Phoenix folder structure shown in Section 4, never in slice-named folders.
-
-- **Mentally**, you work in a slice (e.g., "Ticketing").
-- **Physically**, you place files in the standard Ash/Phoenix locations defined in [INDEX.md](/docs/INDEX.md).
-
-Do **NOT** create custom folder structures like `lib/voelgoedevents/ticketing/ash/`.
-**ALWAYS** use `lib/voelgoedevents/ash/resources/ticketing/`.
-
-### 3.3 Multi-Tenancy Enforcement (Never optional)
-
-Every persistent resource **MUST:**
-
-- Include `organization_id`
-- Enforce organization scoping
-- Prevent cross-tenant access
-- Use Ash policies for authorization
-- Keep Redis keys scoped: `org:{org_id}:entity:{id}`
-
-**No exceptions.**
-
-### 3.4 Caching & Performance Model (Mandatory)
-
-Agents **MUST** honor the multi-layer caching specification:
-
-- **Hot:** ETS/GenServer
-- **Warm:** Redis
-- **Cold:** Postgres
-
-Additionally:
-
-- Redis ZSETs for seat holds
-- Redis bitmaps for seat availability
-- PubSub for real-time events
-- Oban for background jobs
-- No DB round-trips on hot paths
-- Use indexes and avoid table scans
-
-**Agents must perform a Performance & Scaling Review before finalizing any code.**
+* `01_foundation.md`
+* `02_multi_tenancy.md`
+* `03_caching_and_realtime.md`
+* `04_vertical_slices.md`
+* `05_eventing_model.md`
+* `06_jobs_and_async.md`
+* `07_security_and_auth.md`
+* `08_cicd_and_deployment.md`
+* `09_scaling_and_resilience.md`
 
 ---
 
-### 3.5 Application & Module Names (non-negotiable)
+### Step 5 — Domain Docs
 
-Canonical app names:
+`/docs/domain/*.md`
 
-- Voelgoedevents
-- VoelgoedeventsWeb
-
-Rules:
-
-- Always exactly this casing.
-- Never use: VoelgoedEvents, VoelgoedEventsWeb, VoelgoedeventsWEB, etc.
-- All project modules live under these roots.
-
-If an agent generates VoelgoedEvents.Ticketing.Ticket, it’s wrong, full stop.
-
-## 4. File Placement Rules
-
-Agents must always use the folder map below (Standard Ash Layout).
-
-**Key rules:**
-
-| Content category | Specific Location                             |
-| ---------------- | --------------------------------------------- |
-| Ash Resources    | `lib/voelgoedevents/ash/resources/<slice>/`   |
-| Ash Domains      | `lib/voelgoedevents/ash/domains/`             |
-| Ash Support      | `lib/voelgoedevents/ash/support/`             |
-| Domain contracts | `lib/voelgoedevents/contracts/<slice>/`       |
-| Workflows        | `lib/voelgoedevents/workflows/<slice>/`       |
-| LiveViews        | `lib/voelgoedevents_web/live/<slice>/`        |
-| Controllers      | `lib/voelgoedevents_web/controllers/<slice>/` |
-| Components       | `lib/voelgoedevents_web/components/`          |
-| Svelte           | `scanner_pwa/src/lib/`                        |
-| Migrations       | `priv/repo/migrations`                        |
-
-**Agents must NEVER create random or generic folders such as:**
-
-- `"services"`
-- `"utils"`
-- `"helpers2"`
-- `"misc"`
-
-**Everything belongs to a logical slice, placed in the correct standard folder.**
+Load the domain(s) being edited.
 
 ---
 
-## 5. Coding Style Enforcement
+### Step 6 — Workflow Docs
 
-Before finalizing **ANY** code, the agent must:
+`/docs/workflows/*.md`
 
-1. Identify file type
-2. Load matching `coding_style` doc(s)
-3. Compare the generated code against all style rules
-4. Validate:
-   - Syntax
-   - Naming
-   - Folder placement (Standard Ash)
-   - Architectural alignment
-   - Multi-tenancy safety
-   - Performance model
-   - Ash purity
-
-**Correct all violations before responding.**
+Load the exact workflow(s) touched.
 
 ---
 
-## 6. Code Generation Rules
+### Step 7 — Coding Style Guides
 
-Agents **must:**
+`/docs/coding_style/*.md`
 
-- Write complete, valid, production-ready code
-- Use correct file paths
-- Maintain consistent naming
-- Add clear, intent-focused comments (not narration)
-- Never leave placeholders
-- Never hallucinate modules or files
-- Never invent new architecture
-- Ask questions when domain, workflow, or contract details are ambiguous
+Agents MUST load **all applicable guides**.
 
-**Agents must NOT:**
+| File Type     | Must Load                     |
+| ------------- | ----------------------------- |
+| Elixir logic  | `elixir_general.md`, `ash.md` |
+| Ash resources | `ash.md`                      |
+| Ash policies  | `ash.md`, `ash_policies.md`   |
+| Phoenix       | `phoenix_liveview.md`         |
+| HEEx          | `heex.md`                     |
+| Tailwind      | `tailwind.md`                 |
+| JS/TS         | `js_guidelines.md`            |
+| Svelte        | `svelte.md`                   |
 
-- Create dead code
-- Use inline `<script>` in HEEx
-- Add business logic to LiveView
-- Use direct `Repo` calls outside Ash
-- Break vertical slices
-- Use unscoped Redis keys
-- Use unsafe or untyped params
-- Introduce unapproved dependencies
+**Ash 3.x only. Deny-by-default policies.**
 
 ---
 
-## 7. Self-Check Procedure (Mandatory)
+### Step 8 — Folder-Specific READMEs
 
-Before completing any action, the agent must run this checklist:
-
-- ✔ Load rules (AGENTS.md, INDEX.md, Blueprint)
-- ✔ Load architecture docs
-- ✔ Load domain docs
-- ✔ Load workflow docs
-- ✔ Load coding_style docs
-- ✔ Verify correct folder (matches Option A / Standard Ash)
-- ✔ Verify Ash purity
-- ✔ Verify multi-tenancy safety
-- ✔ Verify performance rules
-- ✔ Verify logical slice alignment
-- ✔ Verify UI/UX style adherence
-- ✔ Verify security constraints
-- ✔ Verify naming consistency
-- ✔ Verify no forbidden patterns
-
-**If any check fails → the agent must self-correct.**
+Before modifying any folder, agents MUST read its `README.md`.
 
 ---
 
-## 8. Environment Rules (Antigravity / WSL Agents Only)
+## 5. Core Project Principles
 
-Agents running in local environments (Antigravity, Gemini locally, etc.) **MUST:**
+### 5.1 Ash Is the Business Layer (Critical)
 
-- Run commands inside WSL using: `wsl bash -l -c "<command>"`
-- Navigate to project folder inside WSL: `/home/jcs/projects/voelgoedevents`
-- Never run mix from Windows paths
-- Use `.agent/workflows/mix-compile.md` as the authoritative compile workflow
+**ALL business logic lives in Ash. No exceptions.**
 
-**If a command fails, agents must explain why and adjust accordingly.**
+❌ LiveViews
+❌ Controllers
+❌ Components
+❌ Direct Repo calls (except seeds/tests)
 
----
+✔ Ash Resources
+✔ Ash Domains
+✔ Ash Actions
+✔ Policies
+✔ Calculations
+✔ Aggregates
+✔ Workflows
 
-## 9. When the Agent Should Ask Questions
-
-Agents **must** ask for clarification when:
-
-- A domain action is unclear
-- A workflow step is undefined
-- A schema or API contract is missing
-- A required doc is absent or contradictory
-- A feature spans multiple domains
-- A style rule conflicts with file content
-- The TOON prompt is ambiguous
-
-**Agents must not guess.**
+Violations are **hard failures**.
 
 ---
 
-## 10. Final Rule
+### 5.2 Logical Vertical Slices
+
+* Slices are **conceptual**
+* Folders are **standardized**
+* Never invent new structures
+
+---
+
+### 5.3 Multi-Tenancy (Never Optional)
+
+Every persistent resource MUST:
+
+* Include `organization_id`
+* Enforce tenant scoping
+* Prevent cross-tenant reads/writes
+* Scope Redis keys:
+
+  ```
+  org:{org_id}:entity:{id}
+  ```
+
+---
+
+### 5.4 Performance Model (Mandatory)
+
+* Hot: ETS / GenServer
+* Warm: Redis
+* Cold: Postgres
+
+No DB hits on hot paths.
+Indexes required.
+Scaling impact must be reviewed.
+
+---
+
+### 5.5 Canonical Module Names
+
+Only allowed roots:
+
+* `Voelgoedevents`
+* `VoelgoedeventsWeb`
+
+Anything else is **wrong**.
+
+---
+
+## 6. File Placement Rules
+
+Use **Standard Ash Layout only**:
+
+| Category      | Location                                      |
+| ------------- | --------------------------------------------- |
+| Ash Resources | `lib/voelgoedevents/ash/resources/<slice>/`   |
+| Domains       | `lib/voelgoedevents/ash/domains/`             |
+| Workflows     | `lib/voelgoedevents/workflows/<slice>/`       |
+| LiveViews     | `lib/voelgoedevents_web/live/<slice>/`        |
+| Controllers   | `lib/voelgoedevents_web/controllers/<slice>/` |
+| Migrations    | `priv/repo/migrations`                        |
+
+❌ `services`
+❌ `utils`
+❌ `misc`
+
+---
+
+## 7. Coding Rules
+
+Agents MUST:
+
+* Write complete, production-ready code
+* Use correct paths and names
+* Add intent-based comments
+* Ask questions when uncertain
+
+Agents MUST NOT:
+
+* Hallucinate files
+* Invent architecture
+* Add dead code
+* Break slices
+* Weaken tenancy
+* Introduce unapproved deps
+
+---
+
+## 8. Self-Check Procedure (Mandatory)
+
+Before responding, agents MUST verify:
+
+* Rules loaded
+* Docs loaded
+* Correct folder
+* Ash purity
+* Tenancy safety
+* Performance safety
+* Naming correctness
+* No forbidden patterns
+
+Failures require **self-correction**.
+
+---
+
+## 9. Environment Rules (WSL / Local Agents)
+
+* All commands run inside WSL
+* Path: `/home/jcs/projects/voelgoedevents`
+* Never run `mix` from Windows paths
+* Follow `.agent/workflows/mix-compile.md`
+
+---
+
+## 10. When to Ask Questions
+
+Agents MUST ask when:
+
+* Domain intent is unclear
+* Workflow is undefined
+* Docs conflict
+* TOON is ambiguous
+* A change spans domains
+
+**Guessing is forbidden.**
+
+---
+
+## 11. Final Rule
 
 **AGENTS.md overrides ALL other files.**
 
-If any other file contradicts this one → **AGENTS.md wins.**
+If any file contradicts this → **AGENTS.md wins**.
 
 ---
 
-## Summary
+### Override Level: **SUPREME**
 
-This rulebook ensures:
+This rulebook exists to prevent:
 
-✔ Consistent code quality across the entire codebase  
-✔ Strict architectural enforcement (Ash, logical slices, multi-tenancy)  
-✔ Performance by design (caching, indexing, event-driven patterns)  
-✔ Security and isolation (organization scoping, policy enforcement)  
-✔ Maintainability (clear folder structure, style consistency)  
-✔ Correctness (no orphaned features, no lost guidance)
+* Architectural drift
+* Security regressions
+* Tenancy leaks
+* Performance collapse
+* Beads corruption
+* “Clever” mistakes
 
-**Agents must follow this rulebook exactly, in every task, without exception.**
+**Agents must follow it exactly. No exceptions.**
 
 ---
-
-**Override Level: Supreme – All other files defer to AGENTS.md**

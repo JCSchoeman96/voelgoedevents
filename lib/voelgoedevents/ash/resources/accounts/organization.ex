@@ -9,6 +9,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
   alias Voelgoedevents.Ash.Resources.Accounts.Membership
   alias Voelgoedevents.Ash.Resources.Accounts.Role
   alias Voelgoedevents.Ash.Resources.Accounts.User
+  alias Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings
   alias Voelgoedevents.Caching.MembershipCache
 
   use Ash.Resource,
@@ -84,8 +85,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
       argument :settings, :map, allow_nil?: true
 
       change &__MODULE__.set_org_context_from_record/2
-      change load(:settings)
-      change &__MODULE__.update_settings/2
+      change after_action(&__MODULE__.upsert_settings_after_update/3)
       change after_action(&__MODULE__.invalidate_membership_cache_on_suspend/3)
     end
 
@@ -185,32 +185,145 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
     end
   end
 
+  def upsert_settings_after_update(changeset, organization, context) do
+    case Changeset.fetch_argument(changeset, :settings) do
+      {:ok, attrs} ->
+        org_id = organization.id
+        opts = opts_with_org_context(context, org_id)
+
+        OrganizationSettings
+        |> Query.filter(organization_id == ^org_id)
+        |> Ash.read_one(opts)
+        |> case do
+          {:ok, nil} ->
+            attrs = Map.put(attrs, :organization_id, org_id)
+
+            OrganizationSettings
+            |> Changeset.for_create(:create, attrs)
+            |> Ash.create(opts)
+            |> case do
+              {:ok, _settings} ->
+                {:ok, organization}
+
+              {:error, %Ash.Error.Invalid{errors: errors} = error} ->
+                if unique_org_settings_conflict?(errors) do
+                  OrganizationSettings
+                  |> Query.filter(organization_id == ^org_id)
+                  |> Ash.read_one(opts)
+                  |> case do
+                    {:ok, %OrganizationSettings{} = settings} ->
+                      settings
+                      |> Changeset.for_update(:update, Map.delete(attrs, :organization_id))
+                      |> Ash.update(opts)
+                      |> case do
+                        {:ok, _settings} -> {:ok, organization}
+                        {:error, error} -> {:error, error}
+                      end
+
+                    {:ok, nil} ->
+                      {:error, error}
+
+                    {:error, error} ->
+                      {:error, error}
+                  end
+                else
+                  {:error, error}
+                end
+
+              {:error, error} ->
+                {:error, error}
+            end
+
+          {:ok, %OrganizationSettings{} = settings} ->
+            settings
+            |> Changeset.for_update(:update, attrs)
+            |> Ash.update(opts)
+            |> case do
+              {:ok, _settings} -> {:ok, organization}
+              {:error, error} -> {:error, error}
+            end
+
+          {:error, error} ->
+            {:error, error}
+        end
+
+      :error ->
+        {:ok, organization}
+    end
+  end
+
   def set_org_context_from_record(changeset, _context) do
     org_id = changeset.data.id
 
-    existing_context = changeset.context || %{}
+    Ash.Changeset.set_context(
+      changeset,
+      merge_org_context(changeset.context, org_id)
+    )
+  end
+
+  defp unique_org_settings_conflict?(errors) do
+    Enum.any?(errors, fn
+      %Ash.Error.Changes.InvalidAttribute{field: :organization_id, private_vars: private_vars} ->
+        Keyword.get(private_vars, :constraint_type) == :unique and
+          Keyword.get(private_vars, :constraint) in [
+            "organization_settings_organization_id_index",
+            "organization_settings_unique_organization_index"
+          ]
+
+      _ ->
+        false
+    end)
+  end
+
+  defp opts_with_org_context(context, org_id) when is_map(context) do
+    base_opts = Context.to_opts(context)
+
+    actor =
+      Map.get(context, :actor) ||
+        Keyword.get(base_opts, :actor)
+
+    if is_nil(actor) do
+      raise "OrganizationSettings upsert requires a non-nil actor in after_action context"
+    end
+
+    base_opts
+    |> Keyword.put(:actor, actor)
+    |> Keyword.update(:context, merge_org_context(%{}, org_id), &merge_org_context(&1, org_id))
+  end
+
+  defp opts_with_org_context(_context, _org_id) do
+    raise "OrganizationSettings upsert requires an Ash after_action context map"
+  end
+
+  defp merge_org_context(existing_context, org_id) do
+    existing_context =
+      cond do
+        is_map(existing_context) -> existing_context
+        is_list(existing_context) -> Map.new(existing_context)
+        true -> %{}
+      end
 
     existing_source_context =
       case Map.get(existing_context, :source_context) do
-        %{} = sc -> sc
+        %{} = sc ->
+          sc
+
+        sc when is_list(sc) ->
+          Map.new(sc)
+
         _ -> %{}
       end
 
-    Ash.Changeset.set_context(
-      changeset,
-      Map.merge(existing_context, %{
-        organization_id: org_id,
-        source_context: Map.merge(existing_source_context, %{organization_id: org_id})
-      })
-    )
+    Map.merge(existing_context, %{
+      organization_id: org_id,
+      source_context: Map.merge(existing_source_context, %{organization_id: org_id})
+    })
   end
 
   def invalidate_membership_cache_on_suspend(changeset, organization, context) do
     if suspended?(changeset) do
-      context
-      |> Context.to_opts()
-      |> Keyword.put_new(:actor, context.actor)
-      |> invalidate_memberships_for_org(organization.id)
+      opts = opts_with_org_context(context, organization.id)
+      invalidate_memberships_for_org(opts, organization.id)
     end
 
     {:ok, organization}

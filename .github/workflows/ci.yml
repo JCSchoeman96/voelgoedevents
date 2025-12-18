@@ -3,56 +3,69 @@ on:
   push: { branches: ["main"] }
   pull_request: { branches: ["main"] }
 permissions: { contents: read }
+
 jobs:
   test:
     name: Build & Test
     runs-on: ubuntu-latest
+
     services:
       db:
-        image: postgres:16
+        image: postgres:18
         env:
-          {
-            POSTGRES_USER: postgres,
-            POSTGRES_PASSWORD: postgres,
-            POSTGRES_DB: voelgoedevents_test,
-          }
+          POSTGRES_USER: voelgoed
+          POSTGRES_PASSWORD: voelgoed_dev
+          POSTGRES_DB: voelgoodevents_test
         ports: ["5432:5432"]
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U voelgoed -d voelgoodevents_test"
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
+
     env:
       MIX_ENV: test
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/voelgoedevents_test
       SECRET_KEY_BASE: "Hu4qL/sIe3Xn7Fk9Jp5Wt2Vn8Mz1A6QoP0RlK4YxC2BvN8mZ3XqW5E7rT9Yu1I0o"
+
+      # These match config/test.exs
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_USERNAME: voelgoed
+      DB_PASSWORD: voelgoed_dev
+      DB_TEST_NAME: voelgoodevents_test
+
+      # Optional: keep DATABASE_URL consistent (won't hurt; useful if anything else reads it)
+      DATABASE_URL: "postgres://voelgoed:voelgoed_dev@localhost:5432/voelgoodevents_test"
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: erlef/setup-beam@v1
-        with: { elixir-version: "1.18.0-otp-27", otp-version: "27.1.2" }
+        with:
+          elixir-version: "1.18.0-otp-27"
+          otp-version: "27.1.2"
+
       - uses: actions/cache@v4
         with:
-          {
-            path: deps,
-            key: "${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}",
-            restore-keys: "${{ runner.os }}-mix-",
-          }
+          path: deps
+          key: "${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}"
+          restore-keys: "${{ runner.os }}-mix-"
+
       - uses: actions/cache@v4
         with:
-          {
-            path: _build,
-            key: "${{ runner.os }}-build-${{ hashFiles('**/mix.lock') }}",
-            restore-keys: "${{ runner.os }}-build-",
-          }
+          path: _build
+          key: "${{ runner.os }}-build-${{ hashFiles('**/mix.lock') }}"
+          restore-keys: "${{ runner.os }}-build-"
+
       - uses: actions/cache@v4
         with:
-          {
-            path: priv/plts,
-            key: "${{ runner.os }}-dialyzer-${{ hashFiles('**/mix.lock') }}",
-            restore-keys: "${{ runner.os }}-dialyzer-",
-          }
+          path: priv/plts
+          key: "${{ runner.os }}-dialyzer-${{ hashFiles('**/mix.lock') }}"
+          restore-keys: "${{ runner.os }}-dialyzer-"
+
       - run: mix deps.get
       - run: mix compile
+
       - name: Run targeted tests (active slices)
         run: >-
           mix test
@@ -60,15 +73,19 @@ jobs:
           test/voelgoedevents/ash/events_test.exs
           test/voelgoedevents/ash/ticketing_test.exs
           test/voelgoedevents/workflows/checkout_workflow_test.exs
+
       - name: Credo (report-only during phases 1-9)
         run: mix credo --strict --mute-exit-status
         continue-on-error: true
+
       - name: Dialyzer (report-only during phases 1-9)
         run: mix dialyzer --halt-exit-status
         continue-on-error: true
+
       - name: Sobelow (security signal only)
         run: mix sobelow --config
         continue-on-error: true
+
       - name: Format and dependency hygiene (report-only)
         run: |
           mix format --check-formatted

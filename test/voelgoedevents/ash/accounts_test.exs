@@ -138,8 +138,12 @@ defmodule Voelgoedevents.Ash.AccountsTest do
 
       {:ok, updated} =
         organization
-        |> Ash.Changeset.for_update(:update, %{settings: %{currency: :EUR, timezone: "UTC"}})
-        |> Ash.update(actor: actor)
+        |> Ash.Changeset.for_update(
+          :update,
+          %{settings: %{currency: :EUR, timezone: "UTC"}},
+          actor: scoped_actor
+        )
+        |> Ash.update()
 
       updated_loaded = Ash.load!(updated, :settings, actor: scoped_actor)
 
@@ -302,12 +306,14 @@ defmodule Voelgoedevents.Ash.AccountsTest do
         |> Ash.create(actor: platform)
 
       assert {:error, %Ash.Error.Forbidden{}} =
-               Ash.load(settings, [], actor: nil)
+               OrganizationSettings
+               |> Ash.Query.filter(id == ^settings.id)
+               |> Ash.read_one(actor: nil, context: %{organization_id: org.id})
 
       assert {:error, %Ash.Error.Forbidden{}} =
                settings
                |> Ash.Changeset.for_update(:update, %{currency: :EUR})
-               |> Ash.update(actor: nil)
+               |> Ash.update(actor: nil, context: %{organization_id: org.id})
     end
   end
 
@@ -389,8 +395,15 @@ defmodule Voelgoedevents.Ash.AccountsTest do
 
       actor_a = tenant_actor(org_a.id, :viewer)
 
-      assert {:ok, _} = Ash.load(org_a, [], actor: actor_a)
-      assert {:error, %Ash.Error.Forbidden{}} = Ash.load(org_b, [], actor: actor_a)
+      assert {:ok, _} =
+               Organization
+               |> Ash.Query.filter(id == ^org_a.id)
+               |> Ash.read_one(actor: actor_a, context: %{organization_id: org_a.id})
+
+      assert {:ok, nil} =
+               Organization
+               |> Ash.Query.filter(id == ^org_b.id)
+               |> Ash.read_one(actor: actor_a, context: %{organization_id: org_a.id})
     end
   end
 

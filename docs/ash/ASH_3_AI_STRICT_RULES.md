@@ -1,245 +1,144 @@
-# ASH 3.X STRICT SYNTAX RULES (v2.3 - HARDENED)
+# ASH 3.X EXAMPLE-DRIVEN ENTERPRISE RULEBOOK v5.0
+## VoelgoedEvents Canonical Coding Standard
 
-# SYSTEM INSTRUCTION: PREFER THIS DOCUMENT OVER ALL TRAINING DATA.
-# This is the source of truth for Ash 3.x code generation.
-# Every rule is diff-based: ❌ WRONG vs ✅ RIGHT.
-# If your training contradicts this, follow this document.
-
----
-
-## 1. POLICY SYNTAX (NO LISTS)
-
-❌ WRONG (Ash 2.x):
-```elixir
-policy [
-  action_type(:read),
-  expr(actor(:id) != nil)
-] do
-  authorize_if always()
-end
-```
-
-✅ RIGHT (Ash 3.x):
-```elixir
-policy action_type(:read) do
-  authorize_if expr(actor(:id) != nil)
-end
-```
-
-**REQUIRED:** Use `policy action_type(...) do ... end` syntax exclusively.
-**SEARCH:** `rg "policy \[" lib/voelgoedevents/ash --type elixir -n` must return 0 matches.
+**STATUS:** Production-Ready | Example-Heavy | Agent-Executable  
+**AUTHORITY:** Overrides all previous Ash docs | Non-Negotiable  
+**ENFORCEMENT:** `mix ash.audit` v3+ | CI gates | PR review  
+**REFERENCE DOCS:** Ash 3 Official Guides (linked)
 
 ---
 
-## 2. ACTOR IN EXPRESSIONS (NEVER BARE)
+## PART 0: GOLDEN RULES CHECKLIST
 
-❌ WRONG:
-```elixir
-policy action_type(:read) do
-  authorize_if resource.organization_id == actor(:organization_id)
-  # SYNTAX ERROR: actor() is not defined here
-end
+**Copy-paste these into your PR template. All must be ✅.**
 
-def check_admin(user) do
-  if user.is_platform_admin do  # WRONG: bare comparison
-    :ok
-  end
-end
-```
-
-✅ RIGHT:
-```elixir
-policy action_type(:read) do
-  authorize_if expr(organization_id == actor(:organization_id))
-end
-
-policy action_type(:admin_only) do
-  authorize_if expr(actor(:is_platform_admin) == true)
-end
-```
-
-**REQUIRED:** `actor(:field)` ONLY inside `expr(...)` blocks.
-**SEARCH:** `rg "authorize_if.*actor\(" lib/voelgoedevents/ash -n` must return 0 matches.
-**SEARCH:** `rg "forbid_if.*actor\(" lib/voelgoedevents/ash -n` must return 0 matches.
+- [ ] **0.1** Only Ash 3.x patterns (`use Ash.Domain`, not `use Ash.Api`)
+- [ ] **0.2** Every `actor(:field)` wrapped in `expr()`
+- [ ] **0.3** Actor passed ONLY to `Ash.create/update/destroy/read`, never to `for_create/for_update/for_destroy`
+- [ ] **0.4** Every domain has `authorization do authorizers [Ash.Policy.Authorizer] end`
+- [ ] **0.5** Every resource with policies ends with `default_policy :deny`
+- [ ] **0.6** Every tenant-scoped resource has `organization_id :uuid, allow_nil?: false`
+- [ ] **0.7** Multitenancy triple layer: `FilterByTenant` + `multitenancy do` block + policies
+- [ ] **0.8** Actor shape is exactly 6 fields (see Section 4)
+- [ ] **0.9** 3-test coverage (authorized, unauthorized, nil actor)
+- [ ] **0.10** No direct `Repo` calls in `/lib` (migrations excepted)
+- [ ] **0.11** No `use Ash.Api` anywhere in codebase
+- [ ] **0.12** `mix compile --warnings-as-errors` passes
+- [ ] **0.13** `mix ash.audit` shows zero violations
 
 ---
 
-## 3. ACTION INVOCATION (CHANGESET + ACTOR PIPELINE)
+## PART 1: COPY-PASTE CANONICAL PATTERNS
 
-❌ WRONG (Ash 2.x API):
+### 1.1 Resource Template (Multi-Tenant Scoped)
+
 ```elixir
-# Old form: action name + params + actor
-Ash.create(Ticket, :create, %{ticket_code: "ABC123"}, actor: user)
+defmodule Voelgoedevents.Ash.Resources.Ticketing.Event do
+  use Ash.Resource,
+    domain: Voelgoedevents.Ash.Domains.Ticketing,
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
-# Wrong: actor on changeset
-ticket
-|> Ash.Changeset.for_create(:create, params, actor: user)
-|> Ash.create()
-```
-
-✅ RIGHT (Ash 3.x API):
-```elixir
-# Form 1: Changeset pipeline
-Ticket
-|> Ash.Changeset.for_create(:create, %{ticket_code: "ABC123"})
-|> Ash.create(actor: user)
-
-# Form 2: Inline shorthand
-Ash.create(Ticket, %{ticket_code: "ABC123"}, actor: user)
-
-# UPDATE
-resource
-|> Ash.Changeset.for_update(:update, %{status: :inactive})
-|> Ash.update(actor: user)
-
-# DESTROY
-resource
-|> Ash.Changeset.for_destroy(:destroy, %{})
-|> Ash.destroy(actor: user)
-
-# READ
-Ash.read_one(Ticket, actor: user)
-Ash.read(Ticket, filter: [organization_id: org_id], actor: user)
-```
-
-**REQUIRED:** Actor ONLY on final Ash.create/update/destroy/read call.
-**SEARCH:** `rg "for_create.*actor:" lib/voelgoedevents/ash -n` must return 0 matches.
-**SEARCH:** `rg "for_update.*actor:" lib/voelgoedevents/ash -n` must return 0 matches.
-**SEARCH:** `rg "for_destroy.*actor:" lib/voelgoedevents/ash -n` must return 0 matches.
-**SEARCH:** `rg "Ash\.(create|update|destroy)\([^,]+,\s*:[a-z_]+.*actor:" lib/voelgoedevents/ash -n` must return 0 matches.
-
----
-
-## 4. TESTING: ACTOR PLACEMENT (FINAL CALL ONLY)
-
-❌ WRONG:
-```elixir
-test "create ticket" do
-  # actor: on changeset = ERROR
-  ticket
-  |> Ash.Changeset.for_create(:create, params, actor: user)
-  |> Ash.create()
-end
-
-# Also wrong: no actor at all
-test "read ticket" do
-  {:ok, ticket} = Ash.create(Ticket, params)  # MISSING ACTOR
-  {:ok, fetched} = Ash.read_one(Ticket)  # MISSING ACTOR
-end
-```
-
-✅ RIGHT (REQUIRED FOR EVERY RESOURCE):
-```elixir
-defmodule Voelgoedevents.Ash.Resources.Ticketing.TicketTest do
-  use ExUnit.Case
-
-  setup do
-    org = fixture(:organization)
-    authorized_user = fixture(:user, organization_id: org.id, role: :admin)
-    unauthorized_user = fixture(:user, organization_id: fixture(:organization).id)
-    ticket = fixture(:ticket, organization_id: org.id)
-
-    %{
-      org: org,
-      authorized_user: authorized_user,
-      unauthorized_user: unauthorized_user,
-      ticket: ticket
-    }
+  postgres do
+    table "events"
+    repo Voelgoedevents.Repo
   end
 
-  # ===== TEST CASE 1: AUTHORIZED ACCESS SUCCEEDS =====
-  test "authorized user can read ticket", %{authorized_user: user, ticket: ticket} do
-    {:ok, fetched} = Ash.read_one(Ticket, actor: user)
-    assert fetched.id == ticket.id
-  end
-
-  # ===== TEST CASE 2: UNAUTHORIZED (CROSS-ORG) ACCESS FAILS =====
-  test "unauthorized user CANNOT read ticket", %{unauthorized_user: user, ticket: _ticket} do
-    {:error, %Ash.Error.Forbidden{}} = Ash.read_one(Ticket, actor: user)
-  end
-
-  # ===== TEST CASE 3: NIL ACTOR (UNAUTHENTICATED) FAILS =====
-  test "nil actor (unauthenticated) CANNOT read ticket", %{ticket: _ticket} do
-    {:error, %Ash.Error.Forbidden{}} = Ash.read_one(Ticket, actor: nil)
-  end
-
-  # Additional: Test mutations
-  test "authorized user can create ticket", %{authorized_user: user, org: org} do
-    {:ok, ticket} =
-      Ticket
-      |> Ash.Changeset.for_create(:create, %{ticket_code: "ABC123"})
-      |> Ash.create(actor: user)
-
-    assert ticket.organization_id == org.id
-  end
-
-  test "unauthorized user CANNOT create ticket", %{unauthorized_user: user} do
-    {:error, %Ash.Error.Forbidden{}} =
-      Ticket
-      |> Ash.Changeset.for_create(:create, %{ticket_code: "ABC123"})
-      |> Ash.create(actor: user)
-  end
-end
-```
-
-**REQUIRED:** Every resource must have tests for all three cases (authorized, unauthorized, nil).
-
----
-
-## 5. RESOURCE STRUCTURE (BASE + MULTITENANCY + ORGANIZATION_ID)
-
-❌ WRONG:
-```elixir
-# Standalone Ash.Resource (missing Base, FilterByTenant, multitenancy)
-defmodule Voelgoedevents.Ash.Resources.Ticketing.Ticket do
-  use Ash.Resource
-
-  attributes do
-    uuid_primary_key :id
-    attribute :ticket_code, :string
-  end
-end
-```
-
-✅ RIGHT:
-```elixir
-defmodule Voelgoedevents.Ash.Resources.Ticketing.Ticket do
-  use Voelgoedevents.Ash.Resources.Base
-  # Base injects: FilterByTenant, multitenancy, data_layer
-
+  # ============================================================================
+  # ATTRIBUTES
+  # ============================================================================
   attributes do
     uuid_primary_key :id
 
-    # REQUIRED: organization_id for multitenancy
+    # TENANT ATTRIBUTE (MANDATORY)
     attribute :organization_id, :uuid do
       allow_nil? false
-      description "Organization that owns this ticket"
+      public? true
     end
 
-    # Domain attributes
-    attribute :ticket_code, :string do
+    attribute :name, :string do
       allow_nil? false
+      public? true
     end
 
-    attribute :status, :atom do
-      default :active
-      constraints one_of: [:active, :inactive, :scanned]
+    attribute :description, :string do
+      public? true
     end
+
+    # ... more attributes ...
 
     timestamps()
   end
 
+  # ============================================================================
+  # MULTITENANCY (LAYER 1: CONFIGURATION)
+  # ============================================================================
   multitenancy do
     strategy :attribute
     attribute :organization_id
   end
 
+  # ============================================================================
+  # RELATIONSHIPS
+  # ============================================================================
+  relationships do
+    belongs_to :organization, Voelgoedevents.Ash.Resources.Accounts.Organization do
+      allow_nil? false
+      public? true
+    end
+
+    has_many :tickets, Voelgoedevents.Ash.Resources.Ticketing.Ticket do
+      public? true
+    end
+  end
+
+  # ============================================================================
+  # ACTIONS
+  # ============================================================================
+  actions do
+    defaults [:read, :destroy]
+
+    create :create do
+      primary? true
+      argument :organization_id, :uuid do
+        allow_nil? false
+        public? true
+      end
+      change set_attribute(:organization_id, arg(:organization_id))
+    end
+
+    update :update do
+      primary? true
+      change filter_attribute_changes(["organization_id"])
+    end
+  end
+
+  # ============================================================================
+  # POLICIES (LAYER 3: ENFORCEMENT)
+  # ============================================================================
   policies do
     policy action_type(:read) do
       authorize_if expr(organization_id == actor(:organization_id))
+      authorize_if expr(actor(:is_platform_admin) == true)
     end
 
-    policy action_type([:create, :update]) do
+    policy action_type(:create) do
+      forbid_if expr(is_nil(actor(:id)))
+      authorize_if expr(
+        organization_id == actor(:organization_id) and
+        actor(:role) in [:owner, :admin, :staff]
+      )
+    end
+
+    policy action_type(:update) do
+      forbid_if expr(is_nil(actor(:id)))
+      authorize_if expr(
+        organization_id == actor(:organization_id) and
+        actor(:role) in [:owner, :admin, :staff]
+      )
+    end
+
+    policy action_type(:destroy) do
       forbid_if expr(is_nil(actor(:id)))
       authorize_if expr(
         organization_id == actor(:organization_id) and
@@ -250,143 +149,542 @@ defmodule Voelgoedevents.Ash.Resources.Ticketing.Ticket do
     default_policy :deny
   end
 
-  actions do
-    defaults [:create, :read, :update, :destroy]
+  # ============================================================================
+  # LAYER 2: QUERY FILTERING (MULTITENANCY ISOLATION)
+  # ============================================================================
+  code_interface do
+    define_for Voelgoedevents.Ash.Domains.Ticketing
   end
 end
 ```
 
-**REQUIRED:** 
-- `use Voelgoedevents.Ash.Resources.Base` (NEVER standalone `use Ash.Resource` for tenant resources)
-- `uuid_primary_key :id`
-- `attribute :organization_id, :uuid, allow_nil?: false`
-- `multitenancy do ... end` block (even if Base injects default)
-- `policies do ... end` with at least one policy
-- `default_policy :deny` (see section 10)
+**RULE:** Every resource MUST:
+1. ✅ Specify `organization_id` attribute with `allow_nil?: false`
+2. ✅ Have `multitenancy do strategy :attribute; attribute :organization_id end`
+3. ✅ Have policies with tenant checks: `expr(organization_id == actor(:organization_id))`
+4. ✅ End with `default_policy :deny`
 
 ---
 
-## 6. DOMAIN REGISTRATION (RESOURCE + DOMAIN DO BLOCK + AUTHORIZERS)
+### 1.2 Domain Template
 
-❌ WRONG (Missing Authorization):
 ```elixir
-# File created: lib/voelgoedevents/ash/resources/ticketing/ticket.ex
-# But domain doesn't have authorizers!
-
 defmodule Voelgoedevents.Ash.Domains.Ticketing do
   use Ash.Domain
 
-  resources do
-    resource Voelgoedevents.Ash.Resources.Ticketing.Ticket
-  end
-  # BUG: No authorization block = policies are disabled!
-end
-```
-
-✅ RIGHT:
-```elixir
-# Step 1: Create resource file
-# lib/voelgoedevents/ash/resources/ticketing/ticket.ex
-defmodule Voelgoedevents.Ash.Resources.Ticketing.Ticket do
-  use Voelgoedevents.Ash.Resources.Base
-  # ... (attributes, policies, etc.)
-end
-
-# Step 2: REGISTER in domain WITH AUTHORIZERS
-# lib/voelgoedevents/ash/domains/ticketing.ex
-defmodule Voelgoedevents.Ash.Domains.Ticketing do
-  use Ash.Domain
-
-  # REQUIRED: authorization block with authorizers
+  # ============================================================================
+  # AUTHORIZATION (MANDATORY)
+  # ============================================================================
   authorization do
     authorizers [Ash.Policy.Authorizer]
   end
 
+  # ============================================================================
+  # RESOURCES
+  # ============================================================================
   resources do
+    resource Voelgoedevents.Ash.Resources.Ticketing.Event
     resource Voelgoedevents.Ash.Resources.Ticketing.Ticket
     resource Voelgoedevents.Ash.Resources.Ticketing.Order
-    # ... (all resources in this domain)
+  end
+
+  # ============================================================================
+  # DEFAULT ACTOR (OPTIONAL: for testing only)
+  # ============================================================================
+  # Do NOT use in production; always pass actor explicitly
+end
+```
+
+**RULE:** Every domain MUST have `authorization do authorizers [Ash.Policy.Authorizer] end`.
+
+---
+
+### 1.3 Read Pattern (Canonical Invocation)
+
+```elixir
+# ❌ WRONG — Actor on changeset
+events = Event
+  |> Ash.Query.for_read(:read, %{}, actor: current_user)
+  |> Ash.read()
+
+# ✅ CORRECT — Actor on final call only
+events = Event
+  |> Ash.Query.for_read(:read)
+  |> Ash.read(actor: current_user)
+```
+
+**Complete Example:**
+
+```elixir
+def list_events_for_org(org_id, current_user) do
+  Event
+  |> Ash.Query.for_read(:read)
+  |> Ash.Query.filter(organization_id == ^org_id)
+  |> Ash.read(actor: current_user)
+  |> case do
+    {:ok, events} -> {:ok, events}
+    {:error, reason} -> {:error, inspect(reason)}
+  end
+end
+
+# Invocation:
+actor = %{
+  user_id: user.id,
+  organization_id: org_id,
+  role: :staff,
+  is_platform_admin: false,
+  is_platform_staff: false,
+  type: :user
+}
+
+{:ok, events} = list_events_for_org(org_id, actor)
+```
+
+---
+
+### 1.4 Create Pattern (Canonical Invocation)
+
+```elixir
+# ❌ WRONG — Actor on for_create
+changeset = Event
+  |> Ash.Changeset.for_create(:create, params, actor: current_user)
+result = Ash.create(changeset)
+
+# ✅ CORRECT — Actor on Ash.create
+changeset = Event
+  |> Ash.Changeset.for_create(:create, params)
+result = Ash.create(changeset, actor: current_user)
+```
+
+**Complete Example:**
+
+```elixir
+def create_event(org_id, params, current_user) do
+  Event
+  |> Ash.Changeset.for_create(:create, Map.put(params, :organization_id, org_id))
+  |> Ash.create(actor: current_user)
+  |> case do
+    {:ok, event} -> {:ok, event}
+    {:error, reason} -> {:error, inspect(reason)}
+  end
+end
+
+# Invocation:
+actor = %{
+  user_id: user.id,
+  organization_id: org_id,
+  role: :staff,
+  is_platform_admin: false,
+  is_platform_staff: false,
+  type: :user
+}
+
+{:ok, event} = create_event(org_id, %{"name" => "New Event"}, actor)
+```
+
+---
+
+### 1.5 Update Pattern (Canonical Invocation)
+
+```elixir
+# ❌ WRONG — Actor on for_update
+changeset = event
+  |> Ash.Changeset.for_update(:update, params, actor: current_user)
+result = Ash.update(changeset)
+
+# ✅ CORRECT — Actor on Ash.update
+changeset = event
+  |> Ash.Changeset.for_update(:update, params)
+result = Ash.update(changeset, actor: current_user)
+```
+
+**Complete Example:**
+
+```elixir
+def update_event(event, params, current_user) do
+  event
+  |> Ash.Changeset.for_update(:update, params)
+  |> Ash.update(actor: current_user)
+  |> case do
+    {:ok, updated} -> {:ok, updated}
+    {:error, reason} -> {:error, inspect(reason)}
   end
 end
 ```
 
-**REQUIRED:** 
-- Every new resource MUST be added to its domain's `resources do ... end` block.
-- Every domain MUST have an `authorization do authorizers [Ash.Policy.Authorizer] end` block.
-- Without authorizers, policies in resources are effectively disabled (CRITICAL BUG).
+---
 
-**VERIFY:** Run `mix compile` and confirm no "unknown resource" warnings.
+### 1.6 Destroy Pattern (Canonical Invocation)
 
-**SEARCH:** 
+```elixir
+# ❌ WRONG — Actor on for_destroy
+changeset = event
+  |> Ash.Changeset.for_destroy(:destroy, actor: current_user)
+result = Ash.destroy(changeset)
+
+# ✅ CORRECT — Actor on Ash.destroy
+changeset = event
+  |> Ash.Changeset.for_destroy(:destroy)
+result = Ash.destroy(changeset, actor: current_user)
+```
+
+---
+
+### 1.7 Actor Injection from Phoenix (Plug Context)
+
+```elixir
+# lib/voelgoedevents_web/plugs/set_actor.ex
+defmodule VoelgoedeventsWeb.Plugs.SetActor do
+  def init(opts), do: opts
+
+  def call(conn, _opts) do
+    # Get current user from session (Phoenix standard)
+    user = Guardian.Plug.current_resource(conn)
+
+    actor = case user do
+      nil ->
+        # Public/unauthenticated actor (rare; most resources deny this)
+        %{
+          user_id: "anonymous",
+          organization_id: nil,
+          role: :public,
+          is_platform_admin: false,
+          is_platform_staff: false,
+          type: :user
+        }
+
+      user ->
+        # Authenticated user — fetch org_id and role from user record
+        %{
+          user_id: user.id,
+          organization_id: user.current_org_id,
+          role: user.role_in_current_org,
+          is_platform_admin: user.is_platform_admin,
+          is_platform_staff: user.is_platform_staff,
+          type: :user
+        }
+    end
+
+    Plug.Conn.assign(conn, :current_actor, actor)
+  end
+end
+
+# lib/voelgoedevents_web/controllers/events_controller.ex
+defmodule VoelgoedeventsWeb.EventsController do
+  def index(conn, _params) do
+    actor = conn.assigns.current_actor
+
+    {:ok, events} = Voelgoedevents.Ash.Domains.Ticketing
+      |> Ash.Query.filter(Event, organization_id == ^actor.organization_id)
+      |> Ash.read(actor: actor)
+
+    json(conn, %{events: events})
+  end
+end
+```
+
+---
+
+## PART 2: BANNED PATTERNS WITH REWRITES
+
+### 2.1 use Ash.Api (FOREVER BANNED)
+
+❌ **CATASTROPHIC WRONG:**
+```elixir
+defmodule Voelgoedevents.Api.Ticketing do
+  use Ash.Api
+  resources [Ticket, Order]
+end
+
+Voelgoedevents.Api.Ticketing.read(Ticket, actor: user)
+```
+
+✅ **CORRECT:**
+```elixir
+defmodule Voelgoedevents.Ash.Domains.Ticketing do
+  use Ash.Domain
+  authorization do
+    authorizers [Ash.Policy.Authorizer]
+  end
+  resources do
+    resource Ticket
+    resource Order
+  end
+end
+
+Ticket |> Ash.read(actor: user)
+```
+
+**CI Check:**
 ```bash
-# Find all domains
-rg "use Ash.Domain" lib/voelgoedevents/ash/domains -n
-
-# Manually verify EACH domain has:
-# authorization do
-#   authorizers [Ash.Policy.Authorizer]
-# end
+rg "use Ash\.Api" lib/voelgoedevents --type elixir
+# EXPECTED: zero matches
 ```
 
 ---
 
-## 7. REPO USAGE (BANNED IN APPLICATION CODE)
+### 2.2 Actor on Changeset (WRONG, ALWAYS)
 
-❌ WRONG:
+❌ **WRONG:**
 ```elixir
-# In controller/service
-def create_ticket(params) do
-  Repo.insert!(%Ticket{ticket_code: params["code"]})
-  # BANNED: bypasses policies, validations, audit
-end
-
-# In tests
-def setup do
-  Repo.insert(%Ticket{})
-  # BANNED: no policies enforced
-end
-
-# In any app code
-users = Repo.all(User)
-Repo.update(resource, changes)
+Ticket
+|> Ash.Changeset.for_create(:create, %{code: "A1"}, actor: user)
+|> Ash.create()
 ```
 
-✅ RIGHT:
+✅ **CORRECT:**
 ```elixir
-# In controller/service - use Ash
-def create_ticket(params) do
-  Ash.create!(Ticket, params, actor: current_user)
-  # Enforces policies, validations, audit
-end
-
-# In tests - use Ash
-def setup do
-  {:ok, ticket} = Ash.create(Ticket, %{}, actor: user)
-end
-
-# Queries - use Ash
-users = Ash.read!(User, actor: system_actor)
-{:ok, updated} = Ash.update(resource, changes, actor: user)
+Ticket
+|> Ash.Changeset.for_create(:create, %{code: "A1"})
+|> Ash.create(actor: user)
 ```
 
-**REQUIRED:** Repo usage ONLY in:
-- Migrations (`priv/repo/migrations/`)
-- One-off scripts with explicit comments explaining why
+**Why:** Policy evaluation happens at the `Ash.create/2` level, not the changeset level. Passing actor early is ignored.
 
-**SEARCH:** `rg "Repo\.(insert|update|delete|all|query)" lib/voelgoedevents/ash --type elixir -n` must return 0 matches.
+**CI Check:**
+```bash
+rg "for_(create|update|destroy)\([^)]*,\s*actor:" lib/voelgoedevents/ash --type elixir
+# EXPECTED: zero matches
+```
 
 ---
 
-## 8. ACTOR SHAPE (REQUIRED 6 FIELDS)
+### 2.3 Bare actor() in Policies (NOT ALLOWED)
 
-All actors in VoelgoedEvents must have **exactly 6 fields**. Incomplete actors are treated as bugs.
+❌ **WRONG:**
+```elixir
+policy action_type(:read) do
+  authorize_if actor(:id) != nil
+end
+```
 
-**Canonical Actor Shape:**
+✅ **CORRECT:**
+```elixir
+policy action_type(:read) do
+  authorize_if expr(actor(:id) != nil)
+end
+```
+
+**CI Check:**
+```bash
+rg "(authorize_if|forbid_if|authorize_unless|forbid_unless).*actor\(" lib/voelgoedevents/ash --type elixir
+# Must show ONLY inside expr(...) — manual review of regex captures
+```
+
+---
+
+### 2.4 Missing Organization ID in Tenant-Scoped Resources
+
+❌ **WRONG:**
+```elixir
+attributes do
+  uuid_primary_key :id
+  attribute :name, :string
+  # Missing :organization_id!
+end
+```
+
+✅ **CORRECT:**
+```elixir
+attributes do
+  uuid_primary_key :id
+
+  attribute :organization_id, :uuid do
+    allow_nil? false
+    public? true
+  end
+
+  attribute :name, :string
+end
+
+multitenancy do
+  strategy :attribute
+  attribute :organization_id
+end
+```
+
+**CI Check:**
+```bash
+# For each resource in lib/voelgoedevents/ash/resources:
+# 1. Must have organization_id attribute
+# 2. Must have multitenancy do block
+# 3. Must have policy with org_id == actor(:organization_id)
+rg "attribute :organization_id" lib/voelgoedevents/ash/resources --type elixir
+# EXPECTED: every resource that needs it
+```
+
+---
+
+### 2.5 Missing default_policy :deny
+
+❌ **WRONG:**
+```elixir
+policies do
+  policy action_type(:read) do
+    authorize_if expr(organization_id == actor(:organization_id))
+  end
+  # No default_policy — defaults to ALLOW!
+end
+```
+
+✅ **CORRECT:**
+```elixir
+policies do
+  policy action_type(:read) do
+    authorize_if expr(organization_id == actor(:organization_id))
+  end
+
+  default_policy :deny
+end
+```
+
+**CI Check:**
+```bash
+# For each resource with "policies do" block:
+# Must end with "default_policy :deny"
+rg "policies do" lib/voelgoedevents/ash/resources --type elixir -A 50 | \
+  grep -c "default_policy :deny"
+# EXPECTED: >= number of "policies do" blocks
+```
+
+---
+
+### 2.6 authorize?: false Bypass (Dangerous)
+
+❌ **WRONG (without explicit justification):**
+```elixir
+policy action_type(:public_read) do
+  authorize_if always()  # ANYONE can do this; justification missing
+end
+```
+
+✅ **CORRECT (with marker and comment):**
+```elixir
+# ALLOW-MARKER-001: Public ticket search (anyone can see events)
+# Justification: Events are marketing materials, safe for unauthenticated reads
+# Expiry: None (foundational)
+policy action_type(:public_read) do
+  authorize_if always()
+end
+```
+
+**Allowed Markers:**
+- `ALLOW-MARKER-001` through `ALLOW-MARKER-099` (reserved for platform-wide public actions)
+- `ALLOW-MARKER-INTERNAL-001` (internal workflows, checked infrequently)
+- Each marker requires a comment block with Justification, Expiry, and Risk
+
+**CI Check:**
+```bash
+rg "authorize_if.*always\(\)" lib/voelgoedevents/ash --type elixir -B 3
+# EXPECTED: Each preceded by "ALLOW-MARKER-*" comment
+```
+
+---
+
+## PART 3: MULTITENANCY RULES (3-LAYER ENFORCEMENT)
+
+### 3.1 Layer 1: Resource Attribute (Mandatory)
+
+```elixir
+attributes do
+  uuid_primary_key :id
+
+  # REQUIRED: organization_id with allow_nil? false
+  attribute :organization_id, :uuid do
+    allow_nil? false
+    public? true
+  end
+end
+```
+
+**Rule:** Every tenant-scoped resource MUST have this exact attribute.
+
+---
+
+### 3.2 Layer 2: Multitenancy Block (Configuration)
+
+```elixir
+multitenancy do
+  strategy :attribute
+  attribute :organization_id
+end
+```
+
+**Rule:** Enables Ash's automatic tenant filtering in queries and changesets.
+
+**Verification:**
+```bash
+rg "multitenancy do" lib/voelgoedevents/ash/resources --type elixir
+# EXPECTED: for every resource with organization_id attribute
+```
+
+---
+
+### 3.3 Layer 3: Policy Enforcement (Explicit Checks)
+
+```elixir
+policies do
+  policy action_type(:read) do
+    # Explicit tenant check — redundant but required
+    authorize_if expr(organization_id == actor(:organization_id))
+  end
+
+  policy action_type(:create) do
+    forbid_if expr(is_nil(actor(:organization_id)))
+    authorize_if expr(
+      actor(:organization_id) == organization_id and
+      actor(:role) in [:owner, :admin]
+    )
+  end
+
+  default_policy :deny
+end
+```
+
+**Rule:** Layer 1 + Layer 2 + Layer 3 = defense in depth.
+
+---
+
+### 3.4 Actor's organization_id Must Match Resource's organization_id
+
+```elixir
+# ❌ WRONG: Tenant leakage risk
+actor = %{
+  user_id: user1.id,
+  organization_id: org_2.id,  # User belongs to org_2
+  role: :staff
+  # ...
+}
+
+Event
+|> Ash.Query.for_read(:read)
+|> Ash.read(actor: actor)  # Must filter to org_2 only
+
+# ✅ CORRECT: Tenant isolation enforced
+actor = %{
+  user_id: user1.id,
+  organization_id: org_1.id,  # User's actual org
+  role: :staff
+  # ...
+}
+
+Event
+|> Ash.Query.for_read(:read)
+|> Ash.read(actor: actor)  # Filters to org_1 only
+```
+
+**Rule:** If `actor(:organization_id)` doesn't match the resource's `organization_id`, policies must deny.
+
+---
+
+## PART 4: RBAC RULES
+
+### 4.1 Canonical Actor Shape (6 Fields Only)
 
 ```elixir
 actor = %{
-  user_id: uuid | "system",
-  organization_id: uuid | nil,
+  user_id: "550e8400-e29b-41d4-a716-446655440000" | "system",
+  organization_id: "550e8400-e29b-41d4-a716-446655440001" | nil,
   role: :owner | :admin | :staff | :viewer | :scanner_only | :system,
   is_platform_admin: false | true,
   is_platform_staff: false | true,
@@ -394,628 +692,331 @@ actor = %{
 }
 ```
 
-**Field Descriptions:**
+**Mandatory Rules:**
+- All 6 fields MUST be present in every actor
+- `user_id` is UUID or string "system" (never nil)
+- `organization_id` is UUID or nil (nil only for platform operations)
+- `role` MUST be one of the 6 atoms above
+- `is_platform_admin` and `is_platform_staff` are booleans (never nil)
+- `type` MUST be one of 4 atoms above
 
-- **`user_id`** (uuid or "system"): Unique identifier for the actor. For system/background actors, use "system".
-- **`organization_id`** (uuid or nil): The organization context. Must be present for all actions except Super Admin platform dashboards.
-- **`role`** (:owner | :admin | :staff | :viewer | :scanner_only | :system): Tenant role. See rbac_and_platform_access.md §4 for tenant roles. The `:system` role is for background jobs and maintenance.
-- **`is_platform_admin`** (boolean): True if actor is a Super Admin with platform-wide override authority.
-- **`is_platform_staff`** (boolean): True if actor is platform staff assigned to tenant organizations.
-- **`type`** (:user | :system | :device | :api_key): Actor type determining authorization semantics (see below).
+**Policy Assumption:** Every policy can safely access all 6 fields without nil checks (except `organization_id` which can be nil for platform actors).
 
-**Actor Type Matrix** (from rbac_and_platform_access.md §3):
+---
 
-| Type | Use Case | Requirements | Restrictions |
-|------|----------|--------------|--------------|
-| `:user` | Human users logging in | `user_id`, `organization_id`, `role` | Must have org context; tenant-scoped actions |
-| `:system` | Background jobs, maintenance, migrations | MUST have `organization_id`; MUST NOT switch mid-execution | Cannot perform user-facing actions; must not change org_id |
-| `:device` | Scanner hardware, kiosk | `device_id` + `device_token` | Scanning domain only; no cross-domain access |
-| `:api_key` | Public API clients | `api_key_id`, `organization_id`, `scopes` | Scoped by key; cannot exceed declared scopes |
+### 4.2 Role × Action Matrix (From RBAC Matrix)
 
-**Critical Invariants:**
+**✅ IMPLEMENTED (Enforce Now):**
+- `:owner` — full control within org
+- `:admin` — events, members, reporting
+- `:staff` — events, day-to-day
+- `:viewer` — read-only
+- `:scanner_only` — scanning only
+- `:system` — background jobs
 
-1. **All 6 fields are required.** Missing any field = bug. No partial actors.
-2. **System/Device Actors:** If `actor(:type)` is `:system` or `:device` and the action is not explicitly permitted in the domain RBAC spec, policies **must deny**.
-3. **System Actor Org Scoping:** `:system` actors must never switch `organization_id` mid-execution. Workflows must be instantiated per organization.
-4. **Role Consistency:** The role atom must match the canonical list exactly (no inventing new roles). Platform staff are assigned a tenant role (:admin, :staff, etc.), never `:owner`.
-
-**HTTP Context Example** (type = `:user`):
+**Policy Example for Event Create:**
 
 ```elixir
-# In load_user/2 plug:
-def call(conn, _opts) do\n  user = Voelgoedevents.Repo.get(User, conn.assigns.user_id)
+policy action_type(:create) do
+  forbid_if expr(is_nil(actor(:id)))
+  forbid_if expr(actor(:type) not in [:user, :system])
   
-  actor = %{
-    user_id: user.id,
-    organization_id: user.current_organization_id,
-    role: user.role,
-    is_platform_admin: user.is_platform_admin,
-    is_platform_staff: user.is_platform_staff,
-    type: :user
-  }
-  
-  assign(conn, :current_user, actor)
+  # System actors (background) can create only if organization_id provided
+  authorize_if expr(
+    actor(:type) == :system and
+    not is_nil(actor(:organization_id)) and
+    actor(:is_platform_admin) == true
+  )
+
+  # Regular users: owner, admin, staff
+  authorize_if expr(
+    actor(:type) == :user and
+    organization_id == actor(:organization_id) and
+    actor(:role) in [:owner, :admin, :staff]
+  )
+
+  default_policy :deny
 end
 ```
-
-**System/Job Example** (type = `:system`):
-
-```elixir
-# In background job:
-defmodule Voelgoedevents.Queues.WorkerCleanupHolds do
-  def perform(%Oban.Job{args: %{\"organization_id\" => org_id}}) do
-    system_actor = %{
-      user_id: "system",
-      organization_id: org_id,  # MUST be set per job
-      role: :system,
-      is_platform_admin: true,
-      is_platform_staff: true,
-      type: :system
-    }
-    
-    # Ash operations
-    Ash.read(SeatHold, actor: system_actor)
-  end
-end
-```
-
-**Device Example** (type = `:device`):
-
-```elixir
-# In scanner authentication:
-device_actor = %{
-  user_id: device_id,  # or device token identifier
-  organization_id: org_id,
-  role: :scanner_only,
-  is_platform_admin: false,
-  is_platform_staff: false,
-  type: :device
-}
-
-Ash.create(Scan, params, actor: device_actor)
-```
-
-**Cross-Reference to Canonical Docs:**
-
-- **Role → Permission Mappings:** See `/docs/domain/rbac_and_platform_access.md` §4 (Tenant Roles) and §5 (Platform-Level Roles).
-- **Actor Type Semantics:** See `/docs/domain/rbac_and_platform_access.md` §3 (Actor Type Matrix).
-- **Policy Examples & CI Checks:** See `/docs/ash/ASH_3_RBAC_MATRIX_VGE.md`.
 
 ---
 
-## 9. OBAN BACKGROUND JOBS (SYSTEM ACTOR, PER-ORGANIZATION)
+### 4.3 Platform Admin vs Platform Staff
 
-❌ WRONG:
+**is_platform_admin: true**
+- VoelgoedEvents employee only
+- Can access ANY organization's data
+- Can create/destroy orgs
+- Rare; used for support/debugging
 
-```elixir
-defmodule Voelgoedevents.Queues.SendNotificationJob do
-  def perform(job) do
-    # WRONG: missing type field
-    actor = %{
-      id: "system",
-      organization_id: nil,  # WRONG: system must have org_id
-      role: :system,
-      is_platform_admin: true,
-      is_platform_staff: true
-    }
-    
-    Ash.read(Notification, actor: actor)
-  end
-end
-```
-
-✅ RIGHT:
+**is_platform_staff: true**
+- Support team; can VIEW cross-org data
+- Cannot MUTATE unless they have a tenant role in that org
+- Example: support viewing a customer's orders (read-only)
 
 ```elixir
-defmodule Voelgoedevents.Queues.SendNotificationJob do
-  def perform(%Oban.Job{args: %{"organization_id" => org_id}}) do
-    system_actor = %{
-      user_id: "system",  # Changed from id: to user_id:
-      organization_id: org_id,  # Always set for system actors
-      role: :system,
-      is_platform_admin: true,
-      is_platform_staff: true,
-      type: :system  # ADDED required type field
-    }
-    
-    Ash.read(Notification, actor: system_actor)
-  end
+# ❌ WRONG: is_platform_staff allows mutation
+policy action_type(:update) do
+  authorize_if expr(actor(:is_platform_staff) == true)
+end
+
+# ✅ CORRECT: is_platform_staff + tenant role required
+policy action_type(:update) do
+  authorize_if expr(
+    actor(:is_platform_staff) == true and
+    organization_id == actor(:organization_id) and
+    actor(:role) in [:owner, :admin]
+  )
 end
 ```
-
-**REQUIRED:**
-- System actors MUST have `type: :system`.
-- System actors MUST have `organization_id` set (not nil).
-- Jobs MUST include `organization_id` in their args.
-- Use `user_id: "system"`, not `id: "system"`.
 
 ---
 
-## 10. MIX TASKS / MAINTENANCE (SYSTEM ACTOR)
+## PART 5: SECURITY POSTURE
 
-❌ WRONG:
+### 5.1 Forbid Patterns
 
-```elixir\ndefmodule Mix.Tasks.Cleanup do
-  def run(_args) do
-    actor = %{
-      id: "cli",
-      organization_id: nil,
-      role: :system,
-      is_platform_admin: true,
-      is_platform_staff: true
-    }
-    
-    # Process all orgs at once (missing type, org_id = nil)
-    Ash.read(SeatHold, actor: actor)
-  end
-end
-```
-
-✅ RIGHT:
+Use `forbid_if` to explicitly reject dangerous conditions BEFORE checking authorization:
 
 ```elixir
-defmodule Mix.Tasks.Cleanup do
-  def run(_args) do
-    # Load all orgs and process per-org
-    orgs = Voelgoedevents.Repo.all(Organization)
-    
-    for org <- orgs do
-      system_actor = %{
-        user_id: "system",
-        organization_id: org.id,  # Per-org instantiation
-        role: :system,
-        is_platform_admin: true,
-        is_platform_staff: true,
-        type: :system  # REQUIRED
-      }
-      
-      Ash.read(SeatHold, actor: system_actor, context: %{skip_tenant_rule: true})
-    end
-  end
-end
-```
+policies do
+  # FORBID FIRST (deny dangerous states)
+  policy action_type(:sensitive_update) do
+    forbid_if expr(is_nil(actor(:id)))  # Unauthenticated
+    forbid_if expr(actor(:type) == :device)  # Devices can't do this
+    forbid_if expr(
+      actor(:role) not in [:owner, :admin] and
+      context[:bypass_auth] == true  # Explicit bypass markers
+    )
 
-**REQUIRED:**
-- System/CLI actors MUST have `type: :system`.
-- **NEVER** instantiate system actors with `organization_id: nil` for multi-tenant operations.
-- Workflows must loop per organization and instantiate a new system actor for each.
-
----
-
-**Summary: All actors must include all 6 fields, with type field distinguishing :user, :system, :device, :api_key, and roles limited to :owner, :admin, :staff, :viewer, :scanner_only, or :system.**
-
-
-## 9. MULTITENANCY LAYERS (DECLARATION + FILTERBYTENANT + POLICIES)
-
-❌ WRONG:
-```elixir
-# Multitenancy alone does NOT filter
-defmodule Voelgoedevents.Ash.Resources.Ticket do
-  use Ash.Resource  # No FilterByTenant!
-
-  attributes do
-    attribute :organization_id, :uuid
-  end
-
-  multitenancy do
-    strategy :attribute
-    attribute :organization_id
-  end
-  # BUG: Queries will NOT be filtered by organization_id
-end
-```
-
-✅ RIGHT:
-```elixir
-# Layer 1: Use Base (injects FilterByTenant)
-defmodule Voelgoedevents.Ash.Resources.Ticket do
-  use Voelgoedevents.Ash.Resources.Base
-  # Base includes FilterByTenant preparation automatically
-
-  attributes do
-    uuid_primary_key :id
-    attribute :organization_id, :uuid, allow_nil?: false
-  end
-
-  # Layer 2: Declare multitenancy
-  multitenancy do
-    strategy :attribute
-    attribute :organization_id
-  end
-
-  # Layer 3: Enforce with policies
-  policies do
-    policy action_type(:read) do
-      authorize_if expr(organization_id == actor(:organization_id))
-    end
+    # AUTHORIZE SECOND (allow safe states)
+    authorize_if expr(
+      organization_id == actor(:organization_id) and
+      actor(:role) in [:owner, :admin]
+    )
 
     default_policy :deny
   end
 end
 ```
 
-**REQUIRED:** All three layers:
-1. FilterByTenant preparation (via Base or manual)
-2. Multitenancy declaration
-3. Policy enforcement
-
-**VERIFY:** If any layer is missing, tenant isolation is broken.
+**Rule:** Check `forbid_if` conditions before `authorize_if`. This prevents accidental authorizations.
 
 ---
 
-## 10. DEFAULT POLICY DENY (REQUIRED ON EVERY RESOURCE WITH POLICIES)
+### 5.2 No Direct Repo Calls in /lib
 
-❌ WRONG:
+❌ **WRONG:**
 ```elixir
-policies do
-  policy action_type(:read) do
-    authorize_if expr(organization_id == actor(:organization_id))
+# lib/voelgoedevents/services/event_service.ex
+defmodule EventService do
+  def get_event(id, _actor) do
+    Voelgoedevents.Repo.get(Event, id)  # BANNED — bypasses policies
   end
-  # MISSING: default_policy :deny
-  # Result: :destroy, :update, or other unspecified actions are allowed!
 end
 ```
 
-✅ RIGHT:
+✅ **CORRECT:**
 ```elixir
-policies do
-  policy action_type(:read) do
-    authorize_if expr(organization_id == actor(:organization_id))
+defmodule EventService do
+  def get_event(id, actor) do
+    Event
+    |> Ash.Query.for_read(:read)
+    |> Ash.Query.filter(id == ^id)
+    |> Ash.read(actor: actor)
+    |> case do
+      {:ok, [event]} -> {:ok, event}
+      {:ok, []} -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+    end
   end
-
-  policy action_type(:create) do
-    forbid_if expr(is_nil(actor(:id)))
-    authorize_if expr(actor(:role) == :admin)
-  end
-
-  default_policy :deny  # REQUIRED: block everything else
 end
 ```
 
-**REQUIRED:** Every resource with policies must end with `default_policy :deny`.
+**Exception:** Migrations only.
 
-**SEARCH:**
 ```bash
-# Find all resources with policies
-rg "policies do" lib/voelgoedevents/ash/resources -n
-
-# For each, manually verify `default_policy :deny` exists
-# (This should be checked in code review)
+rg "\.Repo\.(get|all|one|insert|update|delete)" lib/voelgoedevents --type elixir
+# EXPECTED: zero matches (except priv/repo/migrations)
 ```
 
 ---
 
-## 11. EXPRESSION SYNTAX (NO NESTED ASSIGNS, USE COMPARISONS)
+### 5.3 Testing: 3-Case Pattern (Mandatory)
 
-❌ WRONG:
+Every resource action MUST have 3 tests:
+
 ```elixir
-# Don't use complex logic in expr()
-policy action_type(:read) do
-  authorize_if expr(
-    if(actor(:role) == :admin, do: true, else: organization_id == actor(:organization_id))
-  )
-end
+defmodule Voelgoedevents.Ash.Resources.Ticketing.EventTest do
+  use ExUnit.Case, async: true
 
-# Don't reference resource fields without comparison
-policy action_type(:update) do
-  authorize_if expr(owner_id)  # INCOMPLETE: comparing what to what?
+  # Case 1: Authorized actor
+  test "create event as staff in org" do
+    org = setup_org()
+    user = setup_user(org, :staff)
+    actor = build_actor(user, org)
+
+    assert {:ok, event} = Event
+      |> Ash.Changeset.for_create(:create, %{"name" => "My Event"})
+      |> Ash.create(actor: actor)
+  end
+
+  # Case 2: Unauthorized actor
+  test "reject event creation from different org" do
+    org1 = setup_org()
+    org2 = setup_org()
+    user = setup_user(org1, :viewer)
+    actor = build_actor(user, org1)
+
+    # Try to create event in org2 (not allowed)
+    assert {:error, %Ash.Error.Forbidden{}} = Event
+      |> Ash.Changeset.for_create(:create, %{
+        "name" => "Event in org2",
+        "organization_id" => org2.id
+      })
+      |> Ash.create(actor: actor)
+  end
+
+  # Case 3: Nil actor (edge case)
+  test "reject event creation with nil actor" do
+    assert {:error, %Ash.Error.Forbidden{}} = Event
+      |> Ash.Changeset.for_create(:create, %{"name" => "Event"})
+      |> Ash.create(actor: nil)
+  end
+
+  # Helpers
+  defp build_actor(user, org) do
+    %{
+      user_id: user.id,
+      organization_id: org.id,
+      role: user.role_in_org,
+      is_platform_admin: false,
+      is_platform_staff: false,
+      type: :user
+    }
+  end
 end
 ```
 
-✅ RIGHT:
-```elixir
-# Simple, direct comparisons
-policy action_type(:read) do
-  authorize_if expr(organization_id == actor(:organization_id))
-end
-
-# Multiple conditions with and/or
-policy action_type(:update) do
-  forbid_if expr(is_nil(actor(:id)))
-  authorize_if expr(
-    organization_id == actor(:organization_id) and
-    actor(:role) in [:admin, :owner]
-  )
-end
-
-# Reference resource fields directly
-policy action_type(:update) do
-  authorize_if expr(owner_id == actor(:id))
-end
-```
-
-**REQUIRED:** Keep expr() blocks simple, direct comparisons.
+**Rule:** 3 tests minimum for every action with authorization.
 
 ---
 
-## 12. FORBIDDEN PATTERNS (BUSINESS LOGIC IN CONTROLLERS)
+## PART 6: QUICK TROUBLESHOOTING
 
-❌ WRONG:
-```elixir
-# Controller has business logic
-def create(conn, params) do
-  if valid_inventory?(params) and check_discount(params) do
-    {:ok, order} = create_order(params)
-    render(conn, "show.html", order: order)
-  end
-end
-
-# Service function doesn't use Ash
-def create_order(params) do
-  Repo.insert(%Order{amount: params["amount"]})
-end
-```
-
-✅ RIGHT:
-```elixir
-# Controller delegates to Ash
-def create(conn, params) do
-  case Ash.create(Order, params, actor: conn.assigns.current_user) do
-    {:ok, order} -> render(conn, "show.html", order: order)
-    {:error, reason} -> render(conn, "error.html", error: reason)
-  end
-end
-
-# All business logic in Ash resource (validations, calculations, policies)
-defmodule Order do
-  use Voelgoedevents.Ash.Resources.Base
-
-  attributes do
-    attribute :amount, :decimal do
-      allow_nil? false
-    end
-    attribute :discount_applied, :boolean, default: false
-  end
-
-  validations do
-    validate present([:amount])
-  end
-
-  calculations do
-    calculate :final_amount, :decimal, expr(amount - coalesce(discount, 0))
-  end
-
-  policies do
-    policy action_type(:create) do
-      authorize_if expr(actor(:role) in [:admin, :staff])
-    end
-  end
-end
-```
-
-**REQUIRED:** Controllers are thin; all logic in Ash resources.
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Ash.Error.Forbidden` on read/create/update/destroy | Policy denies actor | Check: 1) actor has correct fields, 2) organization_id matches, 3) role is authorized, 4) `default_policy :deny` is last |
+| `Actor is not of a type that can be used` | Actor is missing fields or wrong type | Actor MUST have all 6 fields; check actor map construction |
+| `undefined function actor/1` | Bare `actor()` outside `expr()` | Wrap in `expr(actor(:field))` |
+| `Policy list syntax error` | Using Ash 2.x `policy [...]` syntax | Use Ash 3.x `policy action_type(...) do...end` |
+| `organization_id mismatch` | Actor org doesn't match resource org | Verify actor's `organization_id` == resource's `organization_id` |
+| `No valid policies` | `default_policy :deny` is missing | Add `default_policy :deny` as last policy |
+| Tests pass locally, fail in CI | `mix ash.audit` catching violations | Run `mix ash.audit` locally before push |
+| Multitenancy leak (org1 sees org2's data) | Missing Layer 2 or Layer 3 | Add `multitenancy do` + policies with org checks |
 
 ---
 
-## 13. NO CUSTOM BYPASS FLAGS
+## PART 7: COMPLIANCE CHECKLIST (Pre-PR)
 
-❌ WRONG:
-```elixir
-# Inventing custom flags
-context = %{my_skip_validation: true}
-Ash.create(Resource, params, context: context)
+**All items must be ✅ before merge:**
 
-# Using made-up context flags
-Ash.read(Resource, context: %{admin_override: true})
-```
+### Architecture Verification
+- [ ] Domain has `authorization do authorizers [Ash.Policy.Authorizer] end`
+- [ ] Resource has `organization_id, :uuid, allow_nil?: false`
+- [ ] Multitenancy block present: `strategy :attribute; attribute :organization_id`
 
-✅ RIGHT:
-```elixir
-# Only approved flag: skip_tenant_rule (for system operations, EXTREMELY RARE)
-system_actor = %{
-  id: "system",
-  organization_id: nil,
-  role: :system,
-  is_platform_admin: true,
-  is_platform_staff: true
+### Syntax Verification
+- [ ] No `use Ash.Api`
+- [ ] No actor on `for_create/for_update/for_destroy`
+- [ ] All actor references inside `expr()`
+- [ ] All policies end with `default_policy :deny`
+- [ ] Policy syntax is `policy action_type(...) do...end` (not lists)
+
+### Testing Checklist
+- [ ] 3 tests per action (authorized, unauthorized, nil actor)
+- [ ] All tests pass: `mix test`
+- [ ] Cover all roles in RBAC matrix for this resource
+
+### Security Review
+- [ ] No `Repo.` calls in `/lib`
+- [ ] No `authorize?: false` without `ALLOW-MARKER-*` comment
+- [ ] No bare actor() in policies
+- [ ] Policies check tenant isolation (`organization_id == actor(:organization_id)`)
+- [ ] `forbid_if` conditions checked before `authorize_if`
+
+### Compliance Review
+- [ ] `mix compile --warnings-as-errors` passes
+- [ ] `mix ash.audit` shows zero violations
+- [ ] All CI checks pass
+
+---
+
+## PART 8: REFERENCES & LINKS
+
+**Official Ash 3 Guides (Read These):**
+- [Actors & Authorization](https://hexdocs.pm/ash/actors-and-authorization.html)
+- [Policies](https://hexdocs.pm/ash/policies.html)
+- [Policy Authorizer](https://hexdocs.pm/ash/Ash.Policy.Authorizer.html)
+- [Expressions / expr()](https://hexdocs.pm/ash/expressions.html)
+- [Multitenancy](https://hexdocs.pm/ash/multitenancy.html)
+- [Ash.Query](https://hexdocs.pm/ash/Ash.Query.html)
+- [Ash.Changeset](https://hexdocs.pm/ash/Ash.Changeset.html)
+- [Ash.Resource](https://hexdocs.pm/ash/Ash.Resource.html)
+- [Ash.Domain](https://hexdocs.pm/ash/Ash.Domain.html)
+
+**VoelgoedEvents Docs:**
+- `/docs/domain/rbac_and_platform_access.md` — Business RBAC rules
+- `/docs/ash/ASH_3_RBAC_MATRIX.md` — Role × Action matrix
+- `MASTER_BLUEPRINT.md` — Architecture overview
+- `ai_context_map.md` — Module paths
+
+---
+
+## PART 9: ENFORCEMENT & CI
+
+### 9.1 CI Pipeline Must Run (Every PR)
+
+```bash
+#!/bin/bash
+set -e
+
+echo "🔍 Checking Ash 3.x compliance..."
+
+# 1. No Ash.Api
+rg "use Ash.Api" lib/voelgoedevents --type elixir && {
+  echo "❌ FAIL: use Ash.Api found"
+  exit 1
 }
 
-# ONLY use skip_tenant_rule in:
-# - Migrations
-# - Maintenance scripts (bin/, mix tasks)
-# - Platform-only workflows (never user-facing)
-Ash.read(Resource, actor: system_actor, context: %{skip_tenant_rule: true})
+# 2. No actor on changeset
+rg "for_(create|update|destroy)\([^)]*,\s*actor:" lib/voelgoedevents/ash --type elixir && {
+  echo "❌ FAIL: actor on changeset found"
+  exit 1
+}
 
-# For everything else, use proper policies
-policy action_type(:special_admin_action) do
-  authorize_if expr(actor(:is_platform_admin) == true)
-end
+# 3. Compile
+mix compile --warnings-as-errors || exit 1
+
+# 4. Full audit
+mix ash.audit || exit 1
+
+# 5. Tests
+mix test || exit 1
+
+echo "✅ All checks passed"
 ```
 
-**REQUIRED:** 
-- Do NOT invent context flags. Use policies.
-- `skip_tenant_rule` is EXTREMELY RARE. Never in user-facing code.
+### 9.2 ash.audit Roadmap (Future Automated Checks)
 
-**SEARCH:**
-```bash
-# Find any use of skip_tenant_rule
-rg "skip_tenant_rule" lib/voelgoedevents --type elixir -n
-
-# Manually verify each is in:
-# - priv/repo/migrations/
-# - bin/
-# - mix tasks (lib/mix/tasks/)
-# With explicit comment explaining why
-```
+These checks should eventually be enforced by `mix ash.audit`:
+- [ ] Every resource with policies has `default_policy :deny`
+- [ ] Every tenant-scoped resource has `organization_id` with `allow_nil?: false`
+- [ ] Every domain has `authorization do...authorizers [Ash.Policy.Authorizer] end`
+- [ ] No bare `actor()` outside `expr()`
+- [ ] Every action has 3 tests (minimum)
+- [ ] No `Repo.` calls in `/lib` (except migrations)
 
 ---
 
-## 14. REACTOR FOR MULTI-STEP WORKFLOWS
-
-❌ WRONG:
-```elixir
-# Manual transaction (hard to test, no Ash integration)
-def checkout(user, items) do
-  Repo.transaction(fn ->
-    {:ok, order} = Ash.create(Order, %{user_id: user.id})
-    {:ok, _items} = Ash.create_bulk(LineItem, items)
-    {:ok, payment} = process_payment(order)
-    order
-  end)
-end
-```
-
-✅ RIGHT:
-```elixir
-# Use Ash.Reactor for multi-step flows
-defmodule CheckoutReactor do
-  use Ash.Reactor
-
-  ash_step :create_order, Order, :create do
-    input :user_id, input(:user_id)
-  end
-
-  ash_step :add_items, LineItem, :create_bulk do
-    input :order_id, result(:create_order, :id)
-    input :items, input(:items)
-    wait_for [:create_order]
-  end
-
-  ash_step :process_payment, Order, :pay do
-    input :order_id, result(:create_order, :id)
-    wait_for [:add_items]
-  end
-end
-
-# Usage
-case CheckoutReactor.run(
-  user_id: user.id,
-  items: line_items,
-  actor: user
-) do
-  {:ok, results} -> {:ok, results.create_order}
-  {:error, step, reason, _results} -> {:error, {step, reason}}
-end
-```
-
-**REQUIRED:** Multi-step workflows use Ash.Reactor, not manual Repo.transaction.
-
----
-
-## 15. NO ASH 2.X CALLBACKS ON CHANGESET
-
-❌ WRONG (Ash 2.x callback DSL):
-```elixir
-# Ash 2.x before_action callback on changeset
-changeset
-|> Ash.Changeset.before_action(fn cs -> ... end)
-|> Ash.create()
-```
-
-✅ RIGHT (Ash 3.x action changes):
-```elixir
-# Ash 3.x: logic in action definition
-actions do
-  create :create do
-    change fn changeset, _context ->
-      # logic here
-      changeset
-    end
-  end
-end
-```
-
-**REQUIRED:** Use action `change` callbacks, not changeset before_action.
-
-**SEARCH:** `rg "before_action|after_action|around_action" lib/voelgoedevents/ash --type elixir -n` should return 0 matches.
-
----
-
-## 16. AUDIT & SEARCH COMMANDS (FULL SUITE)
-
-Run these before committing. They catch Ash 3.x and 2.x violations.
-
-```bash
-# ===== HARD FAILURES (NEVER ALLOWED) =====
-
-# 1. No Ash 2.x policy list syntax
-echo "1. Checking for Ash 2.x policy [ ... ] syntax..."
-rg "policy \[" lib/voelgoedevents/ash --type elixir -n
-# Expected: 0 matches
-
-# 2. No actor() outside expr()
-echo "2. Checking for actor() outside expr()..."
-rg "authorize_if.*actor\(" lib/voelgoedevents/ash -n
-rg "forbid_if.*actor\(" lib/voelgoedevents/ash -n
-# Expected: 0 matches
-
-# 3. No Repo.* in app code
-echo "3. Checking for Repo.* in application code..."
-rg "Repo\.(insert|update|delete|all)" lib/voelgoedevents/ash --type elixir -n
-# Expected: 0 matches (only in migrations)
-
-# 4. No actor: in for_* changeset calls
-echo "4. Checking for actor: in for_create/for_update/for_destroy..."
-rg "for_create.*actor:" lib/voelgoedevents/ash -n
-rg "for_update.*actor:" lib/voelgoedevents/ash -n
-rg "for_destroy.*actor:" lib/voelgoedevents/ash -n
-# Expected: 0 matches
-
-# 5. No old Ash 2.x action API
-echo "5. Checking for old Ash 2.x action API..."
-rg "Ash\.(create|update|destroy)\([^,]+,\s*:[a-z_]+.*actor:" lib/voelgoedevents/ash -n
-# Expected: 0 matches
-
-# 6. No Ash 2.x callback DSL
-echo "6. Checking for Ash 2.x callback DSL..."
-rg "before_action|after_action|around_action" lib/voelgoedevents/ash --type elixir -n
-# Expected: 0 matches
-
-# ===== VERIFICATION (REQUIRED) =====
-
-# 7. Confirm Base usage on NEW resources
-echo "7. Confirming Base module usage..."
-rg "use Voelgoedevents.Ash.Resources.Base" lib/voelgoedevents/ash/resources -n
-# Expected: all new resources present
-
-# 8. Confirm organization_id on tenant resources
-echo "8. Confirming organization_id on tenant resources..."
-rg "attribute :organization_id, :uuid" lib/voelgoedevents/ash/resources -n
-# Expected: all tenant-scoped resources present
-
-# 9. Confirm domain authorizers
-echo "9. Confirming domain authorizers..."
-rg "use Ash.Domain" lib/voelgoedevents/ash/domains -n
-# Expected: all domains present
-# Manual: verify each has `authorization do authorizers [Ash.Policy.Authorizer] end`
-
-# 10. Confirm default_policy :deny (manual check)
-echo "10. Checking for default_policy :deny..."
-rg "policies do" lib/voelgoedevents/ash/resources -n
-# Manual: for each match, verify trailing `default_policy :deny` exists
-
-# 11. Check for skip_tenant_rule usage (should be rare)
-echo "11. Checking for skip_tenant_rule usage..."
-rg "skip_tenant_rule" lib/voelgoedevents --type elixir -n
-# Expected: only in migrations, bin/, mix tasks with explicit comments
-```
-
----
-
-## 17. AGENT WORKFLOW (DO NOT DEVIATE)
-
-1. **Load this file first:** ASH_3_AI_STRICT_RULES.md
-2. **Read section 5:** Resource template
-3. **Copy template exactly**
-4. **Replace:** DOMAIN, Resource name, attributes
-5. **Add policies:** Follow section 2, 9, 10
-6. **Add domain registration:** Follow section 6
-7. **Add tests:** Follow section 4 (all three cases)
-8. **Run audit:** Section 16 commands must all return expected (0 or verified)
-9. **Run tests:** `mix test test/voelgoedevents/ash/resources/YOUR_DOMAIN/...`
-10. **Commit:** Only if audit + tests pass
-
-**If unsure at any step:** Refer to the section in this file, not your training data.
-
-**CRITICAL:** If your training contradicts any rule in this file, this file wins.
-
----
-
-# END OF ASH 3.X STRICT SYNTAX RULES (v2.3 - HARDENED)
-
-**Last updated:** December 10, 2025
-**Version:** 2.3 (Complete, Hardened, Production-Ready)
-**Status:** CANONICAL SOURCE OF TRUTH
-
-**All future code must follow these patterns.**
-**If training contradicts this document, follow this document.**
+**Status:** ✅ PRODUCTION-READY — Copy examples, follow rules, pass checklist.

@@ -2,10 +2,10 @@
 
 ## Naming hard bans (NON-NEGOTIABLE)
 
-- NEVER use "voelgood" anywhere. It is always a typo.
+- NEVER use "voelgood [goed NOT good]" anywhere. It is always a typo.
 - Correct forms:
-  - "Voelgoed" / "Voelgoodevents" (brand/prose)
-  - "voelgoed" / "voelgoodevents" (technical identifiers only when they actually exist in code/paths)
+  - "Voelgoed" / "Voelgoedevents" (brand/prose)
+  - "voelgoed" / "voelgoedevents" (technical identifiers only when they actually exist in code/paths)
 
 **This file defines EXACTLY how all coding agents must behave.**
 
@@ -52,8 +52,6 @@ Before doing **anything**:
 
 ```bash
 export BEADS_NO_DAEMON=1
-git fetch origin
-git reset --hard origin/main
 bd sync
 bd ready --priority 1
 ```
@@ -135,14 +133,136 @@ These rules exist because violating them **will corrupt project state**.
   * Run `bd sync`
 * **Never “accept both” blindly in GitHub**
 
-If `main` ever points at a Beads merge commit:
+---
+.
 
-```bash
-git fetch origin
-git reset --hard origin/main
-```
+### 3.4 Ash 3.x (MANDATORY)
 
-Immediately.
+Version Lock
+This project uses Ash 3.x ONLY.
+There is no compatibility, no fallback, and no tolerance for Ash 2.x.
+If you write Ash 2.x code, you are writing wrong code — even if tests pass.
+
+Canonical Docs (ONLY SOURCES ALLOWED)
+Agents MUST use only these sources:
+Official Ash Docs (Ash 3.x)
+👉 https://ash-hq.org/docs
+
+Version selector MUST be Ash 3.x
+
+Project Canonical Ash Docs
+/docs/ash/ASH_3_AI_STRICT_RULES.md
+/docs/ash/ASH_3_RBAC_MATRIX.md
+Existing project code (when docs and reality diverge)
+
+❌ Blogs, StackOverflow, GitHub gists, or examples not explicitly Ash 3.x are forbidden.
+
+Mental Model Shift (Critical)
+Ash 2.x Thinking ❌	Ash 3.x Reality ✅
+“Policies allow access”	Policies deny by default
+Actor is optional	Actor is mandatory
+Context can imply user	Actor must be explicit
+authorize?: false is OK	Fix the policy instead
+Tests passing = safe	Policies decide safety
+Actor Shape — Rosetta Stone
+❌ WRONG (Ash 2.x / Legacy Thinking)
+actor: %{id: user.id}
+
+Ash.read(Resource)
+
+authorize?: false
+
+✅ RIGHT (Ash 3.x)
+actor = %{
+  user_id: uuid,
+  organization_id: uuid | nil,
+  role: :owner | :admin | :staff | :viewer | :scanner_only | :system,
+  is_platform_admin: boolean,
+  is_platform_staff: boolean,
+  type: :user | :system | :device | :api_key
+}
+
+Ash.read(Resource, actor: actor)
+
+If any field is missing → policy failure is expected and correct.
+
+Policy Rosetta Stone
+❌ WRONG (Ash 2.x Style)
+policies do
+  policy action_type(:read) do
+    authorize_if expr(actor(:id) != nil)
+  end
+end
+
+Implicit
+Permissive
+Cross-tenant unsafe
+
+✅ RIGHT (Ash 3.x)
+policies do
+  policy action_type(:read) do
+    forbid_if expr(is_nil(actor(:user_id)))
+    authorize_if expr(organization_id == actor(:organization_id))
+  end
+
+  default_policy :deny
+end
+
+Explicit
+Deny-by-default
+Tenant-safe
+
+Tenancy Rosetta Stone
+❌ WRONG
+authorize_if always()
+
+Ash.read(Resource)
+
+✅ RIGHT
+authorize_if expr(
+  organization_id == actor(:organization_id)
+)
+
+If tenant scoping is missing → the code is invalid.
+
+Banned Ash 2.x Smells (Instant Refusal)
+
+If any of these appear, agents MUST STOP:
+❌ Missing default_policy :deny
+❌ authorize?: false used to “make things work”
+❌ Reads or writes without actor:
+❌ Policies relying on context[:current_user]
+❌ Implicit tenant access
+❌ “This worked in Ash 2.x” justification
+
+Conflict Resolution Rule
+If there is a conflict between:
+Ash 2.x docs
+Old blog posts
+Prior experience
+“It worked before”
+
+👉 Ash 3.x docs + project rules ALWAYS win
+
+Refusal Rule (Non-Negotiable)
+
+Agents MUST refuse to proceed if:
+The reference is Ash 2.x
+The behavior is uncertain in Ash 3.x
+The solution weakens policies “temporarily”
+The fix relies on disabling authorization
+
+Ask → Clarify → Then act
+Never assume
+
+One-Line Truth
+Ash 3.x is not an upgrade. It is a different language.
+
+This rule exists to prevent:
+Silent auth bypasses
+Cross-tenant leaks
+False test confidence
+Long-term architectural corruption
 
 ---
 

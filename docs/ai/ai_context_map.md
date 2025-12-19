@@ -33,12 +33,38 @@ Only use paths/modules listed in this document.
 
 ---
 
-### 📘 Ash 3.x Canonical Guidance (System-Level)
+## 📘 Ash 3.x — Canonical System Rules (NON-NEGOTIABLE)
 
-| Purpose | File |
-|--------|------|
-| Hard syntax rules, banned patterns, required resource structure | `/docs/ash/ASH_3_AI_STRICT_RULES.md` |
-| RBAC matrix, actor shape, policy templates, CI rules | `/docs/ash/ASH_3_RBAC_MATRIX.md` |
+All Ash-related code, audits, reviews, and **coding-agent decisions MUST comply with the documents below**.  
+These files together form the **single, authoritative truth layer** for Ash usage in this project and **override**:
+
+- All Ash 2.x knowledge
+- Legacy project conventions
+- Personal intuition or “common Ash patterns”
+- Outdated examples from blogs, talks, or older codebases
+
+⚠️ **Important:**  
+`ASH_3_AI_STRICT_RULES.md` has been **fully overwritten** with the new Rulebook v5–based content and is now the **primary enforcement document**.
+
+---
+
+| Layer | Purpose | Canonical Source | Enforcement |
+|------|--------|------------------|-------------|
+| **Strict Rules (Primary)** | Hard bans, required DSL patterns, structural rules, migration guards | `/docs/ash/ASH_3_AI_STRICT_RULES.md` *(overwritten, Rulebook v5–derived)* | 🚫 **Absolute** |
+| **RBAC & Auth** | Actor shape, roles, permissions, policy templates | `/docs/ash/ASH_3_RBAC_MATRIX.md` | 🚫 **Absolute** |
+| **Validation / Hard Truths** | Known failure modes, anti-patterns, lessons from real audits | `/docs/ash/HARD_TRUTH_VALIDATION_REPORT.md` | ⚠️ **Advisory (must be considered)** |
+| **Master Index** | Navigation and discovery only — **no rules defined here** | `/docs/ash/MASTER_INDEX.md` | ℹ️ **Reference only** |
+
+---
+
+### 🔒 Enforcement Order (Highest → Lowest)
+
+1. **ASH_3_AI_STRICT_RULES.md** — final authority, no exceptions without explicit allow markers  
+2. **ASH_3_RBAC_MATRIX.md** — security and authorization truth  
+3. **HARD_TRUTH_VALIDATION_REPORT.md** — informs risk, edge cases, and audit decisions  
+4. **MASTER_INDEX.md** — navigation only (never normative)
+
+Any conflict is resolved **top-down** using this order.
 
 ---
 

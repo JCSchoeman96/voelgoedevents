@@ -22,6 +22,12 @@ Use the links below to find the authoritative source for any topic.
 
 ---
 
+## Canonical Governance for Ash 3.x
+[~/docs/ash/MASTER_INDEX.md]
+- MASTER_INDEX.md — authority, precedence, conflict resolution
+
+---
+
 ## 1. Vision & Planning
 
 **Purpose:** Defines the "Why" and "When". Strategic direction and build sequence.

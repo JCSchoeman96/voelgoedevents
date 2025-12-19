@@ -63,9 +63,6 @@ defmodule Voelgoedevents.Ash.Resources.Audit.AuditLog do
   end
 
   policies do
-    # FIX: Replaced failing TenantPolicies.enforce_tenant_policies()
-    # with explicit policies to avoid macro variable hygiene errors.
-
     policy action_type(:read) do
       description "Users can only read audit logs for their organization."
       forbid_if expr(organization_id != ^actor(:organization_id))

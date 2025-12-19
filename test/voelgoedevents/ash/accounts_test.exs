@@ -509,6 +509,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
           actor: tenant_actor(org.id, :owner),
           authorize?: false
         )
+
       assert length(loaded.memberships) == 1
 
       membership = hd(loaded.memberships)
@@ -570,6 +571,7 @@ defmodule Voelgoedevents.Ash.AccountsTest do
           actor: tenant_actor(org.id, :owner),
           authorize?: false
         )
+
       user = hd(loaded.memberships).user
 
       assert user.hashed_password != "MySecurePass123!"

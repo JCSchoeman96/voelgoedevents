@@ -311,7 +311,8 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.Organization do
         sc when is_list(sc) ->
           Map.new(sc)
 
-        _ -> %{}
+        _ ->
+          %{}
       end
 
     Map.merge(existing_context, %{

@@ -26,7 +26,8 @@ defmodule Mix.Tasks.Ash.Audit do
 
   Allow markers (comments) to override specific rules when truly intentional:
       # ash_audit: allow_authorize_false
-      # ash_audit: allow_missing_default_policy
+      # ash_audit: allow_missing_default_policy (deprecated - no longer needed)
+      # ash_audit: allow_policies_without_authorize (if intentionally restrictive)
       # ash_audit: allow_missing_domain_authorizers
       # ash_audit: allow_repo_call
       # ash_audit: allow_missing_multitenancy
@@ -102,7 +103,9 @@ defmodule Mix.Tasks.Ash.Audit do
     Mix.shell().info("==> Ash audit (Ash 3.x) — scanning #{length(files)} files")
     if verbose?, do: Mix.shell().info("    Paths: #{Enum.join(paths, ", ")}")
     if verbose?, do: Mix.shell().info("    Concurrency: #{max_concurrency}")
-    if verbose? and fail_fast?, do: Mix.shell().info("    Mode: fail-fast (per-file errors stop scan early)")
+
+    if verbose? and fail_fast?,
+      do: Mix.shell().info("    Mode: fail-fast (per-file errors stop scan early)")
 
     {results, stopped_early?} =
       if fail_fast? do
@@ -155,7 +158,11 @@ defmodule Mix.Tasks.Ash.Audit do
         |> Kernel.++(base_presence_note(resources, base_exists?))
       end
 
-    all = normalize_output(parse_errors ++ per_file_violations ++ cross_violations, warnings_as_errors?)
+    all =
+      normalize_output(
+        parse_errors ++ per_file_violations ++ cross_violations,
+        warnings_as_errors?
+      )
 
     case format do
       "json" -> print_json(all)
@@ -190,7 +197,9 @@ defmodule Mix.Tasks.Ash.Audit do
       timeout: :infinity
     )
     |> Enum.map(fn
-      {:ok, res} -> res
+      {:ok, res} ->
+        res
+
       {:exit, reason} ->
         %{
           file: "unknown",
@@ -211,6 +220,7 @@ defmodule Mix.Tasks.Ash.Audit do
       r = process_file(file, true)
 
       per_file = normalize_output(r.violations, warnings_as_errors?)
+
       parse_errs =
         case r.parse_error do
           nil ->
@@ -277,14 +287,19 @@ defmodule Mix.Tasks.Ash.Audit do
               line: m.line,
               has_policy_authorizer?: domain_has_policy_authorizer?(m.body),
               allow_missing_domain_authorizers?:
-                allow_marker_near_line?(lines, m.line, "ash_audit: allow_missing_domain_authorizers")
+                allow_marker_near_line?(
+                  lines,
+                  m.line,
+                  "ash_audit: allow_missing_domain_authorizers"
+                )
             }
           end)
 
         resources =
           modules
           |> Enum.filter(fn m ->
-            module_uses?(m.body, @ash_resource_parts) or module_uses?(m.body, @base_resource_parts)
+            module_uses?(m.body, @ash_resource_parts) or
+              module_uses?(m.body, @base_resource_parts)
           end)
           |> Enum.map(fn m ->
             policies = find_policies_block(m.body)
@@ -303,6 +318,7 @@ defmodule Mix.Tasks.Ash.Audit do
               has_policies?: policies != nil,
               policies_line: (policies && policies.line) || m.line,
               has_default_policy_deny?: (policies && policies.default_deny?) || false,
+              policies_has_authorize?: (policies && policies.has_authorize?) || false,
               policy_expr_issues: (policies && policies.expr_issues) || [],
               uses_base?: module_uses?(m.body, @base_resource_parts),
               org_attr: org_attr,
@@ -370,7 +386,8 @@ defmodule Mix.Tasks.Ash.Audit do
           line: meta[:line] || 1,
           column: meta[:column],
           message: "Forbidden: `use Ash.Api` (Ash 2.x). This project is Ash 3.x Domains-only.",
-          hint: "Replace Ash.Api with Ash.Domain. See Ash v3 docs + /docs/ash/ASH_3_AI_STRICT_RULES.md."
+          hint:
+            "Replace Ash.Api with Ash.Domain. See Ash v3 docs + /docs/ash/ASH_3_AI_STRICT_RULES.md."
         }
 
         {node, [v | acc]}
@@ -393,7 +410,7 @@ defmodule Mix.Tasks.Ash.Audit do
             column: meta[:column],
             message: "Forbidden `authorize? do ... end` block (legacy policy style).",
             hint:
-              "Use `policies do ... end` with `policy ... do authorize_if/forbid_if ... end` and `default_policy :deny`."
+              "Use `policies do ... end` with `policy ... do authorize_if/forbid_if ... end`. Fail-closed security is enforced via Ash Policy Authorizer semantics."
           }
 
           {node, [v | acc]}
@@ -501,7 +518,8 @@ defmodule Mix.Tasks.Ash.Audit do
       aliases = repo_local_aliases(ast)
 
       Macro.prewalk(ast, [], fn
-        {{:., meta_dot, [{:__aliases__, meta_alias, parts}, _fun]}, meta_call, _args} = node, acc ->
+        {{:., meta_dot, [{:__aliases__, meta_alias, parts}, _fun]}, meta_call, _args} = node,
+        acc ->
           line = meta_call[:line] || meta_dot[:line] || meta_alias[:line] || 1
 
           is_repo = parts == @repo_parts or MapSet.member?(aliases, parts)
@@ -513,7 +531,8 @@ defmodule Mix.Tasks.Ash.Audit do
               file: file,
               line: line,
               column: meta_call[:column] || meta_dot[:column] || meta_alias[:column],
-              message: "Direct Repo call detected inside Ash business layer (`lib/voelgoedevents/ash/**`).",
+              message:
+                "Direct Repo call detected inside Ash business layer (`lib/voelgoedevents/ash/**`).",
               hint:
                 "Move logic into Ash actions/changes/preparations/calculations.\n" <>
                   "If truly intentional, add `# ash_audit: allow_repo_call` on the same line or within 3 lines above."
@@ -536,8 +555,12 @@ defmodule Mix.Tasks.Ash.Audit do
   defp check_domain_authorizers(domains) do
     Enum.flat_map(domains, fn d ->
       cond do
-        d.allow_missing_domain_authorizers? -> []
-        d.has_policy_authorizer? -> []
+        d.allow_missing_domain_authorizers? ->
+          []
+
+        d.has_policy_authorizer? ->
+          []
+
         true ->
           [
             %Violation{
@@ -565,25 +588,39 @@ defmodule Mix.Tasks.Ash.Audit do
           not r.has_policies? ->
             []
 
+          # Fail if default_policy is present (it's not a valid DSL keyword)
           r.has_default_policy_deny? ->
-            []
-
-          allow_marker_near_line?(lines, r.policies_line, "ash_audit: allow_missing_default_policy") ->
-            []
-
-          true ->
             [
               %Violation{
                 severity: :error,
-                check: "missing_default_policy_deny",
+                check: "invalid_default_policy_dsl",
                 file: r.file,
                 line: r.policies_line || 1,
-                message: "Resource has `policies do` but is missing `default_policy :deny`.",
+                message: "Resource uses invalid `default_policy :deny` DSL keyword (not supported in this Ash version).",
                 hint:
-                  "Add `default_policy :deny` inside the `policies do` block.\n" <>
-                    "If intentionally permissive (rare), add `# ash_audit: allow_missing_default_policy` within 3 lines above."
+                  "Remove `default_policy :deny` from policies block.\n" <>
+                    "Fail-closed security is enforced via Ash Policy Authorizer semantics: access is only granted when a policy explicitly authorizes."
               }
             ]
+
+          # Check that resources with policies have at least one authorize_if
+          # (so we don't have "policies exist but nothing authorizes" mistakes)
+          not r.policies_has_authorize? ->
+            [
+              %Violation{
+                severity: :error,
+                check: "policies_without_authorize",
+                file: r.file,
+                line: r.policies_line || 1,
+                message: "Resource has `policies do` but no `authorize_if` statements found.",
+                hint:
+                  "Policies must include at least one `authorize_if` to grant access.\n" <>
+                    "Fail-closed security: access is only granted when a policy explicitly authorizes."
+              }
+            ]
+
+          true ->
+            []
         end
 
       v2 =
@@ -599,7 +636,8 @@ defmodule Mix.Tasks.Ash.Audit do
                 file: r.file,
                 line: line,
                 column: col,
-                message: "Policy condition looks like a raw expression (#{kind}) without `expr(...)` wrapper.",
+                message:
+                  "Policy condition looks like a raw expression (#{kind}) without `expr(...)` wrapper.",
                 hint:
                   "Prefer: `authorize_if expr(...)` / `forbid_if expr(...)` / `authorize_unless expr(...)` / `forbid_unless expr(...)`.\n" <>
                     "If this is intentional, add `# ash_audit: allow_policy_missing_expr` within 3 lines above."
@@ -621,9 +659,15 @@ defmodule Mix.Tasks.Ash.Audit do
       else
         v_allow_nil =
           cond do
-            r.org_attr == nil -> []
-            r.org_attr.allow_nil_false? -> []
-            allow_marker_near_line?(lines, r.org_attr.line, "ash_audit: allow_org_id_allow_nil") -> []
+            r.org_attr == nil ->
+              []
+
+            r.org_attr.allow_nil_false? ->
+              []
+
+            allow_marker_near_line?(lines, r.org_attr.line, "ash_audit: allow_org_id_allow_nil") ->
+              []
+
             true ->
               [
                 %Violation{
@@ -631,7 +675,8 @@ defmodule Mix.Tasks.Ash.Audit do
                   check: "tenant_org_id_allow_nil",
                   file: r.file,
                   line: r.org_attr.line || 1,
-                  message: "`attribute :organization_id` must enforce `allow_nil? false` for tenant-scoped resources.",
+                  message:
+                    "`attribute :organization_id` must enforce `allow_nil? false` for tenant-scoped resources.",
                   hint:
                     "Make organization_id non-nullable at the Ash layer.\n" <>
                       "If truly intentional, add `# ash_audit: allow_org_id_allow_nil` within 3 lines above the attribute."
@@ -641,8 +686,12 @@ defmodule Mix.Tasks.Ash.Audit do
 
         v_multitenancy =
           cond do
-            r.multitenancy != nil -> []
-            allow_marker_near_line?(lines, r.line, "ash_audit: allow_missing_multitenancy") -> []
+            r.multitenancy != nil ->
+              []
+
+            allow_marker_near_line?(lines, r.line, "ash_audit: allow_missing_multitenancy") ->
+              []
+
             true ->
               [
                 %Violation{
@@ -660,8 +709,12 @@ defmodule Mix.Tasks.Ash.Audit do
 
         v_tenant_attr =
           cond do
-            r.multitenancy == nil -> []
-            r.multitenancy.mentions_org_id? -> []
+            r.multitenancy == nil ->
+              []
+
+            r.multitenancy.mentions_org_id? ->
+              []
+
             true ->
               [
                 %Violation{
@@ -669,8 +722,10 @@ defmodule Mix.Tasks.Ash.Audit do
                   check: "tenant_multitenancy_missing_tenant_attribute",
                   file: r.file,
                   line: r.multitenancy.line || 1,
-                  message: "Multitenancy block does not appear to reference `tenant_attribute :organization_id` (or equivalent).",
-                  hint: "Prefer explicit tenant_attribute binding to organization_id for tenant scoping."
+                  message:
+                    "Multitenancy block does not appear to reference `tenant_attribute :organization_id` (or equivalent).",
+                  hint:
+                    "Prefer explicit tenant_attribute binding to organization_id for tenant scoping."
                 }
               ]
           end
@@ -708,7 +763,8 @@ defmodule Mix.Tasks.Ash.Audit do
                         file: file,
                         line: meta_map[:line] || meta[:line] || 1,
                         column: meta_map[:column] || meta[:column],
-                        message: "Actor literal is missing keys: #{Enum.join(Enum.map(missing, &inspect/1), ", ")}",
+                        message:
+                          "Actor literal is missing keys: #{Enum.join(Enum.map(missing, &inspect/1), ", ")}",
                         hint:
                           "Canonical actor shape requires: #{Enum.join(Enum.map(required, &inspect/1), ", ")}.\n" <>
                             "If this is a test, fix your actor helpers. If this is lib/, treat as a security smell."
@@ -763,8 +819,12 @@ defmodule Mix.Tasks.Ash.Audit do
           d = domain_index[r.domain]
 
           cond do
-            d.allow_missing_domain_authorizers? -> []
-            d.has_policy_authorizer? -> []
+            d.allow_missing_domain_authorizers? ->
+              []
+
+            d.has_policy_authorizer? ->
+              []
+
             true ->
               [
                 %Violation{
@@ -788,8 +848,10 @@ defmodule Mix.Tasks.Ash.Audit do
               check: "resource_domain_unknown",
               file: r.file,
               line: r.line || 1,
-              message: "Resource declares domain #{inspect_module(r.domain)} but that domain was not found in scanned paths.",
-              hint: "Ensure the domain module exists in the scanned paths (or pass --paths to include it)."
+              message:
+                "Resource declares domain #{inspect_module(r.domain)} but that domain was not found in scanned paths.",
+              hint:
+                "Ensure the domain module exists in the scanned paths (or pass --paths to include it)."
             }
           ]
       end
@@ -802,7 +864,8 @@ defmodule Mix.Tasks.Ash.Audit do
     else
       resources
       |> Enum.filter(fn r ->
-        (r.org_attr != nil or r.multitenancy != nil) and not r.uses_base? and not r.allow_missing_base?
+        (r.org_attr != nil or r.multitenancy != nil) and not r.uses_base? and
+          not r.allow_missing_base?
       end)
       |> Enum.map(fn r ->
         %Violation{
@@ -810,7 +873,8 @@ defmodule Mix.Tasks.Ash.Audit do
           check: "tenant_resource_missing_base",
           file: r.file,
           line: r.line || 1,
-          message: "Tenant-scoped resource does not appear to `use Voelgoedevents.Ash.Resources.Base`.",
+          message:
+            "Tenant-scoped resource does not appear to `use Voelgoedevents.Ash.Resources.Base`.",
           hint:
             "If project standard is to use the base for tenancy/policies conventions, align this resource.\n" <>
               "If intentionally divergent, add `# ash_audit: allow_missing_base` within 3 lines above the resource module."
@@ -823,7 +887,8 @@ defmodule Mix.Tasks.Ash.Audit do
     if base_exists? do
       []
     else
-      tenant_scoped_resources = Enum.filter(resources, fn r -> r.org_attr != nil or r.multitenancy != nil end)
+      tenant_scoped_resources =
+        Enum.filter(resources, fn r -> r.org_attr != nil or r.multitenancy != nil end)
 
       if tenant_scoped_resources == [] do
         []
@@ -834,7 +899,8 @@ defmodule Mix.Tasks.Ash.Audit do
             check: "base_resource_missing_from_scan",
             file: "N/A",
             line: 1,
-            message: "Tenant-scoped resources exist, but Voelgoedevents.Ash.Resources.Base was not found in scanned paths.",
+            message:
+              "Tenant-scoped resources exist, but Voelgoedevents.Ash.Resources.Base was not found in scanned paths.",
             hint:
               "If the base module exists, ensure it is included in --paths.\n" <>
                 "If it doesn't exist, either create it or update docs + audit rules accordingly."
@@ -891,7 +957,8 @@ defmodule Mix.Tasks.Ash.Audit do
   defp domain_has_policy_authorizer?(body) do
     has_in_use_opts? =
       Macro.prewalk(body, false, fn
-        {:use, _meta, [{:__aliases__, _m2, @ash_domain_parts}, opts]} = node, _acc when is_list(opts) ->
+        {:use, _meta, [{:__aliases__, _m2, @ash_domain_parts}, opts]} = node, _acc
+        when is_list(opts) ->
           {node, keyword_includes_authorizer?(opts, @policy_authorizer_parts)}
 
         node, acc ->
@@ -947,7 +1014,8 @@ defmodule Mix.Tasks.Ash.Audit do
   defp find_resource_domain(body) do
     via_use =
       Macro.prewalk(body, nil, fn
-        {:use, _meta, [{:__aliases__, _m2, @ash_resource_parts}, opts]} = node, _acc when is_list(opts) ->
+        {:use, _meta, [{:__aliases__, _m2, @ash_resource_parts}, opts]} = node, _acc
+        when is_list(opts) ->
           dom =
             case Keyword.fetch(opts, :domain) do
               {:ok, {:__aliases__, _m3, parts}} -> parts
@@ -984,8 +1052,16 @@ defmodule Mix.Tasks.Ash.Audit do
           {node, nil}
         else
           default_deny? = policies_block_has_default_deny?(block)
+          has_authorize? = policies_block_has_authorize?(block)
           expr_issues = policies_block_expr_issues(block)
-          {node, %{line: meta[:line] || 1, default_deny?: default_deny?, expr_issues: expr_issues}}
+
+          {node,
+           %{
+             line: meta[:line] || 1,
+             default_deny?: default_deny?,
+             has_authorize?: has_authorize?,
+             expr_issues: expr_issues
+           }}
         end
 
       node, acc ->
@@ -998,6 +1074,15 @@ defmodule Mix.Tasks.Ash.Audit do
     Macro.prewalk(block, false, fn
       {:default_policy, _m, [:deny]} = node, _acc -> {node, true}
       {:default_policy, _m, [{:deny, _, _}]} = node, _acc -> {node, true}
+      node, acc -> {node, acc}
+    end)
+    |> elem(1)
+  end
+
+  defp policies_block_has_authorize?(block) do
+    Macro.prewalk(block, false, fn
+      {:authorize_if, _m, _args} = node, _acc -> {node, true}
+      {:authorize_unless, _m, _args} = node, _acc -> {node, true}
       node, acc -> {node, acc}
     end)
     |> elem(1)
@@ -1041,7 +1126,10 @@ defmodule Mix.Tasks.Ash.Audit do
   defp expr_wrapped?({:never, _, _}), do: true
   defp expr_wrapped?(_), do: false
 
-  defp raw_operator_ast?({op, _, [_a, _b]}) when op in [:==, :!=, :>, :>=, :<, :<=, :in, :and, :or], do: true
+  defp raw_operator_ast?({op, _, [_a, _b]})
+       when op in [:==, :!=, :>, :>=, :<, :<=, :in, :and, :or],
+       do: true
+
   defp raw_operator_ast?({:not, _, [_a]}), do: true
   defp raw_operator_ast?(_), do: false
 
@@ -1117,7 +1205,8 @@ defmodule Mix.Tasks.Ash.Audit do
 
   defp find_remote_calls(file, ast, targets, build_violation) do
     Macro.prewalk(ast, [], fn
-      {{:., meta_dot, [{:__aliases__, meta_alias, mod_parts}, fun]}, meta_call, _args} = node, acc ->
+      {{:., meta_dot, [{:__aliases__, meta_alias, mod_parts}, fun]}, meta_call, _args} = node,
+      acc ->
         if Enum.any?(targets, fn {m, f} -> m == mod_parts and f == fun end) do
           line = meta_call[:line] || meta_dot[:line] || meta_alias[:line] || 1
           col = meta_call[:column] || meta_dot[:column] || meta_alias[:column]
@@ -1192,7 +1281,11 @@ defmodule Mix.Tasks.Ash.Audit do
     list
     |> Enum.map(fn v ->
       if warnings_as_errors? and v.severity == :warning do
-        %{v | severity: :error, hint: (v.hint || "") <> " (treated as error via --warnings-as-errors)"}
+        %{
+          v
+          | severity: :error,
+            hint: (v.hint || "") <> " (treated as error via --warnings-as-errors)"
+        }
       else
         v
       end
@@ -1242,7 +1335,9 @@ defmodule Mix.Tasks.Ash.Audit do
 
   defp print_json(violations) do
     unless Code.ensure_loaded?(Jason) do
-      Mix.raise("JSON output requested but Jason is not available. Add {:jason, ...} or use --format text.")
+      Mix.raise(
+        "JSON output requested but Jason is not available. Add {:jason, ...} or use --format text."
+      )
     end
 
     json =

@@ -312,8 +312,7 @@ defmodule VoelgoedEvents.Ticketing.Ticket.Policy do
       authorize_if actor_attribute_equals(:role, :admin)
     end
 
-    # Fallback: deny everything else
-    default_policy :deny
+    # Fail-closed: unknown actions are denied by Ash Policy Authorizer semantics
   end
 end
 ```
@@ -332,8 +331,7 @@ defmodule VoelgoedEvents.Events.Event.Policy do
       authorize_if expr(organization_id == actor(:organization_id))
     end
 
-    # Fallback
-    default_policy :deny
+    # Fail-closed: unknown actions are denied by Ash Policy Authorizer semantics
   end
 end
 ```
@@ -620,8 +618,6 @@ defmodule VoelgoedEvents.Ticketing.Reservation do
         user_id == actor(:id)
       )
     end
-
-    default_policy :deny
   end
 end
 ```

@@ -177,7 +177,8 @@ defmodule Voelgoedevents.TestFixtures do
   """
   def build_system_actor(organization, opts \\ []) do
     %{
-      user_id: Keyword.get(opts, :user_id, Voelgoedevents.Ash.Support.ActorUtils.system_actor_user_id()),
+      user_id:
+        Keyword.get(opts, :user_id, Voelgoedevents.Ash.Support.ActorUtils.system_actor_user_id()),
       organization_id: organization.id,
       role: nil,
       is_platform_admin: Keyword.get(opts, :is_platform_admin, true),

@@ -174,14 +174,19 @@ defmodule Voelgoedevents.Ash.Support.ActorUtils do
           case Map.get(map, :device_id) do
             device_id when is_binary(device_id) ->
               # Use device_id as user_id if it's a UUID, otherwise generate deterministic UUID from it
-              if String.match?(device_id, ~r/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) do
+              if String.match?(
+                   device_id,
+                   ~r/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                 ) do
                 device_id
               else
                 # Deterministic UUID v5 from device_id (namespace + device_id)
                 # Using namespace UUID for devices: 00000000-0000-0000-0000-000000000002
                 derive_uuid_from_string("00000000-0000-0000-0000-000000000002", device_id)
               end
-            _ -> nil
+
+            _ ->
+              nil
           end
 
         {nil, :api_key} ->
@@ -189,18 +194,26 @@ defmodule Voelgoedevents.Ash.Support.ActorUtils do
           case Map.get(map, :api_key_id) do
             api_key_id when is_binary(api_key_id) ->
               # Use api_key_id as user_id if it's a UUID, otherwise generate deterministic UUID from it
-              if String.match?(api_key_id, ~r/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) do
+              if String.match?(
+                   api_key_id,
+                   ~r/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                 ) do
                 api_key_id
               else
                 # Deterministic UUID v5 from api_key_id (namespace + api_key_id)
                 # Using namespace UUID for API keys: 00000000-0000-0000-0000-000000000003
                 derive_uuid_from_string("00000000-0000-0000-0000-000000000003", api_key_id)
               end
-            _ -> nil
+
+            _ ->
+              nil
           end
 
-        {id, _} when is_binary(id) -> id
-        _ -> nil
+        {id, _} when is_binary(id) ->
+          id
+
+        _ ->
+          nil
       end
 
     %{
@@ -256,7 +269,7 @@ defmodule Voelgoedevents.Ash.Support.ActorUtils do
       # Role validation: nil roles are allowed for system/device/api_key actors
       # For user actors, role must be in @roles unless platform_admin
       role not in @roles and
-          not (is_platform_admin and is_nil(role)) and
+        not (is_platform_admin and is_nil(role)) and
           not (type in [:system, :device, :api_key] and is_nil(role)) ->
         {:error, :invalid_actor}
 
@@ -332,7 +345,9 @@ defmodule Voelgoedevents.Ash.Support.ActorUtils do
     # Mask: 0x3FFF clears bits 14-15, then OR with 0x8000 sets variant to RFC 4122
     u3_with_variant = (u3 &&& 0x3FFF) ||| 0x8000
 
-    format_uuid(<<u0::32-big, u1::16-big, u2_with_version::16-big, u3_with_variant::16-big, u4::48-big>>)
+    format_uuid(
+      <<u0::32-big, u1::16-big, u2_with_version::16-big, u3_with_variant::16-big, u4::48-big>>
+    )
   end
 
   defp uuid_to_binary(uuid_string) do
@@ -345,7 +360,9 @@ defmodule Voelgoedevents.Ash.Support.ActorUtils do
     <<u0::32-big, u1::16-big, u2::16-big, u3::16-big, u4::48-big>>
     |> Base.encode16(case: :lower)
     |> then(fn hex ->
-      <<a::binary-size(8), b::binary-size(4), c::binary-size(4), d::binary-size(4), e::binary-size(12)>> = hex
+      <<a::binary-size(8), b::binary-size(4), c::binary-size(4), d::binary-size(4),
+        e::binary-size(12)>> = hex
+
       "#{a}-#{b}-#{c}-#{d}-#{e}"
     end)
   end

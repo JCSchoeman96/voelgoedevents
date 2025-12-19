@@ -18,7 +18,8 @@ canonical_roles = [:owner, :admin, :staff, :viewer, :scanner_only]
 # Use stable system actor UUID to prevent identity drift
 system_actor = %{
   user_id: ActorUtils.system_actor_user_id(),
-  organization_id: nil,  # Platform-scoped resource
+  # Platform-scoped resource
+  organization_id: nil,
   role: nil,
   is_platform_admin: true,
   is_platform_staff: false,
@@ -36,8 +37,12 @@ Enum.each(canonical_roles, fn role_name ->
     |> Ash.Query.filter(name == ^role_name)
     |> Ash.read(actor: system_actor)
     |> case do
-      {:ok, [role | _]} -> role
-      {:ok, []} -> nil
+      {:ok, [role | _]} ->
+        role
+
+      {:ok, []} ->
+        nil
+
       {:error, reason} ->
         IO.warn("Failed to check role #{role_name}: #{inspect(reason)}")
         nil

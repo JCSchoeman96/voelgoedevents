@@ -1055,8 +1055,6 @@ defmodule VoelgoedEvents.Policies.JournalEntryPolicy do
       authorize_if expr(actor.role in [:owner, :admin, :finance])
       authorize_if expr(changeset.organization_id == actor.organization_id)
     end
-
-    default_policy :deny
   end
 end
 ```

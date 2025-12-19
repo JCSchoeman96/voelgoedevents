@@ -85,9 +85,9 @@ defmodule Voelgoedevents.Ash.Resources.Organizations.OrganizationSettings do
       forbid_if expr(is_nil(^actor(:user_id)))
 
       authorize_if expr(
-        organization_id == ^actor(:organization_id) and
-          ^actor(:role) == :owner
-      )
+                     organization_id == ^actor(:organization_id) and
+                       ^actor(:role) == :owner
+                   )
     end
 
     # READ: Any authenticated member of the organization can read its settings

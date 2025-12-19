@@ -103,19 +103,27 @@ defmodule Voelgoedevents.Ash.Extensions.Auditable.Transformer do
       # Never generate random UUIDs - use stable derivations to prevent identity drift
       actor_id =
         case actor do
-          %{user_id: uid} when not is_nil(uid) -> uid
-          %{device_id: did} when not is_nil(did) -> did
+          %{user_id: uid} when not is_nil(uid) ->
+            uid
+
+          %{device_id: did} when not is_nil(did) ->
+            did
+
           %{type: :system} ->
             # System actors should have user_id set via ActorUtils normalization
             # Fallback to canonical system UUID if missing (should not happen in production)
-            Map.get(actor, :user_id) || Voelgoedevents.Ash.Support.ActorUtils.system_actor_user_id()
+            Map.get(actor, :user_id) ||
+              Voelgoedevents.Ash.Support.ActorUtils.system_actor_user_id()
+
           %{type: :api_key} ->
             # API key actors should have user_id set via ActorUtils normalization
             # If missing, derive from api_key_id if available
             Map.get(actor, :user_id) ||
               (actor[:api_key_id] && actor[:api_key_id]) ||
               raise("API key actor missing user_id and api_key_id")
-          _ -> Map.get(actor, :id) || Map.get(actor, :user_id)
+
+          _ ->
+            Map.get(actor, :id) || Map.get(actor, :user_id)
         end
 
       # Build audit log parameters

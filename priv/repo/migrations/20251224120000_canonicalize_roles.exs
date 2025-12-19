@@ -53,4 +53,3 @@ defmodule Voelgoedevents.Repo.Migrations.CanonicalizeRoles do
     :ok
   end
 end
-

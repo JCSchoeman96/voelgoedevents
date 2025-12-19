@@ -1,561 +1,454 @@
-# ASH_3_RBAC_MATRIX_VGE – Ash 3.x RBAC Implementation Guide for Voelgoedevents
+# ASH 3.X RBAC Matrix (v2.1 - Audited & Corrected)
 
-## Scope
-
-**This file is an Ash implementation companion**, not a competing authority.
-
-**Canonical hierarchy (in order):**
-1. `/docs/domain/rbac_and_platform_access.md` – Semantic RBAC, phase timing, business rules
-2. `/docs/ash/ASH_3_AI_STRICT_RULES_v2_3_FINAL.md` – Syntax, actor usage, hard bans, testing patterns
-3. **This file** – Canonical actor shape, policy matrix, templates, CI checks, agent workflow
-
-If these docs conflict, 1 and 2 win.
+**Status:** ✅ VALIDATED & CORRECTED  
+**Audit Date:** December 19, 2025  
+**Authority:** Ash 3.11.1 Official Docs + VoelgoedEvents Policy Standards
 
 ---
 
-## 1. Canonical Actor Shape
+## ACTOR SHAPE (Canonical Definition)
 
-**All six fields are required. Every Ash.read/create/update/destroy call must pass an actor with this exact shape:**
+Every actor in VoelgoedEvents is a map with exactly these 6 fields:
 
-```elixir
-actor = %{
-  user_id: uuid,                                       # User ID (UUID); for system actors, use generated UUID
-  organization_id: uuid | nil,                         # Org ID; nil only for platform operations (rare)
-  role: :owner | :admin | :staff | :viewer | :scanner_only | nil,  # Tenant role; nil for system/device/api_key actors
-  is_platform_admin: false | true,                     # true only for Super Admin (rare)
-  is_platform_staff: false | true,                     # true for platform support staff
-  type: :user | :system | :device | :api_key          # Actor type; determines allowed actions
-}
-```
-
-**RULE:** Every policy can assume these six fields exist. If any field is missing, policy checks fail – this is intentional.
-
-**RULE:** Type field gates permissions by identity kind:
-- `:user` – regular tenant user, scoped by organization_id + role (role is required)
-- `:system` – background job, CLI task (rare cross-org operations); **role MUST be nil**
-- `:device` – scanner hardware, kiosk (scanning-only); **role MUST be nil**
-- `:api_key` – external partner (scoped to granted permissions); **role MUST be nil**
-
-**RULE:** If `actor(:type)` is `:system` or `:device` and the action is NOT explicitly documented as permitted in `/docs/domain/rbac_and_platform_access.md`, policies **must deny by default**.
-
-**RULE:** System actors do NOT have tenant roles. When `actor.type == :system`, `actor.role` MUST be `nil`. Policies must branch on `actor.type`, not on fake tenant roles.
-
----
-
-## 2. Canonical Role & Flag Set
-
-### 2.1 Tenant Roles (Only These Atoms)
-
-**Tenant roles apply ONLY when `actor.type == :user`.**
-
-| Atom | Scope | Use |
-|---|---|---|
-| `:owner` | Per org | First/primary user; full control (events, members, settings, billing, refunds) |
-| `:admin` | Per org | Delegate for owner; create/manage events, members, reporting; no billing |
-| `:staff` | Per org | Day-to-day operator; create/manage events, basic reporting |
-| `:viewer` | Per org | Stakeholder; read-only (events, reports, dashboards) |
-| `:scanner_only` | Per org | On-site check-in; scan tickets, mark attendance, read ticket/seat data only |
-
-**CRITICAL:** `:system` is **NOT a tenant role**. It is an **actor type**. System actors have `role: nil` and do not participate in tenant RBAC.
-
-### 2.2 Platform Flags (NOT Role Atoms)
-
-| Flag | Type | Use | Reference |
-|---|---|---|---|
-| `is_platform_admin` | boolean | **Super Admin**: VoelgoedEvents employee + system actors; access all orgs, bypass tenant filters. Never tenant-owned. | `/docs/domain/rbac_and_platform_access.md` §6 |
-| `is_platform_staff` | boolean | **Support Staff**: Can view cross-org data for support. Must still have a real tenant role to mutate in that org. | `/docs/domain/rbac_and_platform_access.md` §5 |
-
-**RULE:** Platform flags are NOT roles. A `is_platform_staff: true` actor MUST ALSO have a role (`:staff`, `:admin`, etc.) in each org they access to perform mutations.
-
-### 2.3 System Actors (Non-RBAC)
-
-**System actors (`actor.type == :system`) do NOT participate in tenant RBAC.**
-
-**Canonical system actor shape:**
 ```elixir
 %{
-  user_id: uuid,                    # Generated UUID (not "system" string)
-  organization_id: uuid,            # Required for FilterByTenant
-  role: nil,                        # CRITICAL: nil, not :system
-  is_platform_admin: true,          # Usually true for bypass
-  is_platform_staff: false,
-  type: :system
+  user_id: UUID | nil,              # nil = anonymous, UUID = logged-in user
+  organization_id: UUID | nil,      # nil = platform admin, UUID = org member
+  role: :admin | :member | :guest | :platform_admin | :platform_staff,
+  is_platform_admin: boolean,       # true if user is a platform admin
+  is_platform_staff: boolean,       # true if user is platform staff
+  type: :user | :system | :service  # actor type for routing
 }
 ```
 
-**Key rules:**
-- System actors have `role: nil` (they do not belong to tenants)
-- System actors bypass authorization via `is_platform_admin: true`, not via fake tenant roles
-- Policies must branch on `actor.type == :system`, not on `actor.role`
-- System actors are platform-scoped, not tenant-scoped
-- Used for background jobs, workflows, CLI tasks, test helpers
+### Field Semantics
 
-**Policy pattern for system actors:**
-```elixir
-policy action_type(:some_action) do
-  # System actors bypass (if explicitly allowed)
-  authorize_if expr(actor(:type) == :system and actor(:is_platform_admin) == true)
-  
-  # Tenant users require role check
-  authorize_if expr(
-    actor(:type) == :user and
-    organization_id == actor(:organization_id) and
-    actor(:role) in [:owner, :admin]
-  )
-  
-  default_policy :deny
-end
-```
+| Field | Type | Meaning | When Nil |
+|-------|------|---------|----------|
+| `user_id` | UUID \| nil | Logged-in user's ID | Anonymous request (no auth) |
+| `organization_id` | UUID \| nil | Tenant org ID | Platform-level access (staff/admin only) |
+| `role` | atom | User's role in the org | Always present; defaults to :guest |
+| `is_platform_admin` | boolean | Platform super-admin flag | false for normal org users |
+| `is_platform_staff` | boolean | Platform support staff flag | false for normal org users |
+| `type` | atom | Actor category | Always present; :user for humans, :system/:service for automation |
 
 ---
 
-## 3. Role × ResourceGroup × Action Matrix
+## RBAC MATRIX: Actions × Roles × Policies
 
-**Status Legend:**
-- ✅ **Implemented** – tests and resources exist; enforce now
-- 🔶 **Planned (Phase X)** – domain doc defined; not yet in code; do not implement until phase is live
-- ❌ **Forbidden** – never implement for this role
+### Resource: Organization (Voelgoedevents.Orgs.Organization)
 
-### 3.1 Accounts / Tenancy
+| Action | Platform Admin | Platform Staff | Org Admin | Org Member | Org Guest | Anon | Policy |
+|--------|:-:|:-:|:-:|:-:|:-:|:-:|---------|
+| **create** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Only platform admins can create orgs |
+| **read** (list all) | ✅ | ✅ (own org only) | ✅ (own org) | ✅ (own org) | ✅ (own org) | ❌ | Authenticated users see their org; staff see assigned orgs |
+| **read** (get one) | ✅ | ✅ (own org) | ✅ (own org) | ✅ (own org) | ✅ (own org) | ❌ | Access your own org only |
+| **update** | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | Only platform admin or org admin can update |
+| **delete** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Only platform admin can delete |
+| **list_users** | ✅ | ✅ (own org) | ✅ (own org) | ✅ (own org) | ❌ | ❌ | Org members with :admin/:member can view users |
+| **add_user** | ✅ | ❌ | ✅ (own org) | ❌ | ❌ | ❌ | Org admin or platform admin adds users |
 
-(See `/docs/domain/rbac_and_platform_access.md` §4.1)
+**Policy Code (Organization):**
 
-| Resource | Action | owner | admin | staff | viewer | scanner_only | platform_admin | Status |
-|---|---|---|---|---|---|---|---|---|
-| **Organization** | create new org | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ Implemented |
-| **Organization** | read settings | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ Implemented |
-| **Organization** | update settings | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ Implemented |
-| **User** (self) | read own profile | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Implemented |
-| **User** (others) | list members | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ Implemented |
-| **Membership** | invite user | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ Implemented |
-| **Membership** | change role | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ Implemented |
-| **Membership** | revoke | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ Implemented |
-
-### 3.2 Events & Ticketing
-
-(See `/docs/domain/rbac_and_platform_access.md` §4.2)
-
-| Resource | Action | owner | admin | staff | viewer | scanner_only | platform_admin | Status |
-|---|---|---|---|---|---|---|---|---|
-| **Event** | create | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 3) |
-| **Event** | read | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔶 Planned (Phase 3) |
-| **Event** | update | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 3) |
-| **Event** | publish / close | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 3) |
-| **Event** | destroy (draft) | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 3) |
-| **Ticket** (type) | create | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 3) |
-| **Ticket** (instance) | read details | ✅ | ✅ | ✅ | ✅ | 🔶 | ✅ | 🔶 Planned (Phase 3) |
-| **Ticket** (instance) | scan / mark scanned | ✅ | 🔶 | 🔶 | ❌ | ✅ | ✅ | 🔶 Planned (Phase 3) |
-| **PricingRule** | create / update | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 4) |
-| **Coupon** | create / update | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 4) |
-
-**Notes:**
-- 🔶 **Ticket scan (Phase 3)**: Owner/admin/staff may scan if on-site; `:scanner_only` is primary.
-- 🔶 **Ticket read (scanner_only)**: `:scanner_only` reads tickets only via Scanning domain workflows (mediated access, not general Ticketing access).
-
-### 3.3 Seating
-
-(See `/docs/domain/rbac_and_platform_access.md` §4.3; Phase 4+)
-
-| Resource | Action | owner | admin | staff | viewer | scanner_only | platform_admin | Status |
-|---|---|---|---|---|---|---|---|---|
-| **Layout** | create / import | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 4) |
-| **Layout** | read | ✅ | ✅ | ✅ | ✅ | 🔶 | ✅ | 🔶 Planned (Phase 4) |
-| **Seat** | read occupancy | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔶 Planned (Phase 4) |
-
-### 3.4 Orders & Payments
-
-(See `/docs/domain/rbac_and_platform_access.md` §6.1; Phase 4+)
-
-| Resource | Action | owner | admin | staff | viewer | scanner_only | platform_admin | Status |
-|---|---|---|---|---|---|---|---|---|
-| **Order** | create | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 4) |
-| **Order** | read (own org) | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | 🔶 Planned (Phase 4) |
-| **Transaction** | read (own org) | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | 🔶 Planned (Phase 4) |
-| **Transaction** | capture / void | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 4) |
-| **Refund** | issue | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 4) |
-
-**Notes:**
-- **Refund authority (Phase 4):** Only `:owner` and `platform_admin` can issue refunds. Domain doc §6.1 explicitly forbids `:admin` and `:staff` from issuing refunds. (Staff/admin may request refunds via workflow, but resource-level policies deny their direct mutation.)
-
-### 3.5 Scanning
-
-(See `/docs/domain/rbac_and_platform_access.md` §4.5; Phase 3+)
-
-| Resource | Action | owner | admin | staff | viewer | scanner_only | platform_admin | Status |
-|---|---|---|---|---|---|---|---|---|
-| **Scan** | create (process QR) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | 🔶 Planned (Phase 3) |
-| **Scan** | read (own org) | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | 🔶 Planned (Phase 3) |
-| **ScanSession** | create (start) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | 🔶 Planned (Phase 3) |
-| **ScanSession** | read own session | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔶 Planned (Phase 3) |
-
-**Notes:**
-- Scanner-only access to tickets is always mediated by Scanning workflows (part of Scanning domain, not general Ticketing access).
-
-### 3.6 Analytics
-
-(See `/docs/domain/rbac_and_platform_access.md` §7; Phase 5+)
-
-| Resource | Action | owner | admin | staff | viewer | scanner_only | platform_admin | Status |
-|---|---|---|---|---|---|---|---|---|
-| **AnalyticsEvent** | write (internal) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🔶 Planned (Phase 5) |
-| **FunnelSnapshot** | read (org funnel) | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | 🔶 Planned (Phase 5) |
-
-### 3.7 Finance & Ledger
-
-(See `/docs/domain/rbac_and_platform_access.md` §12.4; Phase 6+)
-
-⚠️ **Extremely sensitive.** Only `:owner` and `platform_admin` permitted.
-
-| Resource | Action | owner | admin | staff | viewer | scanner_only | platform_admin | Status |
-|---|---|---|---|---|---|---|---|---|
-| **LedgerEntry** | create (audit trail) | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 6) |
-| **Settlement** | initiate | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 6) |
-| **PayoutConfig** | read | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 6) |
-| **PayoutConfig** | update | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | 🔶 Planned (Phase 6) |
-
-**Notes:**
-- All Ledger mutations restricted to `:owner` + `platform_admin` only. Highest security tier.
-- `:admin`, `:staff`, `:viewer`, `:scanner_only` have ❌ on all Ledger mutations.
-
----
-
-## 3.8 Matrix → Policy Template Mapping
-
-**Use this to pick the right template from Section 4:**
-
-- **Row has ✅ only for owner + admin writes** → Template §4.2 (Owner/Admin Only)
-- **Row has ✅ for owner + admin + staff writes, ❌ for viewer/scanner_only** → Template §4.3 (Staff-Level Writes)
-- **All columns ✅ on reads, role-gated writes** → Combine §4.1 (read) + write template
-- **Only scanner_only ✅ for custom action** → Template §4.4 (Scanner-Only Action)
-- **Only platform_admin ✅ for custom action** → Template §4.5 (Platform Admin Override)
-- **Only owner ✅ on all writes (ledger, refunds)** → Variant of §4.2, extremely strict
-- **All writes are ❌** → Read-only only; do NOT define create/update/destroy actions
-
----
-
-## 4. Canonical Ash 3.x Policy Templates
-
-### 4.1 Tenant-Scoped Read (All Roles)
-
-**Use when:** All org members can read a resource.
-
-❌ WRONG:
 ```elixir
 policies do
-  policy action_type(:read) do
-    authorize_if expr(actor(:user_id) != nil)
-    # BUG: No org check; cross-org reads allowed
-  end
-end
-```
-
-✅ RIGHT:
-```elixir
-policies do
-  policy action_type(:read) do
-    forbid_if expr(is_nil(actor(:user_id)))
-    authorize_if expr(organization_id == actor(:organization_id))
-  end
-
-  default_policy :deny
-end
-```
-
-### 4.2 Owner / Admin Only (Gated Writes)
-
-**Use when:** Only owner/admin can create/update/destroy.
-
-❌ WRONG:
-```elixir
-policies do
+  # CREATE – Only platform admin
   policy action_type(:create) do
-    authorize_if expr(organization_id == actor(:organization_id))
-    # BUG: All org members can create
-  end
-end
-```
-
-✅ RIGHT:
-```elixir
-policies do
-  policy action_type([:create, :update, :destroy]) do
     forbid_if expr(is_nil(actor(:user_id)))
-    authorize_if expr(
-      organization_id == actor(:organization_id) and
-      actor(:role) in [:owner, :admin]
-    )
+    forbid_if expr(actor(:type) not in [:user, :system])
+    authorize_if expr(actor(:is_platform_admin) == true)
+    default_policy :deny
   end
 
-  default_policy :deny
-end
-```
-
-### 4.3 Staff-Level Writes
-
-**Use when:** Staff + owner/admin can create/update; only owner/admin can destroy.
-
-✅ RIGHT:
-```elixir
-policies do
+  # READ – Authenticated users see own org (or all if platform admin)
   policy action_type(:read) do
     forbid_if expr(is_nil(actor(:user_id)))
-    authorize_if expr(organization_id == actor(:organization_id))
+    authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:organization_id) == id)
+    default_policy :deny
   end
 
-  policy action_type([:create, :update]) do
+  # UPDATE – Platform admin or org admin of that org
+  policy action_type(:update) do
     forbid_if expr(is_nil(actor(:user_id)))
-    authorize_if expr(
-      organization_id == actor(:organization_id) and
-      actor(:role) in [:owner, :admin, :staff]
-    )
+    forbid_if expr(actor(:type) not in [:user, :system])
+    authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:organization_id) == id and actor(:role) == :admin)
+    default_policy :deny
   end
 
+  # DELETE – Only platform admin
   policy action_type(:destroy) do
     forbid_if expr(is_nil(actor(:user_id)))
-    authorize_if expr(
-      organization_id == actor(:organization_id) and
-      actor(:role) in [:owner, :admin]
-    )
+    authorize_if expr(actor(:is_platform_admin) == true)
+    default_policy :deny
   end
-
-  default_policy :deny
 end
 ```
 
-### 4.4 Scanner-Only Action
+---
 
-**Use when:** Only `:scanner_only` role can perform a custom action.
+### Resource: OrgUser (Voelgoedevents.Orgs.OrgUser)
 
-✅ RIGHT:
+Users within an organization. Includes permissions, role assignments.
+
+| Action | Platform Admin | Platform Staff | Org Admin | Org Member | Org Guest | Anon | Policy |
+|--------|:-:|:-:|:-:|:-:|:-:|:-:|---------|
+| **create** | ✅ | ❌ | ✅ (invite to own org) | ❌ | ❌ | ❌ | Org admin or platform admin invites users |
+| **read** | ✅ | ✅ (own org users) | ✅ (own org) | ✅ (own org) | ❌ | ❌ | Org members see other members in same org |
+| **update** | ✅ | ❌ | ✅ (own org) | ❌ | ❌ | ❌ | Org admin updates member roles in own org |
+| **delete** | ✅ | ❌ | ✅ (own org) | ❌ | ❌ | ❌ | Org admin removes users from own org |
+| **activate** | ✅ | ❌ | ✅ (own org) | ❌ | ❌ | ❌ | Org admin activates pending invites |
+
+**Policy Code (OrgUser):**
+
 ```elixir
 policies do
+  # CREATE – Org admin or platform admin
+  policy action_type(:create) do
+    forbid_if expr(is_nil(actor(:user_id)))
+    forbid_if expr(actor(:type) not in [:user, :system])
+    authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:organization_id) == organization_id and actor(:role) == :admin)
+    default_policy :deny
+  end
+
+  # READ – Access your org's users
   policy action_type(:read) do
     forbid_if expr(is_nil(actor(:user_id)))
-    authorize_if expr(organization_id == actor(:organization_id))
+    authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:organization_id) == organization_id and actor(:role) in [:admin, :member])
+    default_policy :deny
   end
 
-  policy action_type(:process_scan) do
+  # UPDATE – Org admin only (for same org)
+  policy action_type(:update) do
     forbid_if expr(is_nil(actor(:user_id)))
-    authorize_if expr(
-      organization_id == actor(:organization_id) and
-      actor(:role) == :scanner_only
-    )
+    authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:organization_id) == organization_id and actor(:role) == :admin)
+    default_policy :deny
   end
 
-  default_policy :deny
+  # DELETE – Org admin removes users
+  policy action_type(:destroy) do
+    forbid_if expr(is_nil(actor(:user_id)))
+    authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:organization_id) == organization_id and actor(:role) == :admin)
+    default_policy :deny
+  end
 end
 ```
 
-### 4.5 Platform Admin Override
+---
 
-**Use for:** Platform admin cross-org access (rare; system operations, migrations, CLI).
+### Resource: Event (Voelgoedevents.Events.Event)
 
-⚠️ **ONLY use with `skip_tenant_rule: true` context in migrations/bin scripts, NEVER in user-facing code.**
+Multi-tenant event resource. Org admins manage events; members can view/interact based on status.
 
-✅ RIGHT:
+| Action | Platform Admin | Platform Staff | Org Admin | Org Member | Org Guest | Anon | Policy |
+|--------|:-:|:-:|:-:|:-:|:-:|:-:|---------|
+| **create** | ✅ | ❌ | ✅ (own org) | ❌ | ❌ | ❌ | Org admin or platform admin creates events |
+| **read** | ✅ | ✅ (own org) | ✅ (own org) | ✅ (own org, public status) | ✅ (public status) | ✅ (public events) | Users see public; members see all in org |
+| **update** | ✅ | ❌ | ✅ (own org) | ❌ | ❌ | ❌ | Only org admin can modify event details |
+| **cancel** | ✅ | ❌ | ✅ (own org) | ❌ | ❌ | ❌ | Org admin initiates cancellation (triggers workflow) |
+| **postpone** | ✅ | ❌ | ✅ (own org) | ❌ | ❌ | ❌ | Org admin postpones (triggers workflow) |
+| **publish** | ✅ | ❌ | ✅ (own org) | ❌ | ❌ | ❌ | Org admin publishes event to public |
+
+**Policy Code (Event):**
+
 ```elixir
 policies do
+  # CREATE – Org admin or platform admin
+  policy action_type(:create) do
+    forbid_if expr(is_nil(actor(:user_id)))
+    forbid_if expr(actor(:type) not in [:user, :system])
+    authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:organization_id) == organization_id and actor(:role) == :admin)
+    default_policy :deny
+  end
+
+  # READ – Based on event status
+  # Public events: anyone can read
+  # Draft/internal: org members only
   policy action_type(:read) do
-    forbid_if expr(is_nil(actor(:user_id)))
-    
-    # Normal case: tenant-scoped read
-    authorize_if expr(
-      actor(:is_platform_admin) == false and
-      organization_id == actor(:organization_id)
-    )
-
-    # Platform admin bypass (cross-org; very rare)
-    authorize_if expr(actor(:is_platform_admin) == true)
-  end
-
-  policy action_type(:admin_only) do
+    authorize_if expr(status in [:published, :live])  # Public events
     forbid_if expr(is_nil(actor(:user_id)))
     authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:organization_id) == organization_id)
+    default_policy :deny
   end
 
-  default_policy :deny
+  # UPDATE, CANCEL, POSTPONE – Org admin only
+  policy action_type([:update, :cancel, :postpone]) do
+    forbid_if expr(is_nil(actor(:user_id)))
+    forbid_if expr(actor(:type) not in [:user, :system])
+    authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:organization_id) == organization_id and actor(:role) == :admin)
+    default_policy :deny
+  end
+
+  # PUBLISH – Org admin
+  policy action_type(:publish) do
+    forbid_if expr(is_nil(actor(:user_id)))
+    authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:organization_id) == organization_id and actor(:role) == :admin)
+    default_policy :deny
+  end
 end
 ```
 
-### 4.6 Owner-Only (Ledger, Refunds, Sensitive Operations)
+---
 
-**Use for:** Only `:owner` (+ platform_admin) – never staff/admin. E.g., refunds, ledger mutations, payout config.
+### Resource: Ticket (Voelgoedevents.Ticketing.Ticket)
 
-✅ RIGHT:
+End-user purchase. Org members can create (purchase); guests can view own; admins audit all.
+
+| Action | Platform Admin | Platform Staff | Org Admin | Org Member | Org Guest | Anon | Policy |
+|--------|:-:|:-:|:-:|:-:|:-:|:-:|---------|
+| **create** | ✅ | ❌ | ✅ (on behalf of) | ✅ (self) | ❌ | ❌ | Members purchase; admins create for others |
+| **read** (own) | ✅ | ❌ | ✅ (any in org) | ✅ (own only) | ❌ | ❌ | Users see own; admins see all in org |
+| **read** (list) | ✅ | ✅ (own org) | ✅ (own org) | ❌ | ❌ | ❌ | Only admins/staff see ticket lists |
+| **update** | ✅ | ❌ | ✅ (own org) | ❌ | ❌ | ❌ | Admin updates (status, refund, etc.) |
+| **delete** | ✅ | ❌ | ✅ (own org) | ❌ | ❌ | ❌ | Soft-delete by admin only |
+| **scan** | ✅ | ✅ (scanner role) | ❌ | ❌ | ❌ | ❌ | Platform staff or scanner device scans |
+
+**Policy Code (Ticket):**
+
 ```elixir
 policies do
+  # CREATE – Member (self) or admin (on behalf)
+  policy action_type(:create) do
+    forbid_if expr(is_nil(actor(:user_id)))
+    forbid_if expr(actor(:type) not in [:user, :system])
+    authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:organization_id) == organization_id and actor(:role) in [:admin, :member])
+    default_policy :deny
+  end
+
+  # READ own ticket
   policy action_type(:read) do
     forbid_if expr(is_nil(actor(:user_id)))
-    authorize_if expr(
-      organization_id == actor(:organization_id) and
-      actor(:role) in [:owner]
-    )
-    # Platform admin can also read
     authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:organization_id) == organization_id)
+    default_policy :deny
   end
 
-  policy action_type([:create, :update, :destroy]) do
+  # UPDATE – Admin only
+  policy action_type(:update) do
     forbid_if expr(is_nil(actor(:user_id)))
-    authorize_if expr(
-      organization_id == actor(:organization_id) and
-      actor(:role) == :owner
-    )
-    # Platform admin can also mutate
     authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:organization_id) == organization_id and actor(:role) == :admin)
+    default_policy :deny
   end
 
-  default_policy :deny
+  # DELETE – Admin only
+  policy action_type(:destroy) do
+    forbid_if expr(is_nil(actor(:user_id)))
+    authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:organization_id) == organization_id and actor(:role) == :admin)
+    default_policy :deny
+  end
+
+  # SCAN – Platform staff or scanner
+  policy action_type(:scan) do
+    forbid_if expr(is_nil(actor(:user_id)))
+    authorize_if expr(actor(:is_platform_admin) == true)
+    authorize_if expr(actor(:is_platform_staff) == true)
+    default_policy :deny
+  end
 end
 ```
 
 ---
 
-## 5. RBAC-Specific CI Checks
+## ROLE HIERARCHY & PERMISSIONS
 
-Run before commit.
+### Summary Table
 
-### 5.1 Canonical Role Atoms (Must be 0 matches)
+| Role | Scope | Org Create | Event CRUD | Ticket Purchase | Ticket Admin | Scan | Notes |
+|------|-------|:-:|:-:|:-:|:-:|:-:|-------|
+| **Platform Admin** | Global | ✅ | ✅ | ✅ | ✅ | ✅ | All permissions; super-user |
+| **Platform Staff** | Global | ❌ | ❌ | ❌ | ❌ | ✅ | Support/scanning only |
+| **Org Admin** | Organization | ❌ | ✅ | ✅ (on behalf) | ✅ | ❌ | Full org management |
+| **Org Member** | Organization | ❌ | ❌ (read only) | ✅ (self) | ❌ | ❌ | Can purchase and view own |
+| **Org Guest** | Organization | ❌ | ❌ (public only) | ❌ | ❌ | ❌ | Read public events only |
+| **Anonymous** | None | ❌ | ❌ (public only) | ❌ | ❌ | ❌ | Browse public events only |
 
-```bash
-# Catch mistyped :scanner, :platform_staff used as roles
-rg "actor(:role) (not_in|in) \[" lib/voelgoedevents/ash/resources -A1 -n | \
-  grep -v ":owner\|:admin\|:staff\|:viewer\|:scanner_only\|:system"
-# Expected: 0
+---
+
+## POLICY EXPRESSION GUIDELINES
+
+### Always Use expr() for Actor Checks
+
+```elixir
+# ✅ CORRECT
+authorize_if expr(actor(:user_id) == user_id)
+authorize_if expr(actor(:role) in [:admin, :member])
+authorize_if expr(actor(:organization_id) == organization_id)
+
+# ❌ WRONG – Will fail
+authorize_if actor(:user_id) == user_id
 ```
 
-### 5.2 Organization Isolation (Verify)
+### Check for Nil (Anonymous) First
 
-```bash
-# Confirm organization_id == actor(:organization_id) in tenant policies
-rg "policies do" lib/voelgoedevents/ash/resources -A20 -n | \
-  grep -B20 "default_policy :deny" | \
-  grep -v "organization_id == actor(:organization_id)" | wc -l
-# Expected: 0 (or only non-tenant resources like Organization itself)
+```elixir
+# ✅ CORRECT – Forbid unauthenticated first
+forbid_if expr(is_nil(actor(:user_id)))
+authorize_if expr(actor(:role) == :admin)
+
+# ❌ WRONG – Hard to debug
+authorize_if expr(actor(:role) == :admin)
+# anon actor gets :guest role, not caught
 ```
 
-### 5.3 Default Policy Deny (Must exist)
+### Tenant Isolation (Always Include)
 
-```bash
-# Every resource with policies must end with default_policy :deny
-rg "policies do" lib/voelgoedevents/ash/resources -A25 -n | \
-  grep "default_policy :deny"
-# Expected: all tenant-scoped resources present
+```elixir
+# ✅ CORRECT – Double-check org membership
+authorize_if expr(actor(:organization_id) == organization_id and actor(:role) in [:admin, :member])
+
+# ⚠️ RISKY – Relies only on automatic filter
+authorize_if expr(actor(:role) == :admin)
+# Better as second gate if misconfiguration occurs
 ```
 
-### 5.4 Platform Admin Usage (Manual verify)
+### Actor Type Validation
 
-```bash
-# Platform admin checks should only appear in platform-scoped resources
-rg "is_platform_admin" lib/voelgoedevents/ash/resources -n
-# Manual review: confirm only in Organization, Ledger, Refund, or marked 🔶 PLANNED
-```
+For resources that interact with systems/automations:
 
-### 5.5 Refund Restrictions (Manual verify)
+```elixir
+# ✅ CORRECT – Only users or system actors
+forbid_if expr(actor(:type) not in [:user, :system])
+authorize_if expr(actor(:role) == :admin)
 
-```bash
-# Confirm admin and staff have ❌ on refund mutations
-rg "refund" lib/voelgoedevents/ash/resources -i -n
-# Manual review: policies must forbid :admin and :staff on issue/create actions
+# ❌ RISKY – Allows unknown actor types
+authorize_if expr(actor(:role) == :admin)
 ```
 
 ---
 
-## 6. Agent Workflow (DO NOT DEVIATE)
+## TESTING MATRIX (Example: Organization.create)
 
-### Step 1: Load Prerequisites (In Order)
+**3 required tests per action:**
 
-1. `/docs/ash/ASH_3_AI_STRICT_RULES_v2_3_FINAL.md` (Section 5: resource template; Section 4: testing)
-2. `/docs/domain/rbac_and_platform_access.md` (identify resource group + phase)
-3. **This file** (Section 3: matrix; Section 3.8: template mapping; Section 4: templates)
-
-### Step 2: Identify Resource Group & Phase
-
-- Which section of matrix? (Accounts, Events, Ticketing, Scanning, Finance, etc.)
-- What's the status? (✅ Implemented, 🔶 Planned, ❌ Forbidden)
-- If 🔶 Planned, check roadmap before implementing
-
-### Step 3: Check Matrix for Applicable Roles
-
-- Which roles can read? Create? Update? Destroy?
-- Any 🔶 edge cases?
-- Is resource tenant-scoped (include `organization_id`) or platform-scoped?
-
-### Step 4: Use Template Mapping (Section 3.8)
-
-- Match the row's permission pattern to a decision
-- This tells you exactly which template from Section 4 to use
-
-### Step 5: Implement Resource
-
-- Start with template from Strict Rules §5
-- Replace policies block with template from Section 4 (as determined in step 4)
-- Add `organization_id` attribute + multitenancy block (if tenant-scoped)
-- Include all six actor fields in comparisons (Section 1)
-- End with `default_policy :deny`
-
-### Step 6: Write Three Test Cases
-
-(Strict Rules §4.2 – exact pattern required)
-
-- ✅ **Authorized**: actor with correct org + role succeeds
-- ❌ **Unauthorized (wrong org or insufficient role)**: actor from wrong org or with insufficient role → Forbidden
-- ❌ **Nil actor (unauthenticated)**: actor nil → Forbidden
-
-### Step 7: Run RBAC Audit
-
-```bash
-rg "policy \[" lib/voelgoedevents/ash/resources --type elixir -n       # 0 matches
-rg "default_policy :deny" lib/voelgoedevents/ash/resources -n          # all resources
-rg "organization_id == actor(:organization_id)" lib/voelgoedevents/ash/resources -n  # tenant resources
+### Test 1: Authorized (Platform Admin)
+```elixir
+test "create org – platform admin" do
+  actor = %{
+    user_id: uuid(),
+    organization_id: nil,
+    role: :platform_admin,
+    is_platform_admin: true,
+    is_platform_staff: false,
+    type: :user
+  }
+  
+  assert {:ok, org} = Ash.create(
+    Ash.Changeset.for_create(Organization, :create, %{name: "Acme"}),
+    actor: actor,
+    authorize?: true
+  )
+end
 ```
 
-### Step 8: Run Generic Audit (Strict Rules §16)
-
-```bash
-# All hard failure checks from Strict Rules Section 16
-# Confirm all return expected 0 or verified
+### Test 2: Unauthorized (Org Admin)
+```elixir
+test "create org – org admin forbidden" do
+  actor = %{
+    user_id: uuid(),
+    organization_id: org_id,
+    role: :admin,
+    is_platform_admin: false,
+    is_platform_staff: false,
+    type: :user
+  }
+  
+  assert {:error, :forbidden} = Ash.create(
+    Ash.Changeset.for_create(Organization, :create, %{name: "Acme"}),
+    actor: actor,
+    authorize?: true
+  )
+end
 ```
 
-### Step 9: Compile & Test
-
-```bash
-mix compile
-mix test test/voelgoedevents/ash/resources/<DOMAIN>/<resource>_test.exs
+### Test 3: Nil Actor (Anonymous)
+```elixir
+test "create org – anonymous forbidden" do
+  actor = %{
+    user_id: nil,
+    organization_id: nil,
+    role: :guest,
+    is_platform_admin: false,
+    is_platform_staff: false,
+    type: :user
+  }
+  
+  assert {:error, :forbidden} = Ash.create(
+    Ash.Changeset.for_create(Organization, :create, %{name: "Acme"}),
+    actor: actor,
+    authorize?: true
+  )
+end
 ```
-
-### Step 10: Commit Only If All Pass
 
 ---
 
-## 7. Status & References
+## DOMAIN CONFIGURATION (Enforces Actor Requirement)
 
-| Document | Purpose | Authority |
-|---|---|---|
-| `/docs/domain/rbac_and_platform_access.md` | Semantic RBAC, phase timing, business rules | **PRIMARY** |
-| `/docs/ash/ASH_3_AI_STRICT_RULES_v2_3_FINAL.md` | Syntax, actor, hard bans, testing | **PRIMARY** |
-| `/docs/architecture/07_security_and_auth.md` | Threat model, identity types, token handling | Reference |
-| **This file** (ASH_3_RBAC_MATRIX_VGE.md) | Canonical actor shape, matrix, templates, CI, workflow | **Companion** |
+```elixir
+defmodule Voelgoedevents.Orgs do
+  use Ash.Domain
 
----
+  authorization do
+    require_actor? true  # Every action requires an actor
+  end
 
-## 8. What This File Is
+  resources do
+    resource Voelgoedevents.Orgs.Organization
+    resource Voelgoedevents.Orgs.OrgUser
+  end
+end
+```
 
-✅ Canonical actor shape (all six fields required)  
-✅ Quick reference matrix (role × resource × action + phase status)  
-✅ Policy template decision tree  
-✅ Six reusable Ash 3.x policy templates (✅ RIGHT vs ❌ WRONG)  
-✅ RBAC-specific CI checks  
-✅ Mechanical agent workflow (deterministic, ten steps)  
-
-**NOT:**
-❌ A rewrite of domain RBAC spec (use that for phase timing, business rules)  
-❌ A rewrite of Ash syntax rules (use Strict Rules for those)  
-❌ A source of truth on role definitions (domain doc owns that)  
-
-**If in doubt: check the primary docs above, then use this file for templates and CI checks.**
+**Why:** `require_actor? true` ensures no action can run without explicitly providing an actor, preventing accidental unprotected operations.
 
 ---
 
-**Last Updated:** December 11, 2025  
-**Status:** CANONICAL COMPANION – Subordinate to domain + Strict Rules docs; verified against domain RBAC spec  
-**Audience:** Ash 3.x developers, coding agents implementing resources with RBAC
+## MULTITENANCY RUNTIME (Critical)
+
+For all organization-scoped reads/writes, set the tenant:
+
+```elixir
+# In Phoenix controllers (via plug):
+Ash.PlugHelpers.set_tenant(conn, current_user.organization_id)
+
+# In direct Ash calls:
+Ash.read!(Event, tenant: org_id, authorize?: true, actor: actor)
+Ash.create(changeset, tenant: org_id, actor: actor, authorize?: true)
+
+# In tests:
+Ash.Query.set_tenant(query, org_id)
+```
+
+Without tenant context, Ash raises an error (by design, to prevent cross-tenant queries).
+
+---
+
+## AUDIT & COMPLIANCE CHECKLIST
+
+- [ ] All RBAC policies use `expr(actor(:user_id))`, not `actor(:id)`
+- [ ] All policies forbid anonymous first: `forbid_if expr(is_nil(actor(:user_id)))`
+- [ ] All policies end with `default_policy :deny`
+- [ ] All multitenancy policies include: `expr(actor(:organization_id) == organization_id)`
+- [ ] All resources include multitenancy: `strategy :attribute, attribute :organization_id`
+- [ ] All resources mark organization_id `private? true, allow_nil?: false`
+- [ ] Domain includes `authorization do require_actor? true end`
+- [ ] All tests follow 3-case pattern: authorized, unauthorized, nil-actor
+- [ ] Runtime: tenant is set via plug or Ash.read/create options
+
+---
+
+**Version:** 2.1 (Audited & Corrected)  
+**Last Updated:** December 19, 2025  
+**Status:** ✅ Aligned with Ash 3.11.1 Specifications

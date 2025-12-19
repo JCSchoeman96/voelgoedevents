@@ -11,7 +11,11 @@ defmodule Voelgoedevents.Ash.Support.ActorUtilsTest do
 
       assert uuid == "00000000-0000-0000-0000-000000000001"
       assert is_binary(uuid)
-      assert String.match?(uuid, ~r/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+
+      assert String.match?(
+               uuid,
+               ~r/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+             )
 
       # Stability: same call returns same value
       assert ActorUtils.system_actor_user_id() == uuid
@@ -119,7 +123,11 @@ defmodule Voelgoedevents.Ash.Support.ActorUtilsTest do
       # Same device_id produces same derived UUID
       assert normalized1.user_id == normalized2.user_id
       assert is_binary(normalized1.user_id)
-      assert String.match?(normalized1.user_id, ~r/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+
+      assert String.match?(
+               normalized1.user_id,
+               ~r/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+             )
 
       # Verify UUID v5 format: version bit (5) and variant bit (RFC 4122)
       uuid_parts = String.split(normalized1.user_id, "-")
@@ -197,7 +205,11 @@ defmodule Voelgoedevents.Ash.Support.ActorUtilsTest do
       # Same api_key_id produces same derived UUID
       assert normalized1.user_id == normalized2.user_id
       assert is_binary(normalized1.user_id)
-      assert String.match?(normalized1.user_id, ~r/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+
+      assert String.match?(
+               normalized1.user_id,
+               ~r/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+             )
 
       # Verify UUID v5 format
       uuid_parts = String.split(normalized1.user_id, "-")

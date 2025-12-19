@@ -14,6 +14,7 @@ defmodule Voelgoedevents.Ash.Policies.Checks.MembershipInviteScopeTest do
   describe "match?/3" do
     test "returns true when actor org matches changeset org and role is owner" do
       org_id = Ecto.UUID.generate()
+
       actor = %{
         user_id: Ecto.UUID.generate(),
         organization_id: org_id,
@@ -38,6 +39,7 @@ defmodule Voelgoedevents.Ash.Policies.Checks.MembershipInviteScopeTest do
 
     test "returns true when actor org matches changeset org and role is admin" do
       org_id = Ecto.UUID.generate()
+
       actor = %{
         user_id: Ecto.UUID.generate(),
         organization_id: org_id,
@@ -88,6 +90,7 @@ defmodule Voelgoedevents.Ash.Policies.Checks.MembershipInviteScopeTest do
 
     test "returns false when actor role is staff (not owner/admin)" do
       org_id = Ecto.UUID.generate()
+
       actor = %{
         user_id: Ecto.UUID.generate(),
         organization_id: org_id,
@@ -112,6 +115,7 @@ defmodule Voelgoedevents.Ash.Policies.Checks.MembershipInviteScopeTest do
 
     test "returns false when actor type is not :user" do
       org_id = Ecto.UUID.generate()
+
       actor = %{
         user_id: Ecto.UUID.generate(),
         organization_id: org_id,
@@ -136,6 +140,7 @@ defmodule Voelgoedevents.Ash.Policies.Checks.MembershipInviteScopeTest do
 
     test "returns false when actor organization_id is nil" do
       org_id = Ecto.UUID.generate()
+
       actor = %{
         user_id: Ecto.UUID.generate(),
         organization_id: nil,
@@ -160,6 +165,7 @@ defmodule Voelgoedevents.Ash.Policies.Checks.MembershipInviteScopeTest do
 
     test "returns false when context does not have changeset" do
       org_id = Ecto.UUID.generate()
+
       actor = %{
         user_id: Ecto.UUID.generate(),
         organization_id: org_id,

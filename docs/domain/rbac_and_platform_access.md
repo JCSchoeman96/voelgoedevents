@@ -152,14 +152,81 @@ actor: %{
 - Missing `organization_id` in session-based auth: MUST reject request (user must select org first or auth must establish org context)
 - **Global invariant (critical):** If `actor.type` is `:system` or `:device`, and the action is not explicitly permitted for that actor type, RBAC MUST deny the request regardless of `organization_id`. No exceptions.
 
-### 2.4 Identity: Global Flags + Per-Tenant Role
+### 2.4 Actor Type vs Role (Critical Distinction)
+
+**Tenant roles and actor types are orthogonal concepts. This distinction is fundamental to correct RBAC implementation.**
+
+#### A. Tenant Roles (ONLY when `actor.type == :user`)
+
+Tenant roles are stored in the database (`Role` resource) and assigned via `Membership`. They apply **only** to user actors.
+
+| Role Atom | Stored in DB | Used in Tenant Policies | Scope |
+|-----------|--------------|------------------------|-------|
+| `:owner` | ✅ Yes | ✅ Yes | Per organization |
+| `:admin` | ✅ Yes | ✅ Yes | Per organization |
+| `:staff` | ✅ Yes | ✅ Yes | Per organization |
+| `:viewer` | ✅ Yes | ✅ Yes | Per organization |
+| `:scanner_only` | ✅ Yes | ✅ Yes | Per organization |
+
+**Canonical rule:** When `actor.type == :user`, `actor.role` MUST be one of the five tenant roles above.
+
+#### B. Actor Types (orthogonal to roles)
+
+Actor types determine **how** authorization is checked, not **what** permissions are granted. They are NOT stored as roles.
+
+| Actor Type | Has Tenant Role | Stored in DB | Can Mutate Tenant Data | Policy Branching |
+|------------|----------------|--------------|------------------------|------------------|
+| `:user` | ✅ Yes | ✅ Yes (via Membership) | Depends on role | `actor(:role)` checks |
+| `:system` | ❌ No (`role: nil`) | ❌ No | Only if explicitly allowed | `actor(:type) == :system` |
+| `:device` | ❌ No (`role: nil`) | ❌ No | Very limited (scanning only) | `actor(:type) == :device` |
+| `:api_key` | ❌ No (`role: nil`) | ❌ No | Scope-bound | `actor(:type) == :api_key` |
+
+**Canonical rule:** When `actor.type != :user`, `actor.role` MUST be `nil`.
+
+**System actor example:**
+```elixir
+# ✅ CORRECT: System actor with nil role
+system_actor = %{
+  user_id: Ecto.UUID.generate(),
+  organization_id: org.id,
+  role: nil,                    # NOT :system
+  is_platform_admin: true,
+  is_platform_staff: false,
+  type: :system
+}
+
+# ❌ WRONG: System actor with fake role
+wrong_actor = %{
+  user_id: "550e8400-e29b-41d4-a716-446655440000",  # Generated UUID for system actor
+  organization_id: org.id,
+  role: :system,                # WRONG - :system is not a role
+  is_platform_admin: true,
+  is_platform_staff: false,
+  type: :system
+}
+```
+
+#### C. Platform Flags (cross-cutting, not roles)
+
+Platform flags grant platform-level capabilities but do NOT replace tenant roles.
+
+| Flag | Type | Use | Tenant Role Required? |
+|------|------|-----|----------------------|
+| `is_platform_admin` | boolean | Super Admin: bypass tenant filters, access all orgs | No (but system actors use this) |
+| `is_platform_staff` | boolean | Support Staff: view cross-org data for support | Yes (must have tenant role in each org) |
+
+**RULE:** `is_platform_staff: true` actors MUST ALSO have a tenant role (`:staff`, `:admin`, etc.) in each org they access to perform mutations. Platform flags do NOT replace tenant roles.
+
+### 2.5 Identity: Global Flags + Per-Tenant Role
 
 **User authority is the intersection of:**
 
 - **Global flags** (`is_platform_admin`, `is_platform_staff`)
 - **Per-tenant role** (from `Membership`)
 
-### 2.5 Canonical Role Catalog
+### 2.6 Canonical Role Catalog
+
+**Tenant roles only. These apply when `actor.type == :user`.**
 
 System-defined roles are immutable and seeded with human-friendly names and explicit permission sets to keep capabilities
 consistent across tenants and platform tooling.
@@ -171,6 +238,8 @@ consistent across tenants and platform tooling.
 | `:staff` | Staff | `manage_ticketing_and_pricing`, `view_orders`, `view_limited_analytics` |
 | `:viewer` | Viewer | `view_read_only` |
 | `:scanner_only` | Scanner Only | `perform_scans` |
+
+**Note:** `:system` is NOT a role. It is an actor type. System actors have `role: nil`.
 
 **Examples:**
 
@@ -205,6 +274,8 @@ The RBAC system supports multiple actor types, each with different authorization
 ## 4. The Five Tenant Roles (Complete Definition)
 
 VoelgoedEvents has **exactly five tenant-scoped roles**. These are system-defined and seeded in `priv/repo/seeds.exs`. No new roles are created.
+
+**CRITICAL:** These roles apply ONLY when `actor.type == :user`. System actors (`actor.type == :system`) do NOT have tenant roles and MUST have `actor.role == nil`.
 
 ### 4.1 Owner (`:owner`)
 

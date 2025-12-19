@@ -154,4 +154,35 @@ defmodule Voelgoedevents.TestFixtures do
       type: :user
     }
   end
+
+  @doc """
+  Builds a canonical system actor for use in Ash operations.
+
+  System actors are platform-scoped (not tenant-scoped) and do NOT have tenant roles.
+  Useful for test helpers that need to read data without authorization checks
+  but still satisfy FilterByTenant preparation requirements.
+
+  Options:
+    - :is_platform_admin boolean, default true
+    - :is_platform_staff boolean, default false
+    - :user_id UUID string, optional; defaults to a generated UUID
+
+  Returns a canonical actor map with all 6 required fields:
+    - user_id (UUID)
+    - organization_id
+    - role: nil
+    - is_platform_admin
+    - is_platform_staff
+    - type: :system
+  """
+  def build_system_actor(organization, opts \\ []) do
+    %{
+      user_id: Keyword.get(opts, :user_id, Voelgoedevents.Ash.Support.ActorUtils.system_actor_user_id()),
+      organization_id: organization.id,
+      role: nil,
+      is_platform_admin: Keyword.get(opts, :is_platform_admin, true),
+      is_platform_staff: Keyword.get(opts, :is_platform_staff, false),
+      type: :system
+    }
+  end
 end

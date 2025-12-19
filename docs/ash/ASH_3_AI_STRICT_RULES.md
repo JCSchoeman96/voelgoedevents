@@ -683,9 +683,9 @@ Event
 
 ```elixir
 actor = %{
-  user_id: "550e8400-e29b-41d4-a716-446655440000" | "system",
+  user_id: "550e8400-e29b-41d4-a716-446655440000",  # UUID; for system actors, use generated UUID
   organization_id: "550e8400-e29b-41d4-a716-446655440001" | nil,
-  role: :owner | :admin | :staff | :viewer | :scanner_only | :system,
+  role: :owner | :admin | :staff | :viewer | :scanner_only | nil,  # nil for system/device/api_key actors
   is_platform_admin: false | true,
   is_platform_staff: false | true,
   type: :user | :system | :device | :api_key
@@ -694,7 +694,7 @@ actor = %{
 
 **Mandatory Rules:**
 - All 6 fields MUST be present in every actor
-- `user_id` is UUID or string "system" (never nil)
+- `user_id` is always a UUID string (never nil, never "system" string; for system/device/api_key actors, use generated UUID)
 - `organization_id` is UUID or nil (nil only for platform operations)
 - `role` MUST be one of the 6 atoms above
 - `is_platform_admin` and `is_platform_staff` are booleans (never nil)

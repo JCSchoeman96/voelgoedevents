@@ -263,9 +263,9 @@ end
 **Checked:**
 ```elixir
 %{
-  user_id: uuid | "system",
+  user_id: uuid,  # UUID; for system actors, use generated UUID (not "system" string)
   organization_id: uuid | nil,
-  role: :owner | :admin | :staff | :viewer | :scanner_only | :system,
+  role: :owner | :admin | :staff | :viewer | :scanner_only | nil,  # nil for system/device/api_key actors
   is_platform_admin: false | true,
   is_platform_staff: false | true,
   type: :user | :system | :device | :api_key
@@ -306,7 +306,7 @@ end
 ### E.3 What Must Never Be Nil
 
 **Checked:** Section 4.1 clarifies:
-- `user_id` — always UUID or "system"
+- `user_id` — always UUID (for system/device/api_key actors, use generated UUID)
 - `role` — always one of 6 atoms
 - `is_platform_admin` — boolean (never nil)
 - `is_platform_staff` — boolean (never nil)

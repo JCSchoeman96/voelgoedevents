@@ -137,9 +137,9 @@ Supervisor.which_children(Voelgoedevents.Supervisor)
 **The actor map (all 6 fields required):**
 ```elixir
 %{
-  user_id: "uuid-string" | "system",
+  user_id: "uuid-string",  # UUID; for system actors, use generated UUID (not "system" string)
   organization_id: "uuid-string" | nil,
-  role: :owner | :admin | :staff | :viewer | :scanner_only | :system,
+  role: :owner | :admin | :staff | :viewer | :scanner_only | nil,  # nil for system/device/api_key actors
   is_platform_admin: boolean,
   is_platform_staff: boolean,
   type: :user | :system | :device | :api_key
@@ -162,19 +162,19 @@ actor_owner = %{
 actor_device = %{
   user_id: device_id,
   organization_id: org_id,
-  role: :scanner_only,
+  role: nil,  # CRITICAL: nil, not :scanner_only (devices don't have tenant roles)
   is_platform_admin: false,
   is_platform_staff: false,
   type: :device
 }
 
-# Platform admin
-actor_admin = %{
-  user_id: "system_admin_uuid",
-  organization_id: nil,
-  role: :system,
+# System actor (platform admin)
+actor_system = %{
+  user_id: "system_admin_uuid",  # Generated UUID
+  organization_id: org_id,  # Required for FilterByTenant
+  role: nil,  # CRITICAL: nil, not :system (system actors don't have tenant roles)
   is_platform_admin: true,
-  is_platform_staff: true,
+  is_platform_staff: false,
   type: :system
 }
 ```

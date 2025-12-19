@@ -19,9 +19,9 @@ If these docs conflict, 1 and 2 win.
 
 ```elixir
 actor = %{
-  user_id: uuid | "system",                            # User ID or "system" for background jobs
+  user_id: uuid,                                       # User ID (UUID); for system actors, use generated UUID
   organization_id: uuid | nil,                         # Org ID; nil only for platform operations (rare)
-  role: :owner | :admin | :staff | :viewer | :scanner_only | :system,
+  role: :owner | :admin | :staff | :viewer | :scanner_only | nil,  # Tenant role; nil for system/device/api_key actors
   is_platform_admin: false | true,                     # true only for Super Admin (rare)
   is_platform_staff: false | true,                     # true for platform support staff
   type: :user | :system | :device | :api_key          # Actor type; determines allowed actions
@@ -31,18 +31,22 @@ actor = %{
 **RULE:** Every policy can assume these six fields exist. If any field is missing, policy checks fail – this is intentional.
 
 **RULE:** Type field gates permissions by identity kind:
-- `:user` – regular tenant user, scoped by organization_id + role
-- `:system` – background job, CLI task (rare cross-org operations)
-- `:device` – scanner hardware, kiosk (scanning-only)
-- `:api_key` – external partner (scoped to granted permissions)
+- `:user` – regular tenant user, scoped by organization_id + role (role is required)
+- `:system` – background job, CLI task (rare cross-org operations); **role MUST be nil**
+- `:device` – scanner hardware, kiosk (scanning-only); **role MUST be nil**
+- `:api_key` – external partner (scoped to granted permissions); **role MUST be nil**
 
 **RULE:** If `actor(:type)` is `:system` or `:device` and the action is NOT explicitly documented as permitted in `/docs/domain/rbac_and_platform_access.md`, policies **must deny by default**.
+
+**RULE:** System actors do NOT have tenant roles. When `actor.type == :system`, `actor.role` MUST be `nil`. Policies must branch on `actor.type`, not on fake tenant roles.
 
 ---
 
 ## 2. Canonical Role & Flag Set
 
 ### 2.1 Tenant Roles (Only These Atoms)
+
+**Tenant roles apply ONLY when `actor.type == :user`.**
 
 | Atom | Scope | Use |
 |---|---|---|
@@ -51,7 +55,8 @@ actor = %{
 | `:staff` | Per org | Day-to-day operator; create/manage events, basic reporting |
 | `:viewer` | Per org | Stakeholder; read-only (events, reports, dashboards) |
 | `:scanner_only` | Per org | On-site check-in; scan tickets, mark attendance, read ticket/seat data only |
-| `:system` | Special | System actor for background jobs, migrations, CLI tasks |
+
+**CRITICAL:** `:system` is **NOT a tenant role**. It is an **actor type**. System actors have `role: nil` and do not participate in tenant RBAC.
 
 ### 2.2 Platform Flags (NOT Role Atoms)
 
@@ -61,6 +66,46 @@ actor = %{
 | `is_platform_staff` | boolean | **Support Staff**: Can view cross-org data for support. Must still have a real tenant role to mutate in that org. | `/docs/domain/rbac_and_platform_access.md` §5 |
 
 **RULE:** Platform flags are NOT roles. A `is_platform_staff: true` actor MUST ALSO have a role (`:staff`, `:admin`, etc.) in each org they access to perform mutations.
+
+### 2.3 System Actors (Non-RBAC)
+
+**System actors (`actor.type == :system`) do NOT participate in tenant RBAC.**
+
+**Canonical system actor shape:**
+```elixir
+%{
+  user_id: uuid,                    # Generated UUID (not "system" string)
+  organization_id: uuid,            # Required for FilterByTenant
+  role: nil,                        # CRITICAL: nil, not :system
+  is_platform_admin: true,          # Usually true for bypass
+  is_platform_staff: false,
+  type: :system
+}
+```
+
+**Key rules:**
+- System actors have `role: nil` (they do not belong to tenants)
+- System actors bypass authorization via `is_platform_admin: true`, not via fake tenant roles
+- Policies must branch on `actor.type == :system`, not on `actor.role`
+- System actors are platform-scoped, not tenant-scoped
+- Used for background jobs, workflows, CLI tasks, test helpers
+
+**Policy pattern for system actors:**
+```elixir
+policy action_type(:some_action) do
+  # System actors bypass (if explicitly allowed)
+  authorize_if expr(actor(:type) == :system and actor(:is_platform_admin) == true)
+  
+  # Tenant users require role check
+  authorize_if expr(
+    actor(:type) == :user and
+    organization_id == actor(:organization_id) and
+    actor(:role) in [:owner, :admin]
+  )
+  
+  default_policy :deny
+end
+```
 
 ---
 

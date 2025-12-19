@@ -7,6 +7,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
   alias Voelgoedevents.Ash.Policies.PlatformPolicy
   alias Voelgoedevents.Caching.MembershipCache
   alias Voelgoedevents.Ash.Validations.RequireExplicitPlatformAdmin
+  alias Voelgoedevents.Ash.Support.ActorUtils
 
   require PlatformPolicy
   require Ash.Query
@@ -122,6 +123,7 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     validate present([:email, :first_name, :last_name, :status])
     validate {Voelgoedevents.Ash.Validations.PasswordPolicy, field: :password}
     validate RequireExplicitPlatformAdmin
+    validate &Voelgoedevents.Ash.Resources.Accounts.User.forbid_system_actor_id/2
   end
 
   actions do
@@ -397,6 +399,30 @@ defmodule Voelgoedevents.Ash.Resources.Accounts.User do
     end
 
     {:ok, user}
+  end
+
+  # ------------------------------------------------------------
+  # Validations
+  # ------------------------------------------------------------
+
+  @doc """
+  Validation: Forbids creating User records with the canonical system actor UUID.
+
+  The system actor UUID (00000000-0000-0000-0000-000000000001) is reserved
+  for system actors and must never be assigned to a real User record.
+  """
+  def forbid_system_actor_id(changeset, _opts) do
+    user_id = Changeset.get_attribute(changeset, :id)
+
+    if user_id == ActorUtils.system_actor_user_id() do
+      Changeset.add_error(
+        changeset,
+        field: :id,
+        message: "User ID cannot be the reserved system actor UUID"
+      )
+    else
+      changeset
+    end
   end
 
   # Helper functions can remain private (defp) as they are not called by the DSL

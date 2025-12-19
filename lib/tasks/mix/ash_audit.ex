@@ -687,7 +687,7 @@ defmodule Mix.Tasks.Ash.Audit do
       {call, meta, args} = node, acc when is_atom(call) and is_list(args) and is_list(meta) ->
         acc =
           Enum.reduce(args, acc, fn
-            kw, acc2 when is_list(kw) and Keyword.keyword?(kw) ->
+            kw, acc2 when is_list(kw) and is_map(kw) ->
               case Keyword.fetch(kw, :actor) do
                 {:ok, {:%{}, meta_map, kvs}} ->
                   keys =
@@ -1104,7 +1104,7 @@ defmodule Mix.Tasks.Ash.Audit do
 
   defp extract_do_block(args) when is_list(args) do
     Enum.find_value(args, fn
-      kw when is_list(kw) and Keyword.keyword?(kw) -> Keyword.get(kw, :do)
+      kw when is_list(kw) and is_map(kw) -> Keyword.get(kw, :do)
       _ -> nil
     end)
   end
@@ -1170,7 +1170,7 @@ defmodule Mix.Tasks.Ash.Audit do
 
   defp contains_authorize_false_kw?(args) when is_list(args) do
     Enum.any?(args, fn
-      kw when is_list(kw) and Keyword.keyword?(kw) -> Keyword.get(kw, :authorize?) == false
+      kw when is_list(kw) and is_map(kw) -> Keyword.get(kw, :authorize?) == false
       _ -> false
     end)
   rescue

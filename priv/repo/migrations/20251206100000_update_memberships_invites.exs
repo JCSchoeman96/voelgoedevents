@@ -2,23 +2,30 @@ defmodule Voelgoedevents.Repo.Migrations.UpdateMembershipsInvites do
   use Ecto.Migration
 
   def up do
-    alter table(:memberships) do
-      add :role_id, references(:roles, type: :uuid, prefix: "public")
-      add :status, :text, null: false, default: "active"
-      add :invited_at, :utc_datetime_usec
-      add :joined_at, :utc_datetime_usec
-    end
+    # Idempotent column additions (IF NOT EXISTS)
+    execute("""
+    ALTER TABLE memberships
+    ADD COLUMN IF NOT EXISTS role_id uuid,
+    ADD COLUMN IF NOT EXISTS status text,
+    ADD COLUMN IF NOT EXISTS invited_at timestamptz,
+    ADD COLUMN IF NOT EXISTS joined_at timestamptz
+    """)
+
+    # Set defaults after adding columns (idempotent)
+    execute("""
+    ALTER TABLE memberships
+    ALTER COLUMN status SET DEFAULT 'active'
+    """)
 
     execute("""
-    INSERT INTO roles (id, name, display_name, permissions, inserted_at, updated_at)
-    VALUES
-      (gen_random_uuid(), 'owner', 'Owner', '{}', now() AT TIME ZONE 'utc', now() AT TIME ZONE 'utc'),
-      (gen_random_uuid(), 'admin', 'Admin', '{}', now() AT TIME ZONE 'utc', now() AT TIME ZONE 'utc'),
-      (gen_random_uuid(), 'manager', 'Manager', '{}', now() AT TIME ZONE 'utc', now() AT TIME ZONE 'utc'),
-      (gen_random_uuid(), 'support', 'Support', '{}', now() AT TIME ZONE 'utc', now() AT TIME ZONE 'utc'),
-      (gen_random_uuid(), 'read_only', 'Read-only', '{}', now() AT TIME ZONE 'utc', now() AT TIME ZONE 'utc')
-    ON CONFLICT (name) DO NOTHING
+    UPDATE memberships
+    SET status = 'active'
+    WHERE status IS NULL
     """)
+
+    # Note: Role seeding removed from migrations to prevent business logic drift.
+    # Roles are seeded via priv/repo/seeds.exs using Ash, which ensures
+    # display_name and permissions are set correctly by the resource change function.
 
     execute("""
     UPDATE memberships AS m

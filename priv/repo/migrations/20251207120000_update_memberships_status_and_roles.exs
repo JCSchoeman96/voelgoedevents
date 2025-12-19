@@ -2,17 +2,9 @@ defmodule Voelgoedevents.Repo.Migrations.UpdateMembershipsStatusAndRoles do
   use Ecto.Migration
 
   def up do
-    execute("""
-    INSERT INTO roles (id, name, display_name, permissions, inserted_at, updated_at)
-    VALUES
-      (gen_random_uuid(), 'owner', 'Owner', '{}', now() AT TIME ZONE 'utc', now() AT TIME ZONE 'utc'),
-      (gen_random_uuid(), 'admin', 'Admin', '{}', now() AT TIME ZONE 'utc', now() AT TIME ZONE 'utc'),
-      (gen_random_uuid(), 'manager', 'Manager', '{}', now() AT TIME ZONE 'utc', now() AT TIME ZONE 'utc'),
-      (gen_random_uuid(), 'support', 'Support', '{}', now() AT TIME ZONE 'utc', now() AT TIME ZONE 'utc'),
-      (gen_random_uuid(), 'read_only', 'Read-only', '{}', now() AT TIME ZONE 'utc', now() AT TIME ZONE 'utc'),
-      (gen_random_uuid(), 'staff', 'Staff', '{}', now() AT TIME ZONE 'utc', now() AT TIME ZONE 'utc')
-    ON CONFLICT (name) DO NOTHING
-    """)
+    # Note: Role seeding removed from migrations to prevent business logic drift.
+    # Roles are seeded via priv/repo/seeds.exs using Ash, which ensures
+    # display_name and permissions are set correctly by the resource change function.
 
     execute("""
     ALTER TABLE memberships
